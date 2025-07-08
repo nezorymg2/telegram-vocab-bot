@@ -1,0 +1,3062 @@
+[
+  {
+    "word": "become (became, become)",
+    "translation": "становиться",
+    "section": "Этапы действия, часть и целое"
+  },
+  {
+    "word": "begin (began, begun)",
+    "translation": "начинать",
+    "section": "Этапы действия, часть и целое"
+  },
+  {
+    "word": "start",
+    "translation": "начинать",
+    "section": "Этапы действия, часть и целое"
+  },
+  {
+    "word": "continue",
+    "translation": "продолжать",
+    "section": "Этапы действия, часть и целое"
+  },
+  {
+    "word": "go on (went, gone)",
+    "translation": "продолжать",
+    "section": "Этапы действия, часть и целое"
+  },
+  {
+    "word": "stop",
+    "translation": "заканчивать, останавливать",
+    "section": "Этапы действия, часть и целое"
+  },
+  {
+    "word": "end",
+    "translation": "заканчивать",
+    "section": "Этапы действия, часть и целое"
+  },
+  {
+    "word": "finish",
+    "translation": "заканчивать",
+    "section": "Этапы действия, часть и целое"
+  },
+  {
+    "word": "last",
+    "translation": "длиться",
+    "section": "Этапы действия, часть и целое"
+  },
+  {
+    "word": "accomplish",
+    "translation": "завершать",
+    "section": "Этапы действия, часть и целое"
+  },
+  {
+    "word": "prepare",
+    "translation": "подготавливать",
+    "section": "Этапы действия, часть и целое"
+  },
+  {
+    "word": "postpone",
+    "translation": "откладывать",
+    "section": "Этапы действия, часть и целое"
+  },
+  {
+    "word": "put off (put, put)",
+    "translation": "откладывать",
+    "section": "Этапы действия, часть и целое"
+  },
+  {
+    "word": "divide",
+    "translation": "разделять",
+    "section": "Этапы действия, часть и целое"
+  },
+  {
+    "word": "consist of",
+    "translation": "состоять из",
+    "section": "Этапы действия, часть и целое"
+  },
+  {
+    "word": "include",
+    "translation": "включать (в себя что-то)",
+    "section": "Этапы действия, часть и целое"
+  },
+  {
+    "word": "exclude",
+    "translation": "исключать",
+    "section": "Этапы действия, часть и целое"
+  },
+  {
+    "word": "incorporate",
+    "translation": "включать (в себя что-то), объединяться",
+    "section": "Этапы действия, часть и целое"
+  },
+  {
+    "word": "split (split, split)",
+    "translation": "разделять на части, расщеплять",
+    "section": "Этапы действия, часть и целое"
+  },
+  {
+    "word": "contain",
+    "translation": "содержать (в себе)",
+    "section": "Этапы действия, часть и целое"
+  },
+  {
+    "word": "separate",
+    "translation": "отделять",
+    "section": "Этапы действия, часть и целое"
+  },
+  {
+    "word": "assemble",
+    "translation": "собирать (из частей)",
+    "section": "Этапы действия, часть и целое"
+  },
+  {
+    "word": "go (went, gone)",
+    "translation": "идти",
+    "section": "Движение"
+  },
+  {
+    "word": "come (came, come)",
+    "translation": "приходить",
+    "section": "Движение"
+  },
+  {
+    "word": "turn",
+    "translation": "поворачивать",
+    "section": "Движение"
+  },
+  {
+    "word": "run (ran, run)",
+    "translation": "бежать",
+    "section": "Движение"
+  },
+  {
+    "word": "move",
+    "translation": "двигать (-ся)",
+    "section": "Движение"
+  },
+  {
+    "word": "bring (brought, brought)",
+    "translation": "приносить",
+    "section": "Движение"
+  },
+  {
+    "word": "sit (sat, sat)",
+    "translation": "сидеть",
+    "section": "Движение"
+  },
+  {
+    "word": "stand",
+    "translation": "стоять",
+    "section": "Движение"
+  },
+  {
+    "word": "follow",
+    "translation": "следовать",
+    "section": "Движение"
+  },
+  {
+    "word": "stop",
+    "translation": "останавливать (-ся)",
+    "section": "Движение"
+  },
+  {
+    "word": "walk",
+    "translation": "ходить (гулять)",
+    "section": "Движение"
+  },
+  {
+    "word": "appear",
+    "translation": "появляться",
+    "section": "Движение"
+  },
+  {
+    "word": "disappear",
+    "translation": "исчезать",
+    "section": "Движение"
+  },
+  {
+    "word": "remain",
+    "translation": "оставаться",
+    "section": "Движение"
+  },
+  {
+    "word": "leave (left, left)",
+    "translation": "уходить",
+    "section": "Движение"
+  },
+  {
+    "word": "raise",
+    "translation": "поднимать (-ся)",
+    "section": "Движение"
+  },
+  {
+    "word": "carry",
+    "translation": "нести",
+    "section": "Движение"
+  },
+  {
+    "word": "drive (drove, driven)",
+    "translation": "вести машину",
+    "section": "Движение"
+  },
+  {
+    "word": "throw (threw, thrown)",
+    "translation": "бросать",
+    "section": "Движение"
+  },
+  {
+    "word": "push",
+    "translation": "толкать",
+    "section": "Движение"
+  },
+  {
+    "word": "lay (laid, laid)",
+    "translation": "класть",
+    "section": "Движение"
+  },
+  {
+    "word": "lie (lay, lain)",
+    "translation": "лежать, лгать",
+    "section": "Движение"
+  },
+  {
+    "word": "arrive",
+    "translation": "прибывать",
+    "section": "Движение"
+  },
+  {
+    "word": "shake (shook, shaken)",
+    "translation": "трясти",
+    "section": "Движение"
+  },
+  {
+    "word": "fly (flew, flown)",
+    "translation": "летать",
+    "section": "Движение"
+  },
+  {
+    "word": "stay",
+    "translation": "оставаться",
+    "section": "Движение"
+  },
+  {
+    "word": "fall (fell, fallen)",
+    "translation": "падать",
+    "section": "Движение"
+  },
+  {
+    "word": "wear (wore, worn)",
+    "translation": "носить (напр. одежду)",
+    "section": "Движение"
+  },
+  {
+    "word": "step",
+    "translation": "шагнуть",
+    "section": "Движение"
+  },
+  {
+    "word": "roll",
+    "translation": "катиться, сворачивать",
+    "section": "Движение"
+  },
+  {
+    "word": "ride (rode, ridden)",
+    "translation": "ехать (напр. верхом)",
+    "section": "Движение"
+  },
+  {
+    "word": "lift",
+    "translation": "поднимать",
+    "section": "Движение"
+  },
+  {
+    "word": "jump",
+    "translation": "прыгать",
+    "section": "Движение"
+  },
+  {
+    "word": "approach",
+    "translation": "приближаться",
+    "section": "Движение"
+  },
+  {
+    "word": "cross",
+    "translation": "пересекать",
+    "section": "Движение"
+  },
+  {
+    "word": "climb",
+    "translation": "лезть (карабкаться)",
+    "section": "Движение"
+  },
+  {
+    "word": "bear (bore, born)",
+    "translation": "нести",
+    "section": "Движение"
+  },
+  {
+    "word": "shift",
+    "translation": "сдвигать",
+    "section": "Движение"
+  },
+  {
+    "word": "slip",
+    "translation": "поскальзываться",
+    "section": "Движение"
+  },
+  {
+    "word": "rush",
+    "translation": "торопиться (стремительно мчаться)",
+    "section": "Движение"
+  },
+  {
+    "word": "land",
+    "translation": "приземляться",
+    "section": "Движение"
+  },
+  {
+    "word": "escape",
+    "translation": "сбегать",
+    "section": "Движение"
+  },
+  {
+    "word": "drag",
+    "translation": "тащить",
+    "section": "Движение"
+  },
+  {
+    "word": "slide (slid, slid)",
+    "translation": "скользить",
+    "section": "Движение"
+  },
+  {
+    "word": "toss",
+    "translation": "бросать (метать)",
+    "section": "Движение"
+  },
+  {
+    "word": "accompany",
+    "translation": "сопровождать",
+    "section": "Движение"
+  },
+  {
+    "word": "swing (swang, swung)",
+    "translation": "раскачивать",
+    "section": "Движение"
+  },
+  {
+    "word": "advance",
+    "translation": "продвигаться",
+    "section": "Движение"
+  },
+  {
+    "word": "swim (swam, swum)",
+    "translation": "плыть",
+    "section": "Движение"
+  },
+  {
+    "word": "flee",
+    "translation": "убегать, спасаться бегством",
+    "section": "Движение"
+  },
+  {
+    "word": "sink (sank, sunk)",
+    "translation": "тонуть",
+    "section": "Движение"
+  },
+  {
+    "word": "be (was, been)",
+    "translation": "быть",
+    "section": "Наличие\\отсутствие, принадлежность"
+  },
+  {
+    "word": "exist",
+    "translation": "существовать",
+    "section": "Наличие\\отсутствие, принадлежность"
+  },
+  {
+    "word": "include",
+    "translation": "включать (в себя что-либо)",
+    "section": "Наличие\\отсутствие, принадлежность"
+  },
+  {
+    "word": "exclude",
+    "translation": "исключать",
+    "section": "Наличие\\отсутствие, принадлежность"
+  },
+  {
+    "word": "add",
+    "translation": "добавлять",
+    "section": "Наличие\\отсутствие, принадлежность"
+  },
+  {
+    "word": "enter",
+    "translation": "вводить, входить",
+    "section": "Наличие\\отсутствие, принадлежность"
+  },
+  {
+    "word": "share",
+    "translation": "делиться",
+    "section": "Наличие\\отсутствие, принадлежность"
+  },
+  {
+    "word": "remove",
+    "translation": "удалять",
+    "section": "Наличие\\отсутствие, принадлежность"
+  },
+  {
+    "word": "receive",
+    "translation": "получать",
+    "section": "Наличие\\отсутствие, принадлежность"
+  },
+  {
+    "word": "lose (lost, lost)",
+    "translation": "терять",
+    "section": "Наличие\\отсутствие, принадлежность"
+  },
+  {
+    "word": "find (found, found)",
+    "translation": "найти",
+    "section": "Наличие\\отсутствие, принадлежность"
+  },
+  {
+    "word": "have (had, had)",
+    "translation": "иметь",
+    "section": "Наличие\\отсутствие, принадлежность"
+  },
+  {
+    "word": "be present",
+    "translation": "присутствовать",
+    "section": "Наличие\\отсутствие, принадлежность"
+  },
+  {
+    "word": "be absent",
+    "translation": "отсутствовать",
+    "section": "Наличие\\отсутствие, принадлежность"
+  },
+  {
+    "word": "get (got, got\\gotten)",
+    "translation": "получить (становиться)",
+    "section": "Наличие\\отсутствие, принадлежность"
+  },
+  {
+    "word": "take (took, taken)",
+    "translation": "брать",
+    "section": "Наличие\\отсутствие, принадлежность"
+  },
+  {
+    "word": "give (gave, given)",
+    "translation": "давать",
+    "section": "Наличие\\отсутствие, принадлежность"
+  },
+  {
+    "word": "return",
+    "translation": "возвращать",
+    "section": "Наличие\\отсутствие, принадлежность"
+  },
+  {
+    "word": "join",
+    "translation": "присоединять",
+    "section": "Наличие\\отсутствие, принадлежность"
+  },
+  {
+    "word": "involve",
+    "translation": "вовлекать",
+    "section": "Наличие\\отсутствие, принадлежность"
+  },
+  {
+    "word": "release",
+    "translation": "выпускать (отпускать)",
+    "section": "Наличие\\отсутствие, принадлежность"
+  },
+  {
+    "word": "own",
+    "translation": "владеть",
+    "section": "Наличие\\отсутствие, принадлежность"
+  },
+  {
+    "word": "gain",
+    "translation": "получать, набирать (прибавлять в чем-то)",
+    "section": "Наличие\\отсутствие, принадлежность"
+  },
+  {
+    "word": "emerge",
+    "translation": "появляться",
+    "section": "Наличие\\отсутствие, принадлежность"
+  },
+  {
+    "word": "expand",
+    "translation": "расширять (-ся)",
+    "section": "Наличие\\отсутствие, принадлежность"
+  },
+  {
+    "word": "disappear",
+    "translation": "исчезать",
+    "section": "Наличие\\отсутствие, принадлежность"
+  },
+  {
+    "word": "obtain",
+    "translation": "получать",
+    "section": "Наличие\\отсутствие, принадлежность"
+  },
+  {
+    "word": "belong",
+    "translation": "принадлежать",
+    "section": "Наличие\\отсутствие, принадлежность"
+  },
+  {
+    "word": "limit",
+    "translation": "ограничивать",
+    "section": "Наличие\\отсутствие, принадлежность"
+  },
+  {
+    "word": "spread (spread, spread)",
+    "translation": "распространять (-ся)",
+    "section": "Наличие\\отсутствие, принадлежность"
+  },
+  {
+    "word": "extend",
+    "translation": "расширять (-ся)",
+    "section": "Наличие\\отсутствие, принадлежность"
+  },
+  {
+    "word": "acquire",
+    "translation": "приобретать (получать)",
+    "section": "Наличие\\отсутствие, принадлежность"
+  },
+  {
+    "word": "abandon",
+    "translation": "покидать",
+    "section": "Наличие\\отсутствие, принадлежность"
+  },
+  {
+    "word": "arise (arose, arisen)",
+    "translation": "возникать",
+    "section": "Наличие\\отсутствие, принадлежность"
+  },
+  {
+    "word": "possess",
+    "translation": "обладать (владеть)",
+    "section": "Наличие\\отсутствие, принадлежность"
+  },
+  {
+    "word": "leave (left, left)",
+    "translation": "оставить",
+    "section": "Наличие\\отсутствие, принадлежность"
+  },
+  {
+    "word": "occupy",
+    "translation": "занимать (место)",
+    "section": "Наличие\\отсутствие, принадлежность"
+  },
+  {
+    "word": "work",
+    "translation": "работать",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "keep (kept, kept)",
+    "translation": "хранить",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "help",
+    "translation": "помогать",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "write (wrote, written)",
+    "translation": "писать",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "provide",
+    "translation": "обеспечивать",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "pay (paid, paid)",
+    "translation": "платить",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "lead (led, led)",
+    "translation": "лидировать (возглавлять)",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "create",
+    "translation": "создавать",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "serve",
+    "translation": "служить",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "build (built, built)",
+    "translation": "строить",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "develop",
+    "translation": "развивать (разрабатывать)",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "base",
+    "translation": "базировать, размещать",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "realize",
+    "translation": "реализовать, осознавать",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "save",
+    "translation": "сохранять (делать сбережения)",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "fail",
+    "translation": "терпеть неудачу",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "check",
+    "translation": "проверять",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "design",
+    "translation": "разрабатывать",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "claim",
+    "translation": "предъявлять претензии, заявлять о правах, утверждать",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "establish",
+    "translation": "устанавливать",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "maintain",
+    "translation": "поддерживать",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "head",
+    "translation": "руководить (возглавлять)",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "control",
+    "translation": "контролировать",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "apply",
+    "translation": "подавать заявление, применять что-то",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "manage",
+    "translation": "управлять",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "perform",
+    "translation": "выполнять",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "improve",
+    "translation": "улучшать",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "sign",
+    "translation": "подписывать",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "test",
+    "translation": "проверять (тестировать)",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "prevent",
+    "translation": "предотвращать",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "publish",
+    "translation": "публиковать",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "achieve",
+    "translation": "достигать (добиваться чего-то)",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "conduct",
+    "translation": "проводить",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "attend",
+    "translation": "участвовать, посещать",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "complete",
+    "translation": "выполнять",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "handle (Handle with care)",
+    "translation": "обращаться (работать с чем-либо, обычн. вручную)",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "handle (I can handle it)",
+    "translation": "справляться (напр. с проблемой)",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "deliver",
+    "translation": "доставлять",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "operate",
+    "translation": "управлять (обычно механизмом, машиной, программой)",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "order",
+    "translation": "приказывать, заказывать",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "measure",
+    "translation": "измерять",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "engage",
+    "translation": "входить в контакт (заниматься)",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "hire",
+    "translation": "нанимать на работу",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "train",
+    "translation": "обучать",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "paint",
+    "translation": "красить",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "direct",
+    "translation": "руководить (управлять)",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "solve",
+    "translation": "решать (проблему, задачу)",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "file",
+    "translation": "вносить в записи",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "employ",
+    "translation": "принимать на работу",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "make (made, made)",
+    "translation": "делать, заставлять",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "try",
+    "translation": "пробовать, пытаться",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "happen",
+    "translation": "случаться",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "set (set, set)",
+    "translation": "устанавливать",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "seek",
+    "translation": "искать",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "fill",
+    "translation": "заполнять",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "pass",
+    "translation": "проходить, передавать",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "attempt",
+    "translation": "пытаться",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "connect",
+    "translation": "подключать (соединять)",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "record",
+    "translation": "записывать",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "locate",
+    "translation": "обнаружить (выяснить местоположение)",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "search",
+    "translation": "искать, обыскивать",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "select",
+    "translation": "выбирать",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "launch",
+    "translation": "запускать",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "adjust",
+    "translation": "настраивать",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "succeed",
+    "translation": "достигать цели (преуспевать в чем-то)",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "review",
+    "translation": "пересматривать, делать обзор",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "arrange (an event)",
+    "translation": "организовывать (мероприятие)",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "benefit",
+    "translation": "получать выгоду",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "coach",
+    "translation": "тренировать",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "exercise",
+    "translation": "упражняться",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "monitor",
+    "translation": "наблюдать",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "supply",
+    "translation": "обеспечивать",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "assist",
+    "translation": "помогать",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "construct",
+    "translation": "строить",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "schedule",
+    "translation": "составлять график, вносить в график",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "assign",
+    "translation": "назначать, давать задание",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "dismiss",
+    "translation": "увольнять",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "practice",
+    "translation": "практиковаться",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "illustrate",
+    "translation": "иллюстрировать",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "enhance",
+    "translation": "улучшать, усиливать",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "implement",
+    "translation": "выполнять, применять",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "preserve",
+    "translation": "сохранять (уберегать)",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "guide",
+    "translation": "вести (направлять)",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "deserve",
+    "translation": "заслуживать чего-то",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "face (something)",
+    "translation": "встретиться с чем-то (напр. с проблемой)",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "cause",
+    "translation": "причинять что-либо",
+    "section": "Работа, сотрудничество"
+  },
+  {
+    "word": "teach (taught, taught)",
+    "translation": "учить (обучать)",
+    "section": "Чувства, мышление, восприятие"
+  },
+  {
+    "word": "can (could)",
+    "translation": "мочь, быть способным",
+    "section": "Чувства, мышление, восприятие"
+  },
+  {
+    "word": "know (knew, known)",
+    "translation": "знать",
+    "section": "Чувства, мышление, восприятие"
+  },
+  {
+    "word": "think (thought, thought)",
+    "translation": "думать",
+    "section": "Чувства, мышление, восприятие"
+  },
+  {
+    "word": "see (saw, seen)",
+    "translation": "видеть",
+    "section": "Чувства, мышление, восприятие"
+  },
+  {
+    "word": "want",
+    "translation": "хотеть",
+    "section": "Чувства, мышление, восприятие"
+  },
+  {
+    "word": "look",
+    "translation": "смотреть, выглядеть",
+    "section": "Чувства, мышление, восприятие"
+  },
+  {
+    "word": "need",
+    "translation": "нуждаться",
+    "section": "Чувства, мышление, восприятие"
+  },
+  {
+    "word": "feel (felt, felt)",
+    "translation": "чувствовать",
+    "section": "Чувства, мышление, восприятие"
+  },
+  {
+    "word": "mean (meant, meant)",
+    "translation": "значить (иметь ввиду)",
+    "section": "Чувства, мышление, восприятие"
+  },
+  {
+    "word": "seem",
+    "translation": "казаться",
+    "section": "Чувства, мышление, восприятие"
+  },
+  {
+    "word": "hear (heard, heard)",
+    "translation": "слышать",
+    "section": "Чувства, мышление, восприятие"
+  },
+  {
+    "word": "like",
+    "translation": "нравиться (любить)",
+    "section": "Чувства, мышление, восприятие"
+  },
+  {
+    "word": "believe",
+    "translation": "верить",
+    "section": "Чувства, мышление, восприятие"
+  },
+  {
+    "word": "learn (learnt, learnt)",
+    "translation": "изучать",
+    "section": "Чувства, мышление, восприятие"
+  },
+  {
+    "word": "watch",
+    "translation": "смотреть (сторожить)",
+    "section": "Чувства, мышление, восприятие"
+  },
+  {
+    "word": "read (read, read)",
+    "translation": "читать",
+    "section": "Чувства, мышление, восприятие"
+  },
+  {
+    "word": "remember",
+    "translation": "помнить",
+    "section": "Чувства, мышление, восприятие"
+  },
+  {
+    "word": "love",
+    "translation": "любить",
+    "section": "Чувства, мышление, восприятие"
+  },
+  {
+    "word": "decide",
+    "translation": "решать",
+    "section": "Чувства, мышление, восприятие"
+  },
+  {
+    "word": "hope",
+    "translation": "надеяться",
+    "section": "Чувства, мышление, восприятие"
+  },
+  {
+    "word": "listen",
+    "translation": "слушать",
+    "section": "Чувства, мышление, восприятие"
+  },
+  {
+    "word": "focus",
+    "translation": "сосредоточиваться (на чем-либо)",
+    "section": "Чувства, мышление, восприятие"
+  },
+  {
+    "word": "plan",
+    "translation": "планировать",
+    "section": "Чувства, мышление, восприятие"
+  },
+  {
+    "word": "note",
+    "translation": "замечать, обращать внимание",
+    "section": "Чувства, мышление, восприятие"
+  },
+  {
+    "word": "identify",
+    "translation": "идентифицировать",
+    "section": "Чувства, мышление, восприятие"
+  },
+  {
+    "word": "determine",
+    "translation": "определять",
+    "section": "Чувства, мышление, восприятие"
+  },
+  {
+    "word": "recognize",
+    "translation": "узнавать",
+    "section": "Чувства, мышление, восприятие"
+  },
+  {
+    "word": "compare",
+    "translation": "сравнивать",
+    "section": "Чувства, мышление, восприятие"
+  },
+  {
+    "word": "miss (someone)",
+    "translation": "скучать (по кому-то\\чему-то)",
+    "section": "Чувства, мышление, восприятие"
+  },
+  {
+    "word": "study",
+    "translation": "изучать (учиться)",
+    "section": "Чувства, мышление, восприятие"
+  },
+  {
+    "word": "forget (forgot, forgotten)",
+    "translation": "забывать",
+    "section": "Чувства, мышление, восприятие"
+  },
+  {
+    "word": "imagine",
+    "translation": "воображать",
+    "section": "Чувства, мышление, восприятие"
+  },
+  {
+    "word": "discover",
+    "translation": "совершать открытие",
+    "section": "Чувства, мышление, восприятие"
+  },
+  {
+    "word": "worry",
+    "translation": "беспокоиться",
+    "section": "Чувства, мышление, восприятие"
+  },
+  {
+    "word": "wait",
+    "translation": "ждать",
+    "section": "Чувства, мышление, восприятие"
+  },
+  {
+    "word": "experience",
+    "translation": "переживать (испытывать что-то на себе)",
+    "section": "Чувства, мышление, восприятие"
+  },
+  {
+    "word": "tend",
+    "translation": "иметь склонность (к чему-то)",
+    "section": "Чувства, мышление, восприятие"
+  },
+  {
+    "word": "notice",
+    "translation": "замечать",
+    "section": "Чувства, мышление, восприятие"
+  },
+  {
+    "word": "wish",
+    "translation": "желать",
+    "section": "Чувства, мышление, восприятие"
+  },
+  {
+    "word": "figure out",
+    "translation": "выяснять (находить решение)",
+    "section": "Чувства, мышление, восприятие"
+  },
+  {
+    "word": "suffer",
+    "translation": "страдать",
+    "section": "Чувства, мышление, восприятие"
+  },
+  {
+    "word": "recall",
+    "translation": "вспоминать",
+    "section": "Чувства, мышление, восприятие"
+  },
+  {
+    "word": "stare",
+    "translation": "пристально смотреть, пялиться",
+    "section": "Чувства, мышление, восприятие"
+  },
+  {
+    "word": "examine",
+    "translation": "проверять (изучать)",
+    "section": "Чувства, мышление, восприятие"
+  },
+  {
+    "word": "define",
+    "translation": "определять",
+    "section": "Чувства, мышление, восприятие"
+  },
+  {
+    "word": "observe",
+    "translation": "наблюдать",
+    "section": "Чувства, мышление, восприятие"
+  },
+  {
+    "word": "count",
+    "translation": "считать",
+    "section": "Чувства, мышление, восприятие"
+  },
+  {
+    "word": "associate",
+    "translation": "ассоциировать (с чем-то)",
+    "section": "Чувства, мышление, восприятие"
+  },
+  {
+    "word": "view",
+    "translation": "смотреть",
+    "section": "Чувства, мышление, восприятие"
+  },
+  {
+    "word": "remind",
+    "translation": "напоминать",
+    "section": "Чувства, мышление, восприятие"
+  },
+  {
+    "word": "hate",
+    "translation": "ненавидеть",
+    "section": "Чувства, мышление, восприятие"
+  },
+  {
+    "word": "intend",
+    "translation": "намереваться",
+    "section": "Чувства, мышление, восприятие"
+  },
+  {
+    "word": "explore",
+    "translation": "исследовать",
+    "section": "Чувства, мышление, восприятие"
+  },
+  {
+    "word": "predict",
+    "translation": "предсказывать",
+    "section": "Чувства, мышление, восприятие"
+  },
+  {
+    "word": "acknowledge",
+    "translation": "признавать, подтверждать получение",
+    "section": "Чувства, мышление, восприятие"
+  },
+  {
+    "word": "fear",
+    "translation": "бояться",
+    "section": "Чувства, мышление, восприятие"
+  },
+  {
+    "word": "conclude",
+    "translation": "делать вывод",
+    "section": "Чувства, мышление, восприятие"
+  },
+  {
+    "word": "prefer",
+    "translation": "предпочитать",
+    "section": "Чувства, мышление, восприятие"
+  },
+  {
+    "word": "appreciate",
+    "translation": "ценить",
+    "section": "Чувства, мышление, восприятие"
+  },
+  {
+    "word": "trust",
+    "translation": "доверять",
+    "section": "Чувства, мышление, восприятие"
+  },
+  {
+    "word": "rely on",
+    "translation": "полагаться на",
+    "section": "Чувства, мышление, восприятие"
+  },
+  {
+    "word": "question",
+    "translation": "подвергать сомнению, допрашивать",
+    "section": "Чувства, мышление, восприятие"
+  },
+  {
+    "word": "regard",
+    "translation": "учитывать, считать кем-либо \\ чем-либо",
+    "section": "Чувства, мышление, восприятие"
+  },
+  {
+    "word": "suspect",
+    "translation": "подозревать",
+    "section": "Чувства, мышление, восприятие"
+  },
+  {
+    "word": "suppose",
+    "translation": "предполагать",
+    "section": "Чувства, мышление, восприятие"
+  },
+  {
+    "word": "perceive",
+    "translation": "воспринимать",
+    "section": "Чувства, мышление, восприятие"
+  },
+  {
+    "word": "inspire",
+    "translation": "вдохновлять",
+    "section": "Чувства, мышление, восприятие"
+  },
+  {
+    "word": "analyze",
+    "translation": "анализировать",
+    "section": "Чувства, мышление, восприятие"
+  },
+  {
+    "word": "concentrate",
+    "translation": "сосредоточиваться",
+    "section": "Чувства, мышление, восприятие"
+  },
+  {
+    "word": "smell (smelt, smelt)",
+    "translation": "нюхать, пахнуть",
+    "section": "Чувства, мышление, восприятие"
+  },
+  {
+    "word": "glance",
+    "translation": "смотреть (бросать взгляд)",
+    "section": "Чувства, мышление, восприятие"
+  },
+  {
+    "word": "dream (dreamt, dreamt)",
+    "translation": "мечтать (видеть сны)",
+    "section": "Чувства, мышление, восприятие"
+  },
+  {
+    "word": "react",
+    "translation": "реагировать",
+    "section": "Чувства, мышление, восприятие"
+  },
+  {
+    "word": "choose",
+    "translation": "выбирать",
+    "section": "Чувства, мышление, восприятие"
+  },
+  {
+    "word": "expect",
+    "translation": "ожидать",
+    "section": "Чувства, мышление, восприятие"
+  },
+  {
+    "word": "miss",
+    "translation": "упускать, скучать",
+    "section": "Чувства, мышление, восприятие"
+  },
+  {
+    "word": "realize",
+    "translation": "реализовать, осознавать",
+    "section": "Чувства, мышление, восприятие"
+  },
+  {
+    "word": "say (said, said)",
+    "translation": "сказать",
+    "section": "Общение"
+  },
+  {
+    "word": "tell (told, told)",
+    "translation": "говорить",
+    "section": "Общение"
+  },
+  {
+    "word": "call",
+    "translation": "звать, звонить",
+    "section": "Общение"
+  },
+  {
+    "word": "ask",
+    "translation": "спрашивать, просить",
+    "section": "Общение"
+  },
+  {
+    "word": "talk",
+    "translation": "разговаривать",
+    "section": "Общение"
+  },
+  {
+    "word": "meet (met, met)",
+    "translation": "знакомиться (встречать)",
+    "section": "Общение"
+  },
+  {
+    "word": "understand (understood, understood)",
+    "translation": "понимать",
+    "section": "Общение"
+  },
+  {
+    "word": "speak (spoke, spoken)",
+    "translation": "говорить",
+    "section": "Общение"
+  },
+  {
+    "word": "allow",
+    "translation": "позволять",
+    "section": "Общение"
+  },
+  {
+    "word": "offer",
+    "translation": "предлагать",
+    "section": "Общение"
+  },
+  {
+    "word": "consider",
+    "translation": "рассматривать, считать",
+    "section": "Общение"
+  },
+  {
+    "word": "suggest",
+    "translation": "предлагать",
+    "section": "Общение"
+  },
+  {
+    "word": "require",
+    "translation": "требовать, нуждаться",
+    "section": "Общение"
+  },
+  {
+    "word": "report",
+    "translation": "докладывать",
+    "section": "Общение"
+  },
+  {
+    "word": "explain",
+    "translation": "объяснять",
+    "section": "Общение"
+  },
+  {
+    "word": "thank",
+    "translation": "благодарить",
+    "section": "Общение"
+  },
+  {
+    "word": "agree",
+    "translation": "соглашаться",
+    "section": "Общение"
+  },
+  {
+    "word": "describe",
+    "translation": "описывать",
+    "section": "Общение"
+  },
+  {
+    "word": "represent",
+    "translation": "представлять (напр. компанию)",
+    "section": "Общение"
+  },
+  {
+    "word": "lie",
+    "translation": "лгать",
+    "section": "Общение"
+  },
+  {
+    "word": "tell the truth (told, told)",
+    "translation": "говорить правду",
+    "section": "Общение"
+  },
+  {
+    "word": "mean (meant, meant)",
+    "translation": "иметь в виду",
+    "section": "Общение"
+  },
+  {
+    "word": "argue",
+    "translation": "спорить",
+    "section": "Общение"
+  },
+  {
+    "word": "wonder",
+    "translation": "интересоваться",
+    "section": "Общение"
+  },
+  {
+    "word": "name",
+    "translation": "называть, именовать",
+    "section": "Общение"
+  },
+  {
+    "word": "answer",
+    "translation": "отвечать",
+    "section": "Общение"
+  },
+  {
+    "word": "state",
+    "translation": "делать заявление",
+    "section": "Общение"
+  },
+  {
+    "word": "discuss",
+    "translation": "обсуждать",
+    "section": "Общение"
+  },
+  {
+    "word": "laugh",
+    "translation": "смеяться",
+    "section": "Общение"
+  },
+  {
+    "word": "guess",
+    "translation": "догадываться",
+    "section": "Общение"
+  },
+  {
+    "word": "prove",
+    "translation": "доказывать",
+    "section": "Общение"
+  },
+  {
+    "word": "sound",
+    "translation": "звучать",
+    "section": "Общение"
+  },
+  {
+    "word": "respond",
+    "translation": "отвечать",
+    "section": "Общение"
+  },
+  {
+    "word": "reveal",
+    "translation": "выявлять, раскрывать",
+    "section": "Общение"
+  },
+  {
+    "word": "treat",
+    "translation": "лечить (обращаться с кем-либо)",
+    "section": "Общение"
+  },
+  {
+    "word": "affect",
+    "translation": "влиять (воздействовать)",
+    "section": "Общение"
+  },
+  {
+    "word": "mention",
+    "translation": "упоминать",
+    "section": "Общение"
+  },
+  {
+    "word": "care",
+    "translation": "заботиться, беспокоиться, относиться не безразлично",
+    "section": "Общение"
+  },
+  {
+    "word": "avoid",
+    "translation": "избегать",
+    "section": "Общение"
+  },
+  {
+    "word": "support",
+    "translation": "поддерживать",
+    "section": "Общение"
+  },
+  {
+    "word": "sing (sang, sung)",
+    "translation": "петь",
+    "section": "Общение"
+  },
+  {
+    "word": "address",
+    "translation": "обращаться к кому-то",
+    "section": "Общение"
+  },
+  {
+    "word": "smile",
+    "translation": "улыбаться",
+    "section": "Общение"
+  },
+  {
+    "word": "admit",
+    "translation": "признать",
+    "section": "Общение"
+  },
+  {
+    "word": "assume",
+    "translation": "предполагать",
+    "section": "Общение"
+  },
+  {
+    "word": "refer",
+    "translation": "ссылаться на что-то, направлять, отсылать",
+    "section": "Общение"
+  },
+  {
+    "word": "announce",
+    "translation": "объявлять",
+    "section": "Общение"
+  },
+  {
+    "word": "encourage",
+    "translation": "воодушевлять, поощрять, побуждать",
+    "section": "Общение"
+  },
+  {
+    "word": "introduce",
+    "translation": "представлять (напр. одного человека другому)",
+    "section": "Общение"
+  },
+  {
+    "word": "refuse",
+    "translation": "отказываться",
+    "section": "Общение"
+  },
+  {
+    "word": "express",
+    "translation": "выражать",
+    "section": "Общение"
+  },
+  {
+    "word": "settle",
+    "translation": "улаживать (вопрос)",
+    "section": "Общение"
+  },
+  {
+    "word": "cry",
+    "translation": "плакать (кричать)",
+    "section": "Общение"
+  },
+  {
+    "word": "insist",
+    "translation": "настаивать",
+    "section": "Общение"
+  },
+  {
+    "word": "ignore",
+    "translation": "игнорировать",
+    "section": "Общение"
+  },
+  {
+    "word": "deny",
+    "translation": "отрицать",
+    "section": "Общение"
+  },
+  {
+    "word": "promise",
+    "translation": "обещать",
+    "section": "Общение"
+  },
+  {
+    "word": "demand",
+    "translation": "требовать",
+    "section": "Общение"
+  },
+  {
+    "word": "welcome",
+    "translation": "приветствовать",
+    "section": "Общение"
+  },
+  {
+    "word": "invite",
+    "translation": "приглашать",
+    "section": "Общение"
+  },
+  {
+    "word": "repeat",
+    "translation": "повторять",
+    "section": "Общение"
+  },
+  {
+    "word": "recommend",
+    "translation": "рекомендовать",
+    "section": "Общение"
+  },
+  {
+    "word": "propose",
+    "translation": "предлагать",
+    "section": "Общение"
+  },
+  {
+    "word": "declare",
+    "translation": "объявлять",
+    "section": "Общение"
+  },
+  {
+    "word": "matter (It doesn't matter)",
+    "translation": "иметь значение",
+    "section": "Общение"
+  },
+  {
+    "word": "judge",
+    "translation": "судить, осуждать",
+    "section": "Общение"
+  },
+  {
+    "word": "ensure",
+    "translation": "обеспечивать (гарантировать, убеждаться в чем-то)",
+    "section": "Общение"
+  },
+  {
+    "word": "challenge",
+    "translation": "бросать вызов",
+    "section": "Общение"
+  },
+  {
+    "word": "warn",
+    "translation": "предупреждать",
+    "section": "Общение"
+  },
+  {
+    "word": "influence",
+    "translation": "влиять",
+    "section": "Общение"
+  },
+  {
+    "word": "blame",
+    "translation": "винить",
+    "section": "Общение"
+  },
+  {
+    "word": "complain",
+    "translation": "жаловаться",
+    "section": "Общение"
+  },
+  {
+    "word": "back",
+    "translation": "поддерживать, отступать",
+    "section": "Общение"
+  },
+  {
+    "word": "cite",
+    "translation": "цитировать (ссылаться)",
+    "section": "Общение"
+  },
+  {
+    "word": "emphasize",
+    "translation": "подчеркивать (делать ударение на чем-то)",
+    "section": "Общение"
+  },
+  {
+    "word": "decline",
+    "translation": "отклонять (напр. предложение)",
+    "section": "Общение"
+  },
+  {
+    "word": "accuse",
+    "translation": "обвинять",
+    "section": "Общение"
+  },
+  {
+    "word": "reject",
+    "translation": "отвергать",
+    "section": "Общение"
+  },
+  {
+    "word": "convince",
+    "translation": "убеждать",
+    "section": "Общение"
+  },
+  {
+    "word": "approve",
+    "translation": "подтверждать, одобрять",
+    "section": "Общение"
+  },
+  {
+    "word": "list",
+    "translation": "перечислять, составлять список",
+    "section": "Общение"
+  },
+  {
+    "word": "permit",
+    "translation": "разрешать",
+    "section": "Общение"
+  },
+  {
+    "word": "scream",
+    "translation": "кричать",
+    "section": "Общение"
+  },
+  {
+    "word": "shout",
+    "translation": "выкрикивать, кричать",
+    "section": "Общение"
+  },
+  {
+    "word": "inform",
+    "translation": "информировать",
+    "section": "Общение"
+  },
+  {
+    "word": "bother",
+    "translation": "беспокоить",
+    "section": "Общение"
+  },
+  {
+    "word": "reply",
+    "translation": "отвечать",
+    "section": "Общение"
+  },
+  {
+    "word": "resolve",
+    "translation": "решать (вопрос)",
+    "section": "Общение"
+  },
+  {
+    "word": "contact",
+    "translation": "контактировать, связываться",
+    "section": "Общение"
+  },
+  {
+    "word": "interview",
+    "translation": "проводить интервью (беседу)",
+    "section": "Общение"
+  },
+  {
+    "word": "quote",
+    "translation": "цитировать",
+    "section": "Общение"
+  },
+  {
+    "word": "urge",
+    "translation": "торопить, убеждать",
+    "section": "Общение"
+  },
+  {
+    "word": "whisper",
+    "translation": "шептать",
+    "section": "Общение"
+  },
+  {
+    "word": "favor (favour)",
+    "translation": "оказывать внимание, быть благосклонным",
+    "section": "Общение"
+  },
+  {
+    "word": "comment",
+    "translation": "коментировать",
+    "section": "Общение"
+  },
+  {
+    "word": "negotiate",
+    "translation": "вести переговоры",
+    "section": "Общение"
+  },
+  {
+    "word": "advise",
+    "translation": "советовать",
+    "section": "Общение"
+  },
+  {
+    "word": "criticize",
+    "translation": "критиковать",
+    "section": "Общение"
+  },
+  {
+    "word": "assure",
+    "translation": "уверять",
+    "section": "Общение"
+  },
+  {
+    "word": "yell",
+    "translation": "кричать",
+    "section": "Общение"
+  },
+  {
+    "word": "communicate",
+    "translation": "общаться",
+    "section": "Общение"
+  },
+  {
+    "word": "disagree",
+    "translation": "не соглашаться",
+    "section": "Общение"
+  },
+  {
+    "word": "proceed",
+    "translation": "переходить к чему-то, продолжать как запланировано",
+    "section": "Общение"
+  },
+  {
+    "word": "translate",
+    "translation": "переводить (лингв.)",
+    "section": "Общение"
+  },
+  {
+    "word": "interpret",
+    "translation": "толковать, интерпретировать, переводить (устно)",
+    "section": "Общение"
+  },
+  {
+    "word": "pause",
+    "translation": "делать паузу",
+    "section": "Общение"
+  },
+  {
+    "word": "imply",
+    "translation": "предполагать, подразумевать, намекать",
+    "section": "Общение"
+  },
+  {
+    "word": "respect",
+    "translation": "уважать",
+    "section": "Общение"
+  },
+  {
+    "word": "characterize",
+    "translation": "характеризовать",
+    "section": "Общение"
+  },
+  {
+    "word": "appeal",
+    "translation": "обращаться, апеллировать",
+    "section": "Общение"
+  },
+  {
+    "word": "stress",
+    "translation": "делать ударение",
+    "section": "Общение"
+  },
+  {
+    "word": "doubt",
+    "translation": "сомневаться",
+    "section": "Общение"
+  },
+  {
+    "word": "guarantee",
+    "translation": "гарантировать",
+    "section": "Общение"
+  },
+  {
+    "word": "honor",
+    "translation": "чтить, уважать",
+    "section": "Общение"
+  },
+  {
+    "word": "encounter",
+    "translation": "встречать (случайно встретить кого-то)",
+    "section": "Общение"
+  },
+  {
+    "word": "dominate",
+    "translation": "доминировать, иметь полный контроль",
+    "section": "Общение"
+  },
+  {
+    "word": "accept",
+    "translation": "принимать",
+    "section": "Общение"
+  },
+  {
+    "word": "let (let, let)",
+    "translation": "позволять",
+    "section": "Общение"
+  },
+  {
+    "word": "date",
+    "translation": "встречаться, ходить на свидания",
+    "section": "Общение"
+  },
+  {
+    "word": "win (won, won)",
+    "translation": "побеждать",
+    "section": "Борьба"
+  },
+  {
+    "word": "kill",
+    "translation": "убивать",
+    "section": "Борьба"
+  },
+  {
+    "word": "hit (hit, hit)",
+    "translation": "ударить",
+    "section": "Борьба"
+  },
+  {
+    "word": "fight (fought, fought)",
+    "translation": "драться",
+    "section": "Борьба"
+  },
+  {
+    "word": "shoot (shot, shot)",
+    "translation": "стрелять (снимать на камеру)",
+    "section": "Борьба"
+  },
+  {
+    "word": "protect",
+    "translation": "защищать",
+    "section": "Борьба"
+  },
+  {
+    "word": "force",
+    "translation": "принуждать",
+    "section": "Борьба"
+  },
+  {
+    "word": "beat (beat, beaten)",
+    "translation": "бить",
+    "section": "Борьба"
+  },
+  {
+    "word": "hurt (hurt, hurt)",
+    "translation": "причинять боль",
+    "section": "Борьба"
+  },
+  {
+    "word": "strike (struck, struck)",
+    "translation": "ударять (бастовать)",
+    "section": "Борьба"
+  },
+  {
+    "word": "threaten",
+    "translation": "угрожать",
+    "section": "Борьба"
+  },
+  {
+    "word": "destroy",
+    "translation": "уничтожать",
+    "section": "Борьба"
+  },
+  {
+    "word": "fire",
+    "translation": "стрелять",
+    "section": "Борьба"
+  },
+  {
+    "word": "attack",
+    "translation": "атаковать",
+    "section": "Борьба"
+  },
+  {
+    "word": "struggle",
+    "translation": "бороться",
+    "section": "Борьба"
+  },
+  {
+    "word": "capture",
+    "translation": "захватывать",
+    "section": "Борьба"
+  },
+  {
+    "word": "defend",
+    "translation": "защищать",
+    "section": "Борьба"
+  },
+  {
+    "word": "kick",
+    "translation": "пинать",
+    "section": "Борьба"
+  },
+  {
+    "word": "eliminate",
+    "translation": "устранять",
+    "section": "Борьба"
+  },
+  {
+    "word": "score",
+    "translation": "набирать очки (баллы)",
+    "section": "Борьба"
+  },
+  {
+    "word": "aim",
+    "translation": "целиться",
+    "section": "Борьба"
+  },
+  {
+    "word": "compete (sport)",
+    "translation": "соревноваться",
+    "section": "Борьба"
+  },
+  {
+    "word": "confront",
+    "translation": "противостоять",
+    "section": "Борьба"
+  },
+  {
+    "word": "resist",
+    "translation": "сопротивляться",
+    "section": "Борьба"
+  },
+  {
+    "word": "target",
+    "translation": "делать мишенью, целиться",
+    "section": "Борьба"
+  },
+  {
+    "word": "overcome",
+    "translation": "преодолевать",
+    "section": "Борьба"
+  },
+  {
+    "word": "give up (gave, given)",
+    "translation": "сдаваться",
+    "section": "Борьба"
+  },
+  {
+    "word": "surrender",
+    "translation": "сдаваться",
+    "section": "Борьба"
+  },
+  {
+    "word": "cost (cost, cost)",
+    "translation": "стоить",
+    "section": "Экономика, бизнес"
+  },
+  {
+    "word": "earn",
+    "translation": "зарабатывать",
+    "section": "Экономика, бизнес"
+  },
+  {
+    "word": "make money (made, made)",
+    "translation": "зарабатывать",
+    "section": "Экономика, бизнес"
+  },
+  {
+    "word": "promote",
+    "translation": "продвигать, рекламировать, повышать по службе",
+    "section": "Экономика, бизнес"
+  },
+  {
+    "word": "charge",
+    "translation": "брать плату",
+    "section": "Экономика, бизнес"
+  },
+  {
+    "word": "estimate",
+    "translation": "оценивать",
+    "section": "Экономика, бизнес"
+  },
+  {
+    "word": "account",
+    "translation": "считать, вести учет",
+    "section": "Экономика, бизнес"
+  },
+  {
+    "word": "invest",
+    "translation": "инвестировать",
+    "section": "Экономика, бизнес"
+  },
+  {
+    "word": "assess",
+    "translation": "оценивать",
+    "section": "Экономика, бизнес"
+  },
+  {
+    "word": "compete",
+    "translation": "конкурировать",
+    "section": "Экономика, бизнес"
+  },
+  {
+    "word": "purchase",
+    "translation": "покупать",
+    "section": "Экономика, бизнес"
+  },
+  {
+    "word": "evaluate",
+    "translation": "оценивать",
+    "section": "Экономика, бизнес"
+  },
+  {
+    "word": "trade",
+    "translation": "торговать",
+    "section": "Экономика, бизнес"
+  },
+  {
+    "word": "market",
+    "translation": "продвигать на рынке (рекламировать)",
+    "section": "Экономика, бизнес"
+  },
+  {
+    "word": "withdraw",
+    "translation": "снимать (деньги со счета в банке)",
+    "section": "Экономика, бизнес"
+  },
+  {
+    "word": "convert",
+    "translation": "конвертировать",
+    "section": "Экономика, бизнес"
+  },
+  {
+    "word": "spend (spent, spent)",
+    "translation": "тратить (напр. деньги), проводить время",
+    "section": "Экономика, бизнес"
+  },
+  {
+    "word": "buy (bought, bought)",
+    "translation": "покупать",
+    "section": "Экономика, бизнес"
+  },
+  {
+    "word": "sell (sold, sold)",
+    "translation": "продавать",
+    "section": "Экономика, бизнес"
+  },
+  {
+    "word": "deal (dealt, dealt)",
+    "translation": "вести дела",
+    "section": "Экономика, бизнес"
+  },
+  {
+    "word": "produce",
+    "translation": "производить",
+    "section": "Экономика, бизнес"
+  },
+  {
+    "word": "save",
+    "translation": "делать сбережения, экономить",
+    "section": "Экономика, бизнес"
+  },
+  {
+    "word": "rule",
+    "translation": "править (властвовать)",
+    "section": "Экономика, бизнес"
+  },
+  {
+    "word": "elect",
+    "translation": "выбирать (на выборах)",
+    "section": "Экономика, бизнес"
+  },
+  {
+    "word": "vote",
+    "translation": "голосовать",
+    "section": "Экономика, бизнес"
+  },
+  {
+    "word": "contribute",
+    "translation": "вносить вклад во что-то",
+    "section": "Экономика, бизнес"
+  },
+  {
+    "word": "settle",
+    "translation": "расселяться (создавать поселение)",
+    "section": "Экономика, бизнес"
+  },
+  {
+    "word": "impose",
+    "translation": "налагать (напр. обязательство)",
+    "section": "Экономика, бизнес"
+  },
+  {
+    "word": "transfer",
+    "translation": "передавать, переводить (напр. деньги)",
+    "section": "Экономика, бизнес"
+  },
+  {
+    "word": "distribute",
+    "translation": "распространять",
+    "section": "Экономика, бизнес"
+  },
+  {
+    "word": "deposit",
+    "translation": "вносить деньги (на счет в банке)",
+    "section": "Экономика, бизнес"
+  },
+  {
+    "word": "afford",
+    "translation": "повзволять себе",
+    "section": "Экономика, бизнес"
+  },
+  {
+    "word": "live",
+    "translation": "жить",
+    "section": "Человек"
+  },
+  {
+    "word": "grow up (grew, grown)",
+    "translation": "расти",
+    "section": "Человек"
+  },
+  {
+    "word": "die",
+    "translation": "умереть",
+    "section": "Человек"
+  },
+  {
+    "word": "be born",
+    "translation": "быть рожденным",
+    "section": "Человек"
+  },
+  {
+    "word": "marry (get married)",
+    "translation": "жениться (выходить замуж)",
+    "section": "Человек"
+  },
+  {
+    "word": "survive",
+    "translation": "выживать",
+    "section": "Человек"
+  },
+  {
+    "word": "adopt",
+    "translation": "усыновлять (удочерять)",
+    "section": "Человек"
+  },
+  {
+    "word": "retire",
+    "translation": "выходить на пенсию",
+    "section": "Человек"
+  },
+  {
+    "word": "breathe",
+    "translation": "дышать",
+    "section": "Человек"
+  },
+  {
+    "word": "kiss",
+    "translation": "целовать",
+    "section": "Человек"
+  },
+  {
+    "word": "bury",
+    "translation": "хоронить",
+    "section": "Человек"
+  },
+  {
+    "word": "pray",
+    "translation": "молиться",
+    "section": "Человек"
+  },
+  {
+    "word": "graduate",
+    "translation": "выпускаться из учебного заведения",
+    "section": "Человек"
+  },
+  {
+    "word": "tire (get tired)",
+    "translation": "уставать",
+    "section": "Человек"
+  },
+  {
+    "word": "adapt",
+    "translation": "адаптировать (-ся)",
+    "section": "Человек"
+  },
+  {
+    "word": "pretend",
+    "translation": "притворяться",
+    "section": "Человек"
+  },
+  {
+    "word": "divorce (get divorced)",
+    "translation": "разводиться (о супругах)",
+    "section": "Человек"
+  },
+  {
+    "word": "inherit",
+    "translation": "наследовать",
+    "section": "Человек"
+  },
+  {
+    "word": "sleep (slept, slept)",
+    "translation": "спать",
+    "section": "Дом, быт, развлечения"
+  },
+  {
+    "word": "dress",
+    "translation": "одевать (-ся)",
+    "section": "Дом, быт, развлечения"
+  },
+  {
+    "word": "wake up (woke, woken)",
+    "translation": "будить (просыпаться)",
+    "section": "Дом, быт, развлечения"
+  },
+  {
+    "word": "eat (ate, eaten)",
+    "translation": "есть",
+    "section": "Дом, быт, развлечения"
+  },
+  {
+    "word": "drink (drank, drunk)",
+    "translation": "пить, выпивать",
+    "section": "Дом, быт, развлечения"
+  },
+  {
+    "word": "feed (fed, fed)",
+    "translation": "кормить",
+    "section": "Дом, быт, развлечения"
+  },
+  {
+    "word": "cook",
+    "translation": "готовить пищу",
+    "section": "Дом, быт, развлечения"
+  },
+  {
+    "word": "taste",
+    "translation": "пробовать на вкус, ощущаться на вкус",
+    "section": "Дом, быт, развлечения"
+  },
+  {
+    "word": "bake",
+    "translation": "печь",
+    "section": "Дом, быт, развлечения"
+  },
+  {
+    "word": "freeze",
+    "translation": "замораживать, замерзать, хранить в морозилке",
+    "section": "Дом, быт, развлечения"
+  },
+  {
+    "word": "play",
+    "translation": "играть в игру или на музыкальном инструменте, воспроизводить запись",
+    "section": "Дом, быт, развлечения"
+  },
+  {
+    "word": "spend (spent, spent)",
+    "translation": "проводить (напр. время), тратить деньги",
+    "section": "Дом, быт, развлечения"
+  },
+  {
+    "word": "enjoy",
+    "translation": "наслаждаться",
+    "section": "Дом, быт, развлечения"
+  },
+  {
+    "word": "visit",
+    "translation": "навещать",
+    "section": "Дом, быт, развлечения"
+  },
+  {
+    "word": "travel",
+    "translation": "путешествовать, ехать (перемещаться)",
+    "section": "Дом, быт, развлечения"
+  },
+  {
+    "word": "rest",
+    "translation": "отдыхать",
+    "section": "Дом, быт, развлечения"
+  },
+  {
+    "word": "dance",
+    "translation": "танцевать",
+    "section": "Дом, быт, развлечения"
+  },
+  {
+    "word": "celebrate",
+    "translation": "праздновать",
+    "section": "Дом, быт, развлечения"
+  },
+  {
+    "word": "bet (bet, bet)",
+    "translation": "делать ставку",
+    "section": "Дом, быт, развлечения"
+  },
+  {
+    "word": "relax",
+    "translation": "расслабляться",
+    "section": "Дом, быт, развлечения"
+  },
+  {
+    "word": "gamble",
+    "translation": "играть в азартные игры",
+    "section": "Дом, быт, развлечения"
+  },
+  {
+    "word": "have fun (had, had)",
+    "translation": "развлекаться (веселиться)",
+    "section": "Дом, быт, развлечения"
+  },
+  {
+    "word": "weigh",
+    "translation": "весить, взвешивать",
+    "section": "Физические действия (общие)"
+  },
+  {
+    "word": "balance",
+    "translation": "балансировать",
+    "section": "Физические действия (общие)"
+  },
+  {
+    "word": "flow (flew, flown)",
+    "translation": "течь",
+    "section": "Физические действия (общие)"
+  },
+  {
+    "word": "transform",
+    "translation": "трансформировать (-ся), значительно изменять (-ся)",
+    "section": "Физические действия (общие)"
+  },
+  {
+    "word": "recover",
+    "translation": "восстанавливать (-ся), выздоравливать",
+    "section": "Физические действия (общие)"
+  },
+  {
+    "word": "expose",
+    "translation": "выставлять (подвергать чему-то)",
+    "section": "Физические действия (общие)"
+  },
+  {
+    "word": "pop",
+    "translation": "хлопать (выскакивать)",
+    "section": "Физические действия (общие)"
+  },
+  {
+    "word": "indicate",
+    "translation": "указывать (объяснять)",
+    "section": "Физические действия (общие)"
+  },
+  {
+    "word": "alter",
+    "translation": "изменять, модифицировать",
+    "section": "Физические действия (общие)"
+  },
+  {
+    "word": "alternate",
+    "translation": "чередовать",
+    "section": "Физические действия (общие)"
+  },
+  {
+    "word": "double",
+    "translation": "удваивать",
+    "section": "Физические действия (общие)"
+  },
+  {
+    "word": "retain",
+    "translation": "удерживать",
+    "section": "Физические действия (общие)"
+  },
+  {
+    "word": "fade",
+    "translation": "увядать (блекнуть)",
+    "section": "Физические действия (общие)"
+  },
+  {
+    "word": "form",
+    "translation": "формировать",
+    "section": "Физические действия (общие)"
+  },
+  {
+    "word": "shape",
+    "translation": "придавать форму",
+    "section": "Физические действия (общие)"
+  },
+  {
+    "word": "change",
+    "translation": "менять",
+    "section": "Физические действия (общие)"
+  },
+  {
+    "word": "place",
+    "translation": "размещать",
+    "section": "Физические действия (общие)"
+  },
+  {
+    "word": "rise (rose, risen)",
+    "translation": "поднимать (-ся)",
+    "section": "Физические действия (общие)"
+  },
+  {
+    "word": "reflect",
+    "translation": "отражать (-ся)",
+    "section": "Физические действия (общие)"
+  },
+  {
+    "word": "enable",
+    "translation": "включать (активировать), делать возможным",
+    "section": "Физические действия (общие)"
+  },
+  {
+    "word": "wave",
+    "translation": "развеваться, махать",
+    "section": "Физические действия (общие)"
+  },
+  {
+    "word": "snap",
+    "translation": "щелкать, трещать, сломать с хрустом",
+    "section": "Физические действия (общие)"
+  },
+  {
+    "word": "display",
+    "translation": "показывать (выставлять на показ)",
+    "section": "Физические действия (общие)"
+  },
+  {
+    "word": "stick",
+    "translation": "липнуть",
+    "section": "Физические действия (общие)"
+  },
+  {
+    "word": "testify",
+    "translation": "давать показания",
+    "section": "Закон"
+  },
+  {
+    "word": "justify",
+    "translation": "оправдывать",
+    "section": "Закон"
+  },
+  {
+    "word": "violate",
+    "translation": "нарушать",
+    "section": "Закон"
+  },
+  {
+    "word": "witness",
+    "translation": "быть свидетелем",
+    "section": "Закон"
+  },
+  {
+    "word": "arrest",
+    "translation": "арестовывать",
+    "section": "Закон"
+  },
+  {
+    "word": "investigate",
+    "translation": "расследовать",
+    "section": "Закон"
+  },
+  {
+    "word": "confess",
+    "translation": "сознаваться",
+    "section": "Закон"
+  },
+  {
+    "word": "accuse",
+    "translation": "обвинять",
+    "section": "Закон"
+  },
+  {
+    "word": "charge",
+    "translation": "обвинять (официально)",
+    "section": "Закон"
+  },
+  {
+    "word": "suspect",
+    "translation": "подозревать",
+    "section": "Закон"
+  },
+  {
+    "word": "sue",
+    "translation": "подавать в суд",
+    "section": "Закон"
+  },
+  {
+    "word": "convict",
+    "translation": "выносить приговор, признавать виновным",
+    "section": "Закон"
+  },
+  {
+    "word": "beat (up) (beat, beaten)",
+    "translation": "бить, избивать",
+    "section": "Закон"
+  },
+  {
+    "word": "murder",
+    "translation": "убивать",
+    "section": "Закон"
+  },
+  {
+    "word": "kill",
+    "translation": "убивать",
+    "section": "Закон"
+  },
+  {
+    "word": "attack",
+    "translation": "нападать",
+    "section": "Закон"
+  },
+  {
+    "word": "free",
+    "translation": "освободжать",
+    "section": "Закон"
+  },
+  {
+    "word": "offend",
+    "translation": "оскорблять",
+    "section": "Закон"
+  },
+  {
+    "word": "disturb",
+    "translation": "беспокоить",
+    "section": "Закон"
+  },
+  {
+    "word": "steal (stole, stolen)",
+    "translation": "красть",
+    "section": "Закон"
+  },
+  {
+    "word": "rob",
+    "translation": "грабить",
+    "section": "Закон"
+  },
+  {
+    "word": "rape",
+    "translation": "насиловать",
+    "section": "Закон"
+  },
+  {
+    "word": "punish",
+    "translation": "наказывать",
+    "section": "Закон"
+  },
+  {
+    "word": "do time",
+    "translation": "сидеть (в тюрьме)",
+    "section": "Закон"
+  },
+  {
+    "word": "interrogate",
+    "translation": "допрашивать",
+    "section": "Закон"
+  },
+  {
+    "word": "swear",
+    "translation": "клясться",
+    "section": "Закон"
+  },
+  {
+    "word": "reach",
+    "translation": "достигать (дотягиваться)",
+    "section": "Физические действия (человека)"
+  },
+  {
+    "word": "catch (caught, caught)",
+    "translation": "ловить",
+    "section": "Физические действия (человека)"
+  },
+  {
+    "word": "drop",
+    "translation": "ронять",
+    "section": "Физические действия (человека)"
+  },
+  {
+    "word": "hang (hung, hung)",
+    "translation": "повесить",
+    "section": "Физические действия (человека)"
+  },
+  {
+    "word": "touch",
+    "translation": "прикасаться",
+    "section": "Физические действия (человека)"
+  },
+  {
+    "word": "clear",
+    "translation": "очищать",
+    "section": "Физические действия (человека)"
+  },
+  {
+    "word": "pour",
+    "translation": "лить (напр. воду)",
+    "section": "Физические действия (человека)"
+  },
+  {
+    "word": "stir",
+    "translation": "перемешивать",
+    "section": "Физические действия (человека)"
+  },
+  {
+    "word": "clean",
+    "translation": "чистить, убирать (мыть, приводить в порядок)",
+    "section": "Физические действия (человека)"
+  },
+  {
+    "word": "wrap",
+    "translation": "заворачивать",
+    "section": "Физические действия (человека)"
+  },
+  {
+    "word": "wash",
+    "translation": "стирать (мыть)",
+    "section": "Физические действия (человека)"
+  },
+  {
+    "word": "ring (rang, rung)",
+    "translation": "звонить",
+    "section": "Физические действия (человека)"
+  },
+  {
+    "word": "embrace",
+    "translation": "обнимать",
+    "section": "Физические действия (человека)"
+  },
+  {
+    "word": "hug",
+    "translation": "обнимать",
+    "section": "Физические действия (человека)"
+  },
+  {
+    "word": "put (put, put)",
+    "translation": "класть (помещать)",
+    "section": "Физические действия (человека)"
+  },
+  {
+    "word": "use",
+    "translation": "использовать",
+    "section": "Физические действия (человека)"
+  },
+  {
+    "word": "show",
+    "translation": "показывать",
+    "section": "Физические действия (человека)"
+  },
+  {
+    "word": "hold (held, held)",
+    "translation": "держать",
+    "section": "Физические действия (человека)"
+  },
+  {
+    "word": "open",
+    "translation": "открывать",
+    "section": "Физические действия (человека)"
+  },
+  {
+    "word": "cut",
+    "translation": "резать",
+    "section": "Физические действия (человека)"
+  },
+  {
+    "word": "pull",
+    "translation": "тянуть",
+    "section": "Физические действия (человека)"
+  },
+  {
+    "word": "break (broke, broken)",
+    "translation": "ломать",
+    "section": "Физические действия (человека)"
+  },
+  {
+    "word": "cover",
+    "translation": "прикрывать",
+    "section": "Физические действия (человека)"
+  },
+  {
+    "word": "draw (drew, drawn)",
+    "translation": "тянуть",
+    "section": "Физические действия (человека)"
+  },
+  {
+    "word": "point",
+    "translation": "указывать (на что-либо)",
+    "section": "Физические действия (человека)"
+  },
+  {
+    "word": "close",
+    "translation": "закрывать",
+    "section": "Физические действия (человека)"
+  },
+  {
+    "word": "replace",
+    "translation": "заменять",
+    "section": "Физические действия (человека)"
+  },
+  {
+    "word": "collect",
+    "translation": "собирать, забирать",
+    "section": "Физические действия (человека)"
+  },
+  {
+    "word": "grab",
+    "translation": "хватать",
+    "section": "Физические действия (человека)"
+  },
+  {
+    "word": "tie",
+    "translation": "связывать",
+    "section": "Физические действия (человека)"
+  },
+  {
+    "word": "press",
+    "translation": "давить",
+    "section": "Физические действия (человека)"
+  },
+  {
+    "word": "link",
+    "translation": "соединять, проводить связь между фактами",
+    "section": "Физические действия (человека)"
+  },
+  {
+    "word": "mix",
+    "translation": "перемешивать",
+    "section": "Физические действия (человека)"
+  },
+  {
+    "word": "stretch",
+    "translation": "растягивать",
+    "section": "Физические действия (человека)"
+  },
+  {
+    "word": "hand",
+    "translation": "подавать что-то, передавать из рук в руки",
+    "section": "Физические действия (человека)"
+  },
+  {
+    "word": "knock",
+    "translation": "стучать",
+    "section": "Физические действия (человека)"
+  },
+  {
+    "word": "bend (bent, bent)",
+    "translation": "гнуть",
+    "section": "Физические действия (человека)"
+  },
+  {
+    "word": "lock",
+    "translation": "запирать на замок",
+    "section": "Физические действия (человека)"
+  },
+  {
+    "word": "tear (tore, torn)",
+    "translation": "рвать",
+    "section": "Физические действия (человека)"
+  },
+  {
+    "word": "pack",
+    "translation": "упаковывать",
+    "section": "Физические действия (человека)"
+  },
+  {
+    "word": "attach",
+    "translation": "прикреплять",
+    "section": "Физические действия (человека)"
+  },
+  {
+    "word": "dig (dug, dug)",
+    "translation": "копать",
+    "section": "Физические действия (человека)"
+  },
+  {
+    "word": "bind (bound, bound)",
+    "translation": "связывать (веревкой)",
+    "section": "Физические действия (человека)"
+  },
+  {
+    "word": "wind (wound, wound)",
+    "translation": "закручивать",
+    "section": "Физические действия (человека)"
+  },
+  {
+    "word": "wipe",
+    "translation": "протирать",
+    "section": "Физические действия (человека)"
+  },
+  {
+    "word": "load",
+    "translation": "загружать",
+    "section": "Физические действия (человека)"
+  },
+  {
+    "word": "sweep (swept, swept)",
+    "translation": "мести",
+    "section": "Физические действия (человека)"
+  },
+  {
+    "word": "squeeze",
+    "translation": "сжимать",
+    "section": "Физические действия (человека)"
+  },
+  {
+    "word": "rub",
+    "translation": "тереть",
+    "section": "Физические действия (человека)"
+  },
+  {
+    "word": "tap",
+    "translation": "постукивать",
+    "section": "Физические действия (человека)"
+  },
+  {
+    "word": "spin (spun, spun)",
+    "translation": "вращать",
+    "section": "Физические действия (человека)"
+  },
+  {
+    "word": "plant",
+    "translation": "сажать (растение)",
+    "section": "Физические действия (человека)"
+  },
+  {
+    "word": "pick",
+    "translation": "выбирать",
+    "section": "Физические действия (человека)"
+  },
+  {
+    "word": "gather",
+    "translation": "собирать (вместе)",
+    "section": "Физические действия (человека)"
+  },
+  {
+    "word": "hide (hid, hid)",
+    "translation": "прятать (-ся)",
+    "section": "Физические действия (человека)"
+  },
+  {
+    "word": "blow (blew, blown)",
+    "translation": "дуть",
+    "section": "Физические действия (человека)"
+  },
+  {
+    "word": "smoke",
+    "translation": "курить",
+    "section": "Физические действия (человека)"
+  },
+  {
+    "word": "act",
+    "translation": "действовать",
+    "section": "Физические действия (человека)"
+  },
+  {
+    "word": "do (did, done)",
+    "translation": "делать",
+    "section": "Физические действия (человека)"
+  },
+  {
+    "word": "demonstrate",
+    "translation": "демонстрировать",
+    "section": "Физические действия (человека)"
+  },
+  {
+    "word": "lean",
+    "translation": "прислоняться, наклоняться",
+    "section": "Физические действия (человека)"
+  },
+  {
+    "word": "fix",
+    "translation": "чинить",
+    "section": "Физические действия (человека)"
+  },
+  {
+    "word": "nod",
+    "translation": "кивать",
+    "section": "Физические действия (человека)"
+  },
+  {
+    "word": "pose",
+    "translation": "позировать",
+    "section": "Физические действия (человека)"
+  },
+  {
+    "word": "send (sent, sent)",
+    "translation": "отправлять",
+    "section": "Физические действия (человека)"
+  },
+  {
+    "word": "burn (burnt, burnt)",
+    "translation": "сжигать",
+    "section": "Физические действия (человека)"
+  },
+  {
+    "word": "shut (shut, shut)",
+    "translation": "закрывать",
+    "section": "Физические действия (человека)"
+  },
+  {
+    "word": "line (up)",
+    "translation": "выстраивать в линию",
+    "section": "Физические действия (человека)"
+  },
+  {
+    "word": "arrange (the books on the shelves)",
+    "translation": "приводить в порядок (расставлять)",
+    "section": "Физические действия (человека)"
+  },
+  {
+    "word": "install",
+    "translation": "устанавливать",
+    "section": "Физические действия (человека)"
+  }
+]
