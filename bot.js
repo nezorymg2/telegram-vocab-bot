@@ -940,5 +940,17 @@ bot.api.setMyCommands([
   { command: 'stats', description: 'Статистика по профилям' },
 ]);
 
+// Простой сервер для пинга
+const http = require('http');
+const PORT = process.env.PORT || 10000;
+
+http.createServer((req, res) => {
+  res.writeHead(200, { 'Content-Type': 'text/plain' });
+  res.end('Bot is alive');
+}).listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
+});
+
 bot.catch((err) => console.error('Bot error:', err));
 bot.start();
+
