@@ -4,7 +4,17 @@ console.log('DEBUG: OPENAI_API_KEY:', process.env.OPENAI_API_KEY);
 const { Bot, Keyboard } = require('grammy');
 const axios = require('axios');
 const fs = require('fs');
-const prisma = require('./db');
+const prisma = require('./database');
+
+// Отладочная информация для проверки Prisma Client
+console.log('DEBUG: prisma type:', typeof prisma);
+console.log('DEBUG: prisma.word type:', typeof prisma.word);
+if (prisma.word) {
+  console.log('DEBUG: prisma.word.findMany type:', typeof prisma.word.findMany);
+} else {
+  console.log('DEBUG: prisma.word is undefined!');
+  console.log('DEBUG: available properties:', Object.getOwnPropertyNames(prisma));
+}
 
 const sessions = {};
 
@@ -93,27 +103,59 @@ async function updateWordCorrect(profile, word, translation, correct) {
 }
 
 async function getStats() {
-  const stats = await prisma.word.groupBy({
+  // Получаем все профили
+  const profiles = await prisma.word.groupBy({
     by: ['profile'],
     _count: { id: true },
-    _sum: {
-      new_words: { _case: { when: { correct: { lte: 2 } }, then: 1, else: 0 } },
-      learning: { _case: { when: { correct: { gte: 3, lte: 4 } }, then: 1, else: 0 } },
-      mastered: { _case: { when: { correct: { gte: 5 } }, then: 1, else: 0 } },
-      added_week: { _case: { when: { createdAt: { gte: new Date(Date.now() - 7*24*60*60*1000) } }, then: 1, else: 0 } },
-      added_month: { _case: { when: { createdAt: { gte: new Date(Date.now() - 30*24*60*60*1000) } }, then: 1, else: 0 } },
-    },
   });
-  // Преобразуем результат для совместимости с остальным кодом
-  return stats.map(row => ({
-    profile: row.profile,
-    total: row._count.id,
-    new_words: row._sum?.new_words || 0,
-    learning: row._sum?.learning || 0,
-    mastered: row._sum?.mastered || 0,
-    added_week: row._sum?.added_week || 0,
-    added_month: row._sum?.added_month || 0,
-  }));
+
+  const result = [];
+  
+  for (const profileData of profiles) {
+    const profile = profileData.profile;
+    
+    // Общее количество слов
+    const total = profileData._count.id;
+    
+    // Новые слова (correct <= 2)
+    const newWords = await prisma.word.count({
+      where: { profile, correct: { lte: 2 } }
+    });
+    
+    // Изучаемые слова (correct 3-4)
+    const learning = await prisma.word.count({
+      where: { profile, correct: { gte: 3, lte: 4 } }
+    });
+    
+    // Изученные слова (correct >= 5)
+    const mastered = await prisma.word.count({
+      where: { profile, correct: { gte: 5 } }
+    });
+    
+    // Добавленные за неделю
+    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const addedWeek = await prisma.word.count({
+      where: { profile, createdAt: { gte: weekAgo } }
+    });
+    
+    // Добавленные за месяц
+    const monthAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const addedMonth = await prisma.word.count({
+      where: { profile, createdAt: { gte: monthAgo } }
+    });
+    
+    result.push({
+      profile,
+      total,
+      new_words: newWords,
+      learning,
+      mastered,
+      added_week: addedWeek,
+      added_month: addedMonth,
+    });
+  }
+  
+  return result;
 }
 
 // /start — начало сеанса
@@ -153,6 +195,169 @@ bot.command('stats', async (ctx) => {
   }
 });
 
+// --- Команда /words: показать слова пользователя ---
+bot.command('words', async (ctx) => {
+  const userId = ctx.from.id;
+  const session = sessions[userId];
+  
+  if (!session || !session.profile) {
+    return ctx.reply('Сначала выполните /start');
+  }
+  
+  const args = ctx.message.text.split(' ').slice(1);
+  const section = args.length > 0 ? args.join(' ') : null;
+  
+  try {
+    const filter = section ? { section } : {};
+    const words = await getWords(session.profile, filter);
+    
+    if (!words.length) {
+      const msg = section 
+        ? `У вас нет слов в разделе "${section}"`
+        : 'У вас нет добавленных слов';
+      return ctx.reply(msg);
+    }
+    
+    // Группируем по разделам
+    const sections = {};
+    words.forEach(word => {
+      const sec = word.section || 'Без раздела';
+      if (!sections[sec]) sections[sec] = [];
+      sections[sec].push(word);
+    });
+    
+    let message = section 
+      ? `<b>Слова из раздела "${section}":</b>\n\n`
+      : '<b>Ваши слова:</b>\n\n';
+    
+    for (const [sec, sectionWords] of Object.entries(sections)) {
+      if (!section) {
+        message += `<b>${sec}:</b>\n`;
+      }
+      
+      sectionWords.forEach(word => {
+        const correct = word.correct || 0;
+        let status = '';
+        if (correct <= 2) status = '🔴';
+        else if (correct <= 4) status = '🟡';
+        else status = '🟢';
+        
+        message += `${status} <code>${word.word}</code> — ${word.translation}\n`;
+      });
+      
+      if (!section) message += '\n';
+    }
+    
+    message += '\n<i>🔴 новые (≤2), 🟡 изучаемые (3-4), 🟢 изученные (≥5)</i>';
+    message += '\n\nДля удаления: /delete [слово]';
+    
+    await ctx.reply(message, { parse_mode: 'HTML' });
+  } catch (error) {
+    console.error('Error in /words:', error);
+    await ctx.reply('Ошибка при получении списка слов');
+  }
+});
+
+// --- Команда /delete: удалить слово ---
+bot.command('delete', async (ctx) => {
+  const userId = ctx.from.id;
+  const session = sessions[userId];
+  
+  if (!session || !session.profile) {
+    return ctx.reply('Сначала выполните /start');
+  }
+  
+  const args = ctx.message.text.split(' ').slice(1);
+  if (args.length === 0) {
+    return ctx.reply('Укажите слово для удаления: /delete [слово]');
+  }
+  
+  const wordToDelete = args.join(' ').toLowerCase();
+  
+  try {
+    const deletedWords = await prisma.word.deleteMany({
+      where: {
+        profile: session.profile,
+        word: { equals: wordToDelete, mode: 'insensitive' }
+      }
+    });
+    
+    if (deletedWords.count === 0) {
+      return ctx.reply(`Слово "${wordToDelete}" не найдено`);
+    }
+    
+    await ctx.reply(`✅ Удалено ${deletedWords.count} записей со словом "${wordToDelete}"`);
+  } catch (error) {
+    console.error('Error in /delete:', error);
+    await ctx.reply('Ошибка при удалении слова');
+  }
+});
+
+// --- Команда /clear: очистить все слова ---
+bot.command('clear', async (ctx) => {
+  const userId = ctx.from.id;
+  const session = sessions[userId];
+  
+  if (!session || !session.profile) {
+    return ctx.reply('Сначала выполните /start');
+  }
+  
+  // Проверяем количество слов
+  const wordCount = await prisma.word.count({
+    where: { profile: session.profile }
+  });
+  
+  if (wordCount === 0) {
+    return ctx.reply('У вас нет слов для удаления');
+  }
+  
+  // Запрашиваем подтверждение
+  session.awaitingClearConfirmation = true;
+  await ctx.reply(
+    `⚠️ Вы уверены, что хотите удалить ВСЕ ${wordCount} слов?\n\n` +
+    'Напишите "ДА" для подтверждения или любое другое сообщение для отмены'
+  );
+});
+
+// --- Команда /sections: показать все разделы ---
+bot.command('sections', async (ctx) => {
+  const userId = ctx.from.id;
+  const session = sessions[userId];
+  
+  if (!session || !session.profile) {
+    return ctx.reply('Сначала выполните /start');
+  }
+  
+  try {
+    const sections = await prisma.word.groupBy({
+      by: ['section'],
+      where: { profile: session.profile },
+      _count: { id: true }
+    });
+    
+    if (!sections.length) {
+      return ctx.reply('У вас нет добавленных слов');
+    }
+    
+    let message = '<b>Ваши разделы:</b>\n\n';
+    
+    sections
+      .sort((a, b) => b._count.id - a._count.id)
+      .forEach(section => {
+        const name = section.section || 'Без раздела';
+        const count = section._count.id;
+        message += `📂 <b>${name}</b> — ${count} слов\n`;
+      });
+    
+    message += '\nДля просмотра: /words [название раздела]';
+    
+    await ctx.reply(message, { parse_mode: 'HTML' });
+  } catch (error) {
+    console.error('Error in /sections:', error);
+    await ctx.reply('Ошибка при получении списка разделов');
+  }
+});
+
 // Обработка любых текстовых сообщений
 bot.on('message:text', async (ctx) => {
   const userId = ctx.from.id;
@@ -176,6 +381,33 @@ bot.on('message:text', async (ctx) => {
   }
   const session = sessions[userId];
   const step = session.step;
+
+  // Обработка подтверждения для /clear (должна быть в начале!)
+  if (session.awaitingClearConfirmation) {
+    if (normalized === 'да') {
+      try {
+        const deletedWords = await prisma.word.deleteMany({
+          where: { profile: session.profile }
+        });
+        
+        session.awaitingClearConfirmation = false;
+        session.step = 'main_menu';
+        
+        await ctx.reply(`✅ Удалено ${deletedWords.count} слов`, {
+          reply_markup: mainMenu
+        });
+      } catch (error) {
+        console.error('Error clearing words:', error);
+        session.awaitingClearConfirmation = false;
+        await ctx.reply('Ошибка при удалении слов');
+      }
+    } else {
+      session.awaitingClearConfirmation = false;
+      session.step = 'main_menu';
+      await ctx.reply('Удаление отменено', { reply_markup: mainMenu });
+    }
+    return;
+  }
 
   console.log(`DEBUG: ${userId} | STEP: ${step} | TEXT: "${text}"`);
 
@@ -943,6 +1175,10 @@ bot.api.setMyCommands([
   { command: 'menu', description: 'Главное меню' },
   { command: 'start', description: 'Начать/перезапустить бота' },
   { command: 'stats', description: 'Статистика по профилям' },
+  { command: 'words', description: 'Показать мои слова' },
+  { command: 'sections', description: 'Показать разделы' },
+  { command: 'delete', description: 'Удалить слово' },
+  { command: 'clear', description: 'Удалить все слова' },
 ]);
 
 // Простой сервер для пинга
