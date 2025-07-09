@@ -2,20 +2,11 @@ require('dotenv').config({ path: __dirname + '/.env' });
 console.log('DEBUG: BOT_TOKEN:', process.env.BOT_TOKEN);
 console.log('DEBUG: OPENAI_API_KEY:', process.env.OPENAI_API_KEY);
 const { Bot, Keyboard } = require('grammy');
-const { Low } = require('lowdb');
-const JSONFile = require('lowdb/node').JSONFile;
 const axios = require('axios');
 const fs = require('fs');
+const prisma = require('./db');
 
 const sessions = {};
-const adapter = new JSONFile('db.json');
-const db = new Low(adapter, { users: {} });
-
-async function initDB() {
-  await db.read();
-  if (!db.data) db.data = { users: {} };
-  await db.write();
-}
 
 const bot = new Bot(process.env.BOT_TOKEN);
 
@@ -72,9 +63,61 @@ const getOxfordSectionsMenu = () => {
   return Keyboard.from(rows).row();
 };
 
+// --- Prisma-реализация функций ---
+async function addWord(profile, word, translation, section) {
+  await prisma.word.create({
+    data: {
+      profile,
+      word,
+      translation,
+      section: section || null,
+    },
+  });
+}
+
+async function getWords(profile, filter = {}) {
+  return prisma.word.findMany({
+    where: {
+      profile,
+      ...(filter.section ? { section: filter.section } : {}),
+    },
+    orderBy: { id: 'asc' },
+  });
+}
+
+async function updateWordCorrect(profile, word, translation, correct) {
+  await prisma.word.updateMany({
+    where: { profile, word, translation },
+    data: { correct },
+  });
+}
+
+async function getStats() {
+  const stats = await prisma.word.groupBy({
+    by: ['profile'],
+    _count: { id: true },
+    _sum: {
+      new_words: { _case: { when: { correct: { lte: 2 } }, then: 1, else: 0 } },
+      learning: { _case: { when: { correct: { gte: 3, lte: 4 } }, then: 1, else: 0 } },
+      mastered: { _case: { when: { correct: { gte: 5 } }, then: 1, else: 0 } },
+      added_week: { _case: { when: { createdAt: { gte: new Date(Date.now() - 7*24*60*60*1000) } }, then: 1, else: 0 } },
+      added_month: { _case: { when: { createdAt: { gte: new Date(Date.now() - 30*24*60*60*1000) } }, then: 1, else: 0 } },
+    },
+  });
+  // Преобразуем результат для совместимости с остальным кодом
+  return stats.map(row => ({
+    profile: row.profile,
+    total: row._count.id,
+    new_words: row._sum?.new_words || 0,
+    learning: row._sum?.learning || 0,
+    mastered: row._sum?.mastered || 0,
+    added_week: row._sum?.added_week || 0,
+    added_month: row._sum?.added_month || 0,
+  }));
+}
+
 // /start — начало сеанса
 bot.command('start', async (ctx) => {
-  await initDB();
   const userId = ctx.from.id;
   sessions[userId] = { step: 'awaiting_password' };
   await ctx.reply('Введите пароль:');
@@ -82,54 +125,36 @@ bot.command('start', async (ctx) => {
 
 // /menu — возвращает в главное меню из любого шага после логина
 bot.command('menu', async (ctx) => {
-  await initDB();
   const userId = ctx.from.id;
   const session = sessions[userId];
-
-  // Если не авторизован или ещё на этапе ввода пароля
   if (!session || session.step === 'awaiting_password' || !session.profile) {
     return ctx.reply('Сначала выполните /start');
   }
-
-  // Сохраняем только профиль, сбрасываем все остальные данные
   const profile = session.profile;
   sessions[userId] = { step: 'main_menu', profile };
-
   return ctx.reply('Выберите действие:', { reply_markup: mainMenu });
 });
 
 // --- Команда /stats: статистика по профилям ---
 bot.command('stats', async (ctx) => {
-  await initDB();
-  const users = db.data.users || {};
-  const now = new Date();
-  const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-  const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-  if (Object.keys(users).length === 0) {
+  const stats = await getStats();
+  if (!stats.length) {
     return ctx.reply('Нет данных по профилям.');
   }
-  for (const profile of Object.keys(users)) {
-    const words = users[profile] || [];
-    const total = words.length;
-    const newWords = words.filter(w => (w.correct ?? 0) <= 2).length;
-    const learning = words.filter(w => (w.correct ?? 0) >= 3 && (w.correct ?? 0) <= 4).length;
-    const mastered = words.filter(w => (w.correct ?? 0) >= 5).length;
-    const addedWeek = words.filter(w => w.addedAt && new Date(w.addedAt) >= weekAgo).length;
-    const addedMonth = words.filter(w => w.addedAt && new Date(w.addedAt) >= monthAgo).length;
-    let msg = `<b>Статистика для профиля: ${profile}</b>\n`;
-    msg += `Всего слов: <b>${total}</b>\n`;
-    msg += `Новых (correct ≤ 2): <b>${newWords}</b>\n`;
-    msg += `Более-менее знает (correct 3–4): <b>${learning}</b>\n`;
-    msg += `Знает отлично (correct ≥ 5): <b>${mastered}</b>\n`;
-    msg += `Добавлено за неделю: <b>${addedWeek}</b>\n`;
-    msg += `Добавлено за месяц: <b>${addedMonth}</b>`;
+  for (const row of stats) {
+    let msg = `<b>Статистика для профиля: ${row.profile}</b>\n`;
+    msg += `Всего слов: <b>${row.total}</b>\n`;
+    msg += `Новых (correct ≤ 2): <b>${row.new_words}</b>\n`;
+    msg += `Более-менее знает (correct 3–4): <b>${row.learning}</b>\n`;
+    msg += `Знает отлично (correct ≥ 5): <b>${row.mastered}</b>\n`;
+    msg += `Добавлено за неделю: <b>${row.added_week}</b>\n`;
+    msg += `Добавлено за месяц: <b>${row.added_month}</b>`;
     await ctx.reply(msg, { parse_mode: 'HTML' });
   }
 });
 
 // Обработка любых текстовых сообщений
 bot.on('message:text', async (ctx) => {
-  await initDB();
   const userId = ctx.from.id;
   const text = ctx.message.text.trim();
   const normalized = text.toLowerCase();
@@ -175,13 +200,11 @@ bot.on('message:text', async (ctx) => {
   if (step === 'awaiting_profile') {
     session.profile = text;
     session.step = 'main_menu';
-    db.data.users[session.profile] ||= [];
-    await db.write();
+    // No need to create user in DB, just proceed
     return ctx.reply(`Вы вошли как ${session.profile}`, {
       reply_markup: mainMenu,
     });
   }
-
   // Главное меню: добавить / повторить
   if (step === 'main_menu') {
     if (normalized === 'добавить новое слово') {
@@ -224,7 +247,7 @@ bot.on('message:text', async (ctx) => {
     if (text === 'Ielts must-have words') {
       // Сразу добавляем IELTS-слова, не меняем step и не ждём следующего сообщения
       // Уже изученные слова пользователя (по word)
-      const userWords = db.data.users[session.profile] || [];
+      const userWords = await getWords(session.profile);
       const known = new Set(userWords.map(w => w.word.toLowerCase()));
       // Оставляем только новые слова (по первым двум словам)
       const newWords = ieltsWords.filter(w => !known.has(getFirstTwoWords(w.word).toLowerCase()));
@@ -259,14 +282,8 @@ bot.on('message:text', async (ctx) => {
         } else {
           throw new Error('AI не вернул массив слов.');
         }
-        db.data.users[session.profile].push(...words.map(w => ({
-          word: getFirstTwoWords(w.word),
-          translation: w.translation,
-          correct: 0,
-          section: 'IELTS',
-          addedAt: new Date().toISOString()
-        })));
-        await db.write();
+        // Сохраняем только word, translation, correct, section
+        await Promise.all(words.map(w => addWord(session.profile, getFirstTwoWords(w.word), w.translation, 'IELTS')));
         session.step = 'main_menu';
         // Формируем сообщения для пользователя по 5 слов в каждом
         let msgParts = [];
@@ -312,7 +329,7 @@ bot.on('message:text', async (ctx) => {
       correct = wordObj.word.toLowerCase();
       answer = normalized;
     }
-    const all = db.data.users[session.profile];
+    const all = await getWords(session.profile);
     const idx = all.findIndex(w =>
       w.word === wordObj.word && w.translation === wordObj.translation
     );
@@ -323,10 +340,10 @@ bot.on('message:text', async (ctx) => {
 
     if (answer === correct) {
       await ctx.reply('✅ Верно!');
-      if (idx !== -1) all[idx].correct = (all[idx].correct || 0) + 1;
+      if (idx !== -1) await updateWordCorrect(session.profile, wordObj.word, wordObj.translation, (all[idx].correct || 0) + 1);
     } else {
       await ctx.reply(`❌ Неверно. Правильный ответ: ${correct}`);
-      if (idx !== -1) all[idx].correct = 0;
+      if (idx !== -1) await updateWordCorrect(session.profile, wordObj.word, wordObj.translation, 0);
       // Добавляем ошибку, если ещё не добавляли
       const key = wordObj.word + '|' + wordObj.translation;
       if (!session.mistakes.find(w => w.word === wordObj.word && w.translation === wordObj.translation)) {
@@ -334,7 +351,6 @@ bot.on('message:text', async (ctx) => {
         session.mistakeCounts[key] = 0;
       }
     }
-    await db.write();
 
     session.currentIndex++;
     if (session.currentIndex < session.wordsToRepeat.length) {
@@ -363,7 +379,7 @@ bot.on('message:text', async (ctx) => {
         });
       }
       // После обычного завершения повторения — sentence_task, если есть новые слова (только для Повторить все слова)
-      const allUserWords = db.data.users[session.profile] || [];
+      const allUserWords = await getWords(session.profile);
       const newWords = allUserWords.filter(w => w.correct <= 2).slice(0, 7);
       if (newWords.length > 0) {
         session.sentenceTaskWords = newWords;
@@ -397,7 +413,7 @@ bot.on('message:text', async (ctx) => {
         return ctx.reply('Работа над ошибками завершена! Возвращаемся в меню.', { reply_markup: mainMenu });
       }
       // После работы над ошибками — sentence_task, если есть новые слова
-      const allUserWords = db.data.users[session.profile] || [];
+      const allUserWords = await getWords(session.profile);
       const newWords = allUserWords.filter(w => w.correct <= 2).slice(0, 7);
       if (newWords.length > 0) {
         session.sentenceTaskWords = newWords;
@@ -464,7 +480,7 @@ bot.on('message:text', async (ctx) => {
         return ctx.reply('Работа над ошибками завершена! Возвращаемся в меню.', { reply_markup: mainMenu });
       }
       // После работы над ошибками — sentence_task, если есть новые слова
-      const allUserWords = db.data.users[session.profile] || [];
+      const allUserWords = await getWords(session.profile);
       const newWords = allUserWords.filter(w => w.correct <= 2).slice(0, 7);
       if (newWords.length > 0) {
         session.sentenceTaskWords = newWords;
@@ -495,18 +511,15 @@ bot.on('message:text', async (ctx) => {
     session.step = 'awaiting_translation';
     return ctx.reply('Теперь введите перевод:');
   }
-
   if (step === 'awaiting_translation') {
     const word = session.newWord;
     const translation = text;
-    db.data.users[session.profile].push({ word, translation, correct: 0, addedAt: new Date().toISOString() });
-    await db.write();
+    await addWord(session.profile, word, translation, null);
     session.step = 'main_menu';
     return ctx.reply('Слово добавлено!', {
       reply_markup: mainMenu,
     });
   }
-
   // Выбор раздела для добавления 20 слов из 3000
   if (step === 'awaiting_oxford_section') {
     const section = text.trim();
@@ -516,7 +529,7 @@ bot.on('message:text', async (ctx) => {
       return ctx.reply('В этом разделе нет слов. Выберите другой раздел.', { reply_markup: getOxfordSectionsMenu() });
     }
     // Уже изученные слова пользователя (по word)
-    const userWords = db.data.users[session.profile] || [];
+    const userWords = await getWords(session.profile);
     const known = new Set(userWords.map(w => w.word.toLowerCase()));
     // Оставляем только новые слова
     const newWords = sectionWords.filter(w => !known.has(w.word.toLowerCase()));
@@ -558,14 +571,7 @@ bot.on('message:text', async (ctx) => {
         throw new Error('AI не вернул массив слов.');
       }
       // Сохраняем только word, translation, correct, section
-      db.data.users[session.profile].push(...words.map(w => ({
-        word: getMainForm(w.word),
-        translation: w.translation,
-        correct: 0,
-        section: section,
-        addedAt: new Date().toISOString()
-      })));
-      await db.write();
+      await Promise.all(words.map(w => addWord(session.profile, getMainForm(w.word), w.translation, section)));
       session.step = 'main_menu';
       // Формируем сообщения для пользователя по 5 слов в каждом
       let msgParts = [];
@@ -594,7 +600,7 @@ bot.on('message:text', async (ctx) => {
   if (step === 'repeat_menu') {
     if (text === 'Повторить все слова') {
       // Старый тест со всеми словами
-      const userWords = db.data.users[session.profile] || [];
+      const userWords = await getWords(session.profile);
       const newWords = userWords.filter(w => w.correct <= 2);
       const learning = userWords.filter(w => w.correct >= 3 && w.correct <= 4);
       const mastered = userWords.filter(w => w.correct >= 5);
@@ -632,7 +638,7 @@ bot.on('message:text', async (ctx) => {
     }
     if (text === 'Повторить IELTS-слова') {
       // Логика повторения IELTS-слов
-      const userWords = db.data.users[session.profile] || [];
+      const userWords = await getWords(session.profile);
       const ieltsWordsToRepeat = userWords.filter(w => w.section === 'IELTS');
       if (!ieltsWordsToRepeat.length) {
         session.step = 'repeat_menu';
@@ -687,7 +693,7 @@ bot.on('message:text', async (ctx) => {
   // Повторение слов из выбранного раздела oxford3000
   if (step === 'repeat_oxford_section') {
     const section = text.trim();
-    const userWords = db.data.users[session.profile] || [];
+    const userWords = await getWords(session.profile);
     const sectionWords = userWords.filter(w => w.section === section);
     if (!sectionWords.length) {
       session.step = 'repeat_menu';
@@ -806,7 +812,7 @@ bot.on('message:text', async (ctx) => {
     const wordObj = words[idx];
     const sentence = text;
     // Промпт для ChatGPT
-    const prompt = `Ты — учитель английского языка. Твоя задача — подробно проверить, правильно ли использовано слово '${wordObj.word}' в предложении: '${sentence}'.\n\nОцени по критериям:\n- Грамматическая корректность.\n- Правильность и уместность слова в контексте.\n- Естественность звучания предложения.\n\nОтвет должен быть строго в формате JSON:\n{\n  "ok": true или false,\n  "explanation": "Подробное, но краткое объяснение на русском (до 6 предложений), что именно неправильно или правильно, как исправить ошибку и на что обратить внимание.\",\n  "example": \"Обязательный пример правильного использования этого слова в предложении на английском с переводом на русский. Формат: 'Example: ... (Перевод: ...)'\"\n}\n\nНе добавляй никакого текста помимо JSON.`;
+    const prompt = `Ты — учитель английского языка. Твоя задача — подробно проверить, правильно ли использовано слово '${wordObj.word}' в предложении: '${sentence}'.\n\nОцени по критериям:\n- Грамматическая корректность.\n- Правильность и уместность слова в контексте.\n- Естественность звучания предложения.\n\nОтвет должен быть строго в формате JSON:\n{\n  "ok": true или false,\n  "explanation": "Подробное, но краткое объяснение на русском (до 6 предложений), что именно неправильно или правильно, как исправить ошибку и на что обратить внимание.\",\n  "example": \"Обязательный пример правильного использования этого слова в предлождении на английском с переводом на русский. Формат: 'Example: ... (Перевод: ...)'\"\n}\n\nНе добавляй никакого текста помимо JSON.`;
     await ctx.reply('Проверяю предложение через AI, подождите...');
     try {
       const gptRes = await axios.post('https://api.openai.com/v1/chat/completions', {
@@ -830,15 +836,14 @@ bot.on('message:text', async (ctx) => {
         throw new Error('AI не вернул JSON.');
       }
       // Обновляем correct
-      const all = db.data.users[session.profile];
+      const all = await getWords(session.profile);
       const userWordIdx = all.findIndex(w => w.word === wordObj.word && w.translation === wordObj.translation);
       if (userWordIdx !== -1) {
         if (result.ok === true) {
-          all[userWordIdx].correct = Math.max((all[userWordIdx].correct || 0) + 1, 0);
+          await updateWordCorrect(session.profile, wordObj.word, wordObj.translation, Math.max((all[userWordIdx].correct || 0) + 1, 0));
         } else {
-          all[userWordIdx].correct = Math.max((all[userWordIdx].correct || 0) - 1, 0);
+          await updateWordCorrect(session.profile, wordObj.word, wordObj.translation, Math.max((all[userWordIdx].correct || 0) - 1, 0));
         }
-        await db.write();
       }
       // Явная обратная связь по JSON-ответу
       if (result.ok === true) {
