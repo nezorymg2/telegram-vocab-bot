@@ -626,32 +626,51 @@ async function updateWordCorrect(profile, word, translation, correct) {
 bot.command('start', async (ctx) => {
   const userId = ctx.from.id;
   
-  // Проверяем есть ли пользователь в базе данных
-  const existingProfiles = await prisma.userProfile.findMany({
-    where: { telegramId: userId.toString() }
-  });
-  
-  if (existingProfiles.length > 0) {
-    // Пользователь найден в базе, автологиним его
-    const profile = existingProfiles[0]; // Берем первый профиль
+  try {
+    // Проверяем есть ли пользователь в базе данных
+    const existingProfiles = await prisma.userProfile.findMany({
+      where: { telegramId: userId.toString() }
+    });
     
-    sessions[userId] = {
-      profile: profile.profileName,
-      step: 'main_menu',
-      xp: profile.xp,
-      level: profile.level,
-      loginStreak: profile.loginStreak,
-      lastBonusDate: profile.lastBonusDate,
-      lastSmartRepeatDate: profile.lastSmartRepeatDate,
-      reminderTime: profile.reminderTime
-    };
-    
-    // Проверяем ежедневный бонус
-    await checkDailyBonus(sessions[userId], ctx);
-    const menuMessage = getMainMenuMessage(sessions[userId]);
-    await ctx.reply(menuMessage, { reply_markup: mainMenu, parse_mode: 'HTML' });
-  } else {
-    // Новый пользователь
+    if (existingProfiles.length > 0) {
+      // Если у пользователя несколько профилей, предлагаем выбрать
+      if (existingProfiles.length > 1) {
+        sessions[userId] = { step: 'awaiting_profile' };
+        return ctx.reply('Выберите профиль:', {
+          reply_markup: {
+            keyboard: [['Амина', 'Нурболат']],
+            resize_keyboard: true,
+            one_time_keyboard: true,
+          },
+        });
+      }
+      
+      // Пользователь найден в базе, автологиним его
+      const profile = existingProfiles[0];
+      
+      sessions[userId] = {
+        profile: profile.profileName,
+        step: 'main_menu',
+        xp: profile.xp,
+        level: profile.level,
+        loginStreak: profile.loginStreak,
+        lastBonusDate: profile.lastBonusDate,
+        lastSmartRepeatDate: profile.lastSmartRepeatDate,
+        reminderTime: profile.reminderTime
+      };
+      
+      // Проверяем ежедневный бонус
+      await checkDailyBonus(sessions[userId], ctx);
+      const menuMessage = getMainMenuMessage(sessions[userId]);
+      await ctx.reply(menuMessage, { reply_markup: mainMenu, parse_mode: 'HTML' });
+    } else {
+      // Новый пользователь
+      sessions[userId] = { step: 'awaiting_password' };
+      await ctx.reply('Введите пароль:');
+    }
+  } catch (error) {
+    console.error('Error in /start command:', error);
+    // Если ошибка с БД, создаем обычную сессию
     sessions[userId] = { step: 'awaiting_password' };
     await ctx.reply('Введите пароль:');
   }
@@ -1564,6 +1583,51 @@ bot.on('message:text', async (ctx) => {
     const profile = session.profile;
     sessions[userId] = { step: 'main_menu', profile };
     return ctx.reply('Выберите действие:', { reply_markup: mainMenu });
+  }
+
+  // Специальная обработка кнопки "🧠 Умное повторение" из напоминаний
+  if (text === '🧠 Умное повторение') {
+    const session = sessions[userId];
+    if (!session || !session.profile) {
+      // Пользователь нажал кнопку из напоминания, но не залогинен
+      // Попытаемся автоматически загрузить профиль
+      try {
+        const existingProfiles = await prisma.userProfile.findMany({
+          where: { telegramId: userId.toString() }
+        });
+        
+        if (existingProfiles.length === 1) {
+          // Автоматически логиним пользователя
+          const profile = existingProfiles[0];
+          sessions[userId] = {
+            profile: profile.profileName,
+            step: 'word_tasks_menu',
+            xp: profile.xp,
+            level: profile.level,
+            loginStreak: profile.loginStreak,
+            lastBonusDate: profile.lastBonusDate,
+            lastSmartRepeatDate: profile.lastSmartRepeatDate,
+            reminderTime: profile.reminderTime
+          };
+        } else if (existingProfiles.length > 1) {
+          // Несколько профилей - нужно выбрать
+          sessions[userId] = { step: 'awaiting_profile' };
+          return ctx.reply('Выберите профиль:', {
+            reply_markup: {
+              keyboard: [['Амина', 'Нурболат']],
+              resize_keyboard: true,
+              one_time_keyboard: true,
+            },
+          });
+        } else {
+          // Новый пользователь
+          return ctx.reply('Сначала выполните /start');
+        }
+      } catch (error) {
+        console.error('Error loading profile for smart repeat:', error);
+        return ctx.reply('Сначала выполните /start');
+      }
+    }
   }
 
   // Убедимся, что сессия инициализирована
