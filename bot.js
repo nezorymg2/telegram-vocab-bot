@@ -1891,7 +1891,7 @@ bot.on('message:text', async (ctx) => {
       return await startQuizGame(ctx, session);
     }
     
-    if (text === '🎭 Ситуативные задания') {
+    if (text === '🎭 Ситуативные задания' || text === '�🎭 Ситуативные задания') {
       session.step = 'situational_menu';
       return ctx.reply('🎯 Выберите место для ситуативного задания:', {
         reply_markup: situationalMenu,
