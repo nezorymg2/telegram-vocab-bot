@@ -594,7 +594,10 @@ async function getOrCreateUserProfile(telegramId, profileName) {
 // --- Функция сохранения сессии в БД ---
 async function saveUserSession(telegramId, profileName, session) {
   try {
-    await prisma.userProfile.updateMany({
+    console.log(`DEBUG SAVE SESSION: Saving session for ${telegramId} (${profileName})`);
+    console.log(`  - lastSmartRepeatDate: "${session.lastSmartRepeatDate}"`);
+    
+    const result = await prisma.userProfile.updateMany({
       where: { 
         telegramId: telegramId.toString(),
         profileName: profileName 
@@ -608,6 +611,8 @@ async function saveUserSession(telegramId, profileName, session) {
         reminderTime: session.reminderTime
       }
     });
+    
+    console.log(`  - Updated ${result.count} records`);
   } catch (error) {
     console.error('Error saving user session:', error);
   }
@@ -2477,11 +2482,16 @@ bot.on('message:text', async (ctx) => {
       // --- Умное повторение переходит к sentence_task ---
       if (session.repeatMode === 'smart') {
         // Отмечаем что умное повторение пройдено сегодня
-        session.lastSmartRepeatDate = new Date().toDateString();
+        const todayString = new Date().toDateString();
+        session.lastSmartRepeatDate = todayString;
+        
+        console.log(`DEBUG SMART REPEAT: User ${ctx.from.id} completed smart repeat`);
+        console.log(`  - Setting lastSmartRepeatDate to: "${todayString}"`);
         
         // Сохраняем изменения в базу данных
         if (session.profile) {
           await saveUserSession(ctx.from.id, session.profile, session);
+          console.log(`  - Saved to database for profile: ${session.profile}`);
         }
         
         const allUserWords = await getWords(session.profile);
@@ -3267,7 +3277,11 @@ function getRandomReminder(remindersArray) {
 
 // Функция для отправки напоминаний всем пользователям
 async function sendRemindersToUsers(reminderType) {
-  const today = new Date().toDateString();
+  const now = new Date();
+  const today = now.toDateString();
+  
+  console.log(`DEBUG REMINDERS: Running ${reminderType} reminders at ${now.toISOString()}`);
+  console.log(`  - Today string: "${today}"`);
   
   try {
     // Загружаем всех пользователей из базы данных
@@ -3278,7 +3292,16 @@ async function sendRemindersToUsers(reminderType) {
       
       // Проверяем, не прошел ли уже умное повторение сегодня
       const didSmartRepeatToday = userProfile.lastSmartRepeatDate === today;
-      if (didSmartRepeatToday) continue;
+      
+      console.log(`DEBUG REMINDERS: User ${telegramId} (${userProfile.profileName})`);
+      console.log(`  - lastSmartRepeatDate from DB: "${userProfile.lastSmartRepeatDate}"`);
+      console.log(`  - today: "${today}"`);
+      console.log(`  - didSmartRepeatToday: ${didSmartRepeatToday}`);
+      
+      if (didSmartRepeatToday) {
+        console.log(`  - SKIPPED: User already did smart repeat today`);
+        continue;
+      }
       
       // Выбираем случайное напоминание в зависимости от типа
       let reminderText;
