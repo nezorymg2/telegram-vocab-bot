@@ -348,6 +348,11 @@ async function checkDailyBonus(session, ctx) {
       { parse_mode: 'HTML' }
     );
   }
+  
+  // Сохраняем изменения в базу данных
+  if (session.profile) {
+    await saveUserSession(ctx.from.id, session.profile, session);
+  }
 }
 
 // --- Напоминания: выбор времени и отправка ---
@@ -376,6 +381,12 @@ async function handleReminderTimeInput(ctx, text, session) {
   }
   session.reminderTime = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
   session.step = 'main_menu';
+  
+  // Сохраняем изменения в базу данных
+  if (session.profile) {
+    await saveUserSession(ctx.from.id, session.profile, session);
+  }
+  
   await ctx.reply(`Напоминание установлено на ${session.reminderTime} каждый день!`);
 }
 
@@ -516,6 +527,72 @@ const getOxfordSectionsMenu = () => {
   return Keyboard.from(rows).row();
 };
 
+// --- Функция загрузки/создания профиля пользователя ---
+async function getOrCreateUserProfile(telegramId, profileName) {
+  const profileKey = `${telegramId}_${profileName}`;
+  
+  try {
+    // Пытаемся найти существующий профиль
+    let userProfile = await prisma.userProfile.findFirst({
+      where: { 
+        telegramId: telegramId.toString(),
+        profileName: profileName 
+      }
+    });
+    
+    // Если профиль не найден, создаем новый
+    if (!userProfile) {
+      userProfile = await prisma.userProfile.create({
+        data: {
+          telegramId: telegramId.toString(),
+          profileName: profileName,
+          xp: 0,
+          level: 1,
+          loginStreak: 0,
+          lastBonusDate: null,
+          lastSmartRepeatDate: null,
+          reminderTime: null
+        }
+      });
+    }
+    
+    return userProfile;
+  } catch (error) {
+    console.error('Error getting/creating user profile:', error);
+    // Возвращаем дефолтные значения если ошибка с БД
+    return {
+      xp: 0,
+      level: 1,
+      loginStreak: 0,
+      lastBonusDate: null,
+      lastSmartRepeatDate: null,
+      reminderTime: null
+    };
+  }
+}
+
+// --- Функция сохранения сессии в БД ---
+async function saveUserSession(telegramId, profileName, session) {
+  try {
+    await prisma.userProfile.updateMany({
+      where: { 
+        telegramId: telegramId.toString(),
+        profileName: profileName 
+      },
+      data: {
+        xp: session.xp || 0,
+        level: session.level || 1,
+        loginStreak: session.loginStreak || 0,
+        lastBonusDate: session.lastBonusDate,
+        lastSmartRepeatDate: session.lastSmartRepeatDate,
+        reminderTime: session.reminderTime
+      }
+    });
+  } catch (error) {
+    console.error('Error saving user session:', error);
+  }
+}
+
 // --- Prisma-реализация функций ---
 async function addWord(profile, word, translation, section) {
   await prisma.word.create({
@@ -548,16 +625,33 @@ async function updateWordCorrect(profile, word, translation, correct) {
 // /start — начало сеанса
 bot.command('start', async (ctx) => {
   const userId = ctx.from.id;
-  if (!sessions[userId]) {
-    sessions[userId] = { step: 'awaiting_password' };
-    await ctx.reply('Введите пароль:');
-  } else if (sessions[userId].profile) {
-    // Пользователь уже залогинен, проверяем ежедневный бонус
+  
+  // Проверяем есть ли пользователь в базе данных
+  const existingProfiles = await prisma.userProfile.findMany({
+    where: { telegramId: userId.toString() }
+  });
+  
+  if (existingProfiles.length > 0) {
+    // Пользователь найден в базе, автологиним его
+    const profile = existingProfiles[0]; // Берем первый профиль
+    
+    sessions[userId] = {
+      profile: profile.profileName,
+      step: 'main_menu',
+      xp: profile.xp,
+      level: profile.level,
+      loginStreak: profile.loginStreak,
+      lastBonusDate: profile.lastBonusDate,
+      lastSmartRepeatDate: profile.lastSmartRepeatDate,
+      reminderTime: profile.reminderTime
+    };
+    
+    // Проверяем ежедневный бонус
     await checkDailyBonus(sessions[userId], ctx);
-    sessions[userId].step = 'main_menu';
     const menuMessage = getMainMenuMessage(sessions[userId]);
     await ctx.reply(menuMessage, { reply_markup: mainMenu, parse_mode: 'HTML' });
   } else {
+    // Новый пользователь
     sessions[userId] = { step: 'awaiting_password' };
     await ctx.reply('Введите пароль:');
   }
@@ -1624,9 +1718,18 @@ bot.on('message:text', async (ctx) => {
 
   // Шаг 2: выбор профиля
   if (step === 'awaiting_profile') {
+    // Загружаем или создаем профиль пользователя
+    const userProfile = await getOrCreateUserProfile(userId, text);
+    
     session.profile = text;
     session.step = 'main_menu';
-    // No need to create user in DB, just proceed
+    session.xp = userProfile.xp;
+    session.level = userProfile.level;
+    session.loginStreak = userProfile.loginStreak;
+    session.lastBonusDate = userProfile.lastBonusDate;
+    session.lastSmartRepeatDate = userProfile.lastSmartRepeatDate;
+    session.reminderTime = userProfile.reminderTime;
+    
     return ctx.reply(`Вы вошли как ${session.profile}`, {
       reply_markup: mainMenu,
     });
@@ -2281,6 +2384,11 @@ bot.on('message:text', async (ctx) => {
       if (session.repeatMode === 'smart') {
         // Отмечаем что умное повторение пройдено сегодня
         session.lastSmartRepeatDate = new Date().toDateString();
+        
+        // Сохраняем изменения в базу данных
+        if (session.profile) {
+          await saveUserSession(ctx.from.id, session.profile, session);
+        }
         
         const allUserWords = await getWords(session.profile);
         const newWords = allUserWords.filter(w => w.correct <= 2).slice(0, 7);
@@ -3067,46 +3175,50 @@ function getRandomReminder(remindersArray) {
 async function sendRemindersToUsers(reminderType) {
   const today = new Date().toDateString();
   
-  for (const userId in sessions) {
-    const session = sessions[userId];
+  try {
+    // Загружаем всех пользователей из базы данных
+    const userProfiles = await prisma.userProfile.findMany();
     
-    // Проверяем что пользователь авторизован
-    if (!session || !session.profile) continue;
-    
-    // Проверяем, не прошел ли уже умное повторение сегодня
-    const didSmartRepeatToday = session.lastSmartRepeatDate === today;
-    if (didSmartRepeatToday) continue;
-    
-    // Выбираем случайное напоминание в зависимости от типа
-    let reminderText;
-    switch (reminderType) {
-      case '6h':
-        reminderText = getRandomReminder(REMINDERS_6H);
-        break;
-      case '3h':
-        reminderText = getRandomReminder(REMINDERS_3H);
-        break;
-      case '1h':
-        reminderText = getRandomReminder(REMINDERS_1H);
-        break;
-      default:
-        continue;
-    }
-    
-    try {
-      // Отправляем напоминание с кнопкой для быстрого доступа
-      const quickMenu = new Keyboard()
-        .text('🧠 Умное повторение')
-        .row();
-        
-      await bot.api.sendMessage(userId, reminderText, {
-        reply_markup: quickMenu
-      });
+    for (const userProfile of userProfiles) {
+      const telegramId = parseInt(userProfile.telegramId);
       
-      console.log(`Reminder sent to user ${userId}: ${reminderType}`);
-    } catch (error) {
-      console.error(`Failed to send reminder to user ${userId}:`, error);
+      // Проверяем, не прошел ли уже умное повторение сегодня
+      const didSmartRepeatToday = userProfile.lastSmartRepeatDate === today;
+      if (didSmartRepeatToday) continue;
+      
+      // Выбираем случайное напоминание в зависимости от типа
+      let reminderText;
+      switch (reminderType) {
+        case '6h':
+          reminderText = getRandomReminder(REMINDERS_6H);
+          break;
+        case '3h':
+          reminderText = getRandomReminder(REMINDERS_3H);
+          break;
+        case '1h':
+          reminderText = getRandomReminder(REMINDERS_1H);
+          break;
+        default:
+          continue;
+      }
+      
+      try {
+        // Отправляем напоминание с кнопкой для быстрого доступа
+        const quickMenu = new Keyboard()
+          .text('🧠 Умное повторение')
+          .row();
+          
+        await bot.api.sendMessage(telegramId, reminderText, {
+          reply_markup: quickMenu
+        });
+        
+        console.log(`Reminder sent to user ${telegramId}: ${reminderType}`);
+      } catch (error) {
+        console.error(`Failed to send reminder to user ${telegramId}:`, error);
+      }
     }
+  } catch (error) {
+    console.error('Error in sendRemindersToUsers:', error);
   }
 }
 

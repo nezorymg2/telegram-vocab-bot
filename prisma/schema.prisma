@@ -22,3 +22,20 @@ model Word {
 
   @@map("words")
 }
+
+model UserProfile {
+  id                    Int      @id @default(autoincrement())
+  telegramId            String
+  profileName           String
+  xp                    Int      @default(0)
+  level                 Int      @default(1)
+  loginStreak           Int      @default(0)
+  lastBonusDate         String?
+  lastSmartRepeatDate   String?
+  reminderTime          String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@unique([telegramId, profileName])
+  @@map("user_profiles")
+}
