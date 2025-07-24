@@ -1637,6 +1637,51 @@ bot.on('message:text', async (ctx) => {
   const session = sessions[userId];
   const step = session.step;
 
+  console.log(`DEBUG: ${userId} | STEP: ${step} | TEXT: "${text}"`);
+
+  // --- ПРИОРИТЕТНАЯ ОБРАБОТКА СОСТОЯНИЙ АВТОРИЗАЦИИ ---
+  
+  // Шаг 1: ввод пароля
+  if (step === 'awaiting_password') {
+    const allowed = ['123', 'Aminur777'];
+    if (allowed.includes(text)) {
+      session.step = 'awaiting_profile';
+      return ctx.reply('Выберите профиль:', {
+        reply_markup: {
+          keyboard: [['Амина', 'Нурболат']],
+          resize_keyboard: true,
+          one_time_keyboard: true,
+        },
+      });
+    } else {
+      return ctx.reply('Неверный пароль. Попробуйте снова:');
+    }
+  }
+
+  // Шаг 2: выбор профиля
+  if (step === 'awaiting_profile') {
+    // Загружаем или создаем профиль пользователя
+    const userProfile = await getOrCreateUserProfile(userId, text);
+    
+    session.profile = text;
+    session.step = 'main_menu';
+    session.xp = userProfile.xp;
+    session.level = userProfile.level;
+    session.loginStreak = userProfile.loginStreak;
+    session.lastBonusDate = userProfile.lastBonusDate;
+    session.lastSmartRepeatDate = userProfile.lastSmartRepeatDate;
+    session.reminderTime = userProfile.reminderTime;
+    
+    // Проверяем ежедневный бонус и показываем главное меню
+    await checkDailyBonus(session, ctx);
+    const menuMessage = getMainMenuMessage(session);
+    
+    return ctx.reply(`Вы вошли как ${session.profile}\n\n${menuMessage}`, {
+      reply_markup: mainMenu,
+      parse_mode: 'HTML'
+    });
+  }
+
   // --- Обработка состояний игры "Угадай перевод" ---
   
   // Обработка ответа в викторине
@@ -1763,46 +1808,6 @@ bot.on('message:text', async (ctx) => {
 
   console.log(`DEBUG: ${userId} | STEP: ${step} | TEXT: "${text}"`);
 
-  // Шаг 1: ввод пароля
-  if (step === 'awaiting_password') {
-    const allowed = ['123', 'Aminur777'];
-    if (allowed.includes(text)) {
-      session.step = 'awaiting_profile';
-      return ctx.reply('Выберите профиль:', {
-        reply_markup: {
-          keyboard: [['Амина', 'Нурболат']],
-          resize_keyboard: true,
-          one_time_keyboard: true,
-        },
-      });
-    } else {
-      return ctx.reply('Неверный пароль. Попробуйте снова:');
-    }
-  }
-
-  // Шаг 2: выбор профиля
-  if (step === 'awaiting_profile') {
-    // Загружаем или создаем профиль пользователя
-    const userProfile = await getOrCreateUserProfile(userId, text);
-    
-    session.profile = text;
-    session.step = 'main_menu';
-    session.xp = userProfile.xp;
-    session.level = userProfile.level;
-    session.loginStreak = userProfile.loginStreak;
-    session.lastBonusDate = userProfile.lastBonusDate;
-    session.lastSmartRepeatDate = userProfile.lastSmartRepeatDate;
-    session.reminderTime = userProfile.reminderTime;
-    
-    // Проверяем ежедневный бонус и показываем главное меню
-    await checkDailyBonus(session, ctx);
-    const menuMessage = getMainMenuMessage(session);
-    
-    return ctx.reply(`Вы вошли как ${session.profile}\n\n${menuMessage}`, {
-      reply_markup: mainMenu,
-      parse_mode: 'HTML'
-    });
-  }
   // Главное меню: добавить / повторить
   if (step === 'main_menu') {
     if (text === '📝 Добавить слова') {
