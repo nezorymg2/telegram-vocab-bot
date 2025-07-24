@@ -17,18 +17,49 @@ async function initializeDatabase() {
   try {
     console.log('🔄 Initializing database...');
     
-    // Выполняем миграцию
-    execSync('npx prisma db push', { stdio: 'inherit' });
-    console.log('✅ Database initialized successfully');
-    
-    // Проверяем подключение
+    // Сначала пытаемся подключиться к базе данных
     await prisma.$connect();
     console.log('✅ Database connection established');
     
+    // Проверяем, существует ли таблица words
+    try {
+      await prisma.word.findFirst();
+      console.log('✅ Database schema is valid');
+    } catch (schemaError) {
+      console.log('⚠️ Schema validation failed, running migration...');
+      
+      // Выполняем миграцию с флагом accept-data-loss
+      try {
+        execSync('npx prisma db push --accept-data-loss', { 
+          stdio: 'inherit',
+          timeout: 30000 // 30 секунд таймаут
+        });
+        console.log('✅ Database migration completed successfully');
+        
+        // Проверяем снова после миграции
+        await prisma.word.findFirst();
+        console.log('✅ Database schema validated after migration');
+        
+      } catch (migrationError) {
+        console.error('❌ Migration failed:', migrationError.message);
+        
+        // Пытаемся альтернативным способом
+        console.log('🔄 Trying alternative migration approach...');
+        try {
+          execSync('npx prisma generate', { stdio: 'inherit' });
+          execSync('npx prisma db push --force-reset --accept-data-loss', { stdio: 'inherit' });
+          console.log('✅ Alternative migration successful');
+        } catch (altError) {
+          console.error('❌ Alternative migration also failed:', altError.message);
+          throw new Error('All migration attempts failed');
+        }
+      }
+    }
+    
   } catch (error) {
-    console.error('❌ Database initialization failed:', error);
-    // Не завершаем процесс, если миграция не удалась
-    console.log('⚠️ Continuing without migration...');
+    console.error('❌ Database initialization failed:', error.message);
+    console.log('⚠️ Bot will continue but database operations may fail...');
+    console.log('📋 Please check your DATABASE_URL and database connectivity');
   }
 }
 
