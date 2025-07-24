@@ -1794,8 +1794,13 @@ bot.on('message:text', async (ctx) => {
     session.lastSmartRepeatDate = userProfile.lastSmartRepeatDate;
     session.reminderTime = userProfile.reminderTime;
     
-    return ctx.reply(`Вы вошли как ${session.profile}`, {
+    // Проверяем ежедневный бонус и показываем главное меню
+    await checkDailyBonus(session, ctx);
+    const menuMessage = getMainMenuMessage(session);
+    
+    return ctx.reply(`Вы вошли как ${session.profile}\n\n${menuMessage}`, {
       reply_markup: mainMenu,
+      parse_mode: 'HTML'
     });
   }
   // Главное меню: добавить / повторить
