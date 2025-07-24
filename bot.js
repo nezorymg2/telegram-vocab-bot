@@ -1,6 +1,10 @@
 require('dotenv').config({ path: __dirname + '/.env' });
-console.log('DEBUG: BOT_TOKEN:', process.env.BOT_TOKEN);
-console.log('DEBUG: OPENAI_API_KEY:', process.env.OPENAI_API_KEY);
+console.log('DEBUG: Environment loaded');
+// Не логируем токены в production
+if (process.env.NODE_ENV !== 'production') {
+  console.log('DEBUG: BOT_TOKEN:', process.env.BOT_TOKEN ? 'Set' : 'Not set');
+  console.log('DEBUG: OPENAI_API_KEY:', process.env.OPENAI_API_KEY ? 'Set' : 'Not set');
+}
 const { Bot, Keyboard, InputFile } = require('grammy');
 const axios = require('axios');
 const fs = require('fs');
@@ -3081,7 +3085,7 @@ cron.schedule('0 18 * * *', () => {
   console.log('Sending 6-hour reminders...');
   sendRemindersToUsers('6h');
 }, {
-  timezone: "Europe/Moscow" // Можно изменить на нужный часовой пояс
+  timezone: "Asia/Yekaterinburg" // GMT+5
 });
 
 // За 3 часа до полуночи (21:00)
@@ -3089,7 +3093,7 @@ cron.schedule('0 21 * * *', () => {
   console.log('Sending 3-hour reminders...');
   sendRemindersToUsers('3h');
 }, {
-  timezone: "Europe/Moscow"
+  timezone: "Asia/Yekaterinburg" // GMT+5
 });
 
 // За 1 час до полуночи (23:00)
@@ -3097,7 +3101,7 @@ cron.schedule('0 23 * * *', () => {
   console.log('Sending 1-hour reminders...');
   sendRemindersToUsers('1h');
 }, {
-  timezone: "Europe/Moscow"
+  timezone: "Asia/Yekaterinburg" // GMT+5
 });
 
 // Ежедневный автоматический бэкап в 2:00 ночи
@@ -3105,7 +3109,7 @@ cron.schedule('0 2 * * *', () => {
   console.log('� Creating daily backup...');
   createBackup();
 }, {
-  timezone: "Europe/Moscow"
+  timezone: "Asia/Yekaterinburg" // GMT+5
 });
 
 console.log('�🔔 Reminder system initialized!');
