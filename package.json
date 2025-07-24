@@ -1,11 +1,17 @@
 {
-  "name": "my-vocab-bot",
+  "name": "telegram-vocab-bot",
   "version": "1.0.0",
-  "main": "index.js",
+  "description": "Telegram bot for learning English vocabulary",
+  "main": "bot.js",
   "license": "ISC",
   "scripts": {
     "start": "node bot.js",
-    "dev": "nodemon bot.js"
+    "dev": "nodemon bot.js",
+    "build": "npx prisma generate && npx prisma db push",
+    "deploy": "npx prisma generate && npx prisma db push && node bot.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   },
   "dependencies": {
     "@prisma/client": "^6.11.1",

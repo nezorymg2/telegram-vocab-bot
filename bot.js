@@ -5,7 +5,28 @@ const { Bot, Keyboard, InputFile } = require('grammy');
 const axios = require('axios');
 const fs = require('fs');
 const cron = require('node-cron');
+const { execSync } = require('child_process');
 const prisma = require('./database');
+
+// Функция для инициализации базы данных
+async function initializeDatabase() {
+  try {
+    console.log('🔄 Initializing database...');
+    
+    // Выполняем миграцию
+    execSync('npx prisma db push', { stdio: 'inherit' });
+    console.log('✅ Database initialized successfully');
+    
+    // Проверяем подключение
+    await prisma.$connect();
+    console.log('✅ Database connection established');
+    
+  } catch (error) {
+    console.error('❌ Database initialization failed:', error);
+    // Не завершаем процесс, если миграция не удалась
+    console.log('⚠️ Continuing without migration...');
+  }
+}
 
 // Отладочная информация для проверки Prisma Client
 console.log('DEBUG: prisma type:', typeof prisma);
@@ -3451,5 +3472,12 @@ async function finishQuizSession(ctx, session) {
   });
 }
 
-bot.start();
+// Запускаем бота с инициализацией базы данных
+initializeDatabase().then(() => {
+  console.log('🚀 Starting bot...');
+  bot.start();
+}).catch((error) => {
+  console.error('❌ Failed to start bot:', error);
+  process.exit(1);
+});
 
