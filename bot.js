@@ -4133,6 +4133,8 @@ async function handleSmartRepeatStage2Answer(ctx, session, answerText) {
       
       if (result.isSynonym) {
         replyText += `\n\n💡 <i>Вы дали синоним "${answerText}". Правильный ответ: "${expectedAnswer}"</i>`;
+      } else if (result.isRelated) {
+        replyText += `\n\n💡 <i>Вы дали родственную форму "${answerText}". Точный ответ: "${expectedAnswer}"</i>`;
       }
       
       await ctx.reply(replyText, { parse_mode: 'HTML' });
@@ -4208,7 +4210,7 @@ async function checkAnswerWithAI(userAnswer, correctAnswer, direction) {
   
   if (userAnswerLower === correctAnswerLower) {
     console.log('✅ Exact match found (case insensitive)');
-    return { correct: true, isSynonym: false };
+    return { correct: true, isSynonym: false, isRelated: false };
   }
   
   // Проверяем схожесть по длине - если слова сильно отличаются по длине, сразу отклоняем
@@ -4218,7 +4220,7 @@ async function checkAnswerWithAI(userAnswer, correctAnswer, direction) {
   // Если длина отличается более чем на 30%, это точно разные слова
   if (lengthDiff / maxLength > 0.3) {
     console.log('Length difference too large, rejecting without AI check');
-    return { correct: false, isSynonym: false };
+    return { correct: false, isSynonym: false, isRelated: false };
   }
   
   // Простая проверка расстояния Левенштейна
@@ -4252,13 +4254,13 @@ async function checkAnswerWithAI(userAnswer, correctAnswer, direction) {
   // Если схожесть больше 80%, это скорее всего опечатка
   if (similarity > 0.8) {
     console.log(`High similarity (${Math.round(similarity * 100)}%), treating as typo`);
-    return { correct: true, isSynonym: false };
+    return { correct: true, isSynonym: false, isRelated: false };
   }
   
   // Если схожесть меньше 30%, это точно разные слова
   if (similarity < 0.3) {
     console.log(`Similarity too low (${Math.round(similarity * 100)}%), rejecting without AI check`);
-    return { correct: false, isSynonym: false };
+    return { correct: false, isSynonym: false, isRelated: false };
   }
   
   // Если не точное совпадение, проверяем через AI
@@ -4271,17 +4273,20 @@ async function checkAnswerWithAI(userAnswer, correctAnswer, direction) {
 Определи:
 1. Это ТОЧНО ТАКОЕ ЖЕ слово с опечатками (1-2 буквы)?
 2. Это СИНОНИМ или близкое по смыслу слово?
-3. Это НЕПРАВИЛЬНЫЙ ответ?
+3. Это РОДСТВЕННАЯ ФОРМА слова (глагол-существительное, разные части речи)?
+4. Это НЕПРАВИЛЬНЫЙ ответ?
 
 КРИТЕРИИ:
 - ТОЧНОЕ СЛОВО: "managment" для "management", "beatiful" для "beautiful"
-- СИНОНИМ: "assess" для "evaluate", "big" для "large", "start" для "begin"
+- СИНОНИМ: "assess" для "evaluate", "big" для "large", "start" для "begin"  
+- РОДСТВЕННАЯ ФОРМА: "оценка" для "оценивать", "выпускать" для "производить", "production" для "produce"
 - НЕПРАВИЛЬНО: совершенно разные слова
 
 Ответь в формате JSON:
 {
   "isExact": true/false,
   "isSynonym": true/false,
+  "isRelated": true/false,
   "isWrong": true/false
 }`;
 
@@ -4304,17 +4309,19 @@ async function checkAnswerWithAI(userAnswer, correctAnswer, direction) {
     try {
       const parsed = JSON.parse(result);
       if (parsed.isExact) {
-        return { correct: true, isSynonym: false };
+        return { correct: true, isSynonym: false, isRelated: false };
       } else if (parsed.isSynonym) {
-        return { correct: true, isSynonym: true };
+        return { correct: true, isSynonym: true, isRelated: false };
+      } else if (parsed.isRelated) {
+        return { correct: true, isSynonym: false, isRelated: true };
       } else {
-        return { correct: false, isSynonym: false };
+        return { correct: false, isSynonym: false, isRelated: false };
       }
     } catch (e) {
       console.log('Failed to parse AI response, using fallback');
       // Fallback к старой логике
       const isCorrect = result.toLowerCase().includes('true') || result.toLowerCase().includes('exact');
-      return { correct: isCorrect, isSynonym: false };
+      return { correct: isCorrect, isSynonym: false, isRelated: false };
     }
     
   } catch (error) {
@@ -4324,11 +4331,11 @@ async function checkAnswerWithAI(userAnswer, correctAnswer, direction) {
     const normalizedCorrect = correctAnswer.toLowerCase().trim();
     
     // Если слова совпадают точно - правильно
-    if (normalizedUser === normalizedCorrect) return { correct: true, isSynonym: false };
+    if (normalizedUser === normalizedCorrect) return { correct: true, isSynonym: false, isRelated: false };
     
     // Проверяем схожесть (должно быть больше 70% похожести)
     const similarity = calculateSimilarity(normalizedUser, normalizedCorrect);
-    return { correct: similarity > 0.7, isSynonym: false };
+    return { correct: similarity > 0.7, isSynonym: false, isRelated: false };
   }
 }
 
