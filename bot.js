@@ -4127,6 +4127,7 @@ async function handleSmartRepeatStage2Answer(ctx, session, answerText) {
     console.log(`Calling checkAnswerWithAI with: answerText="${answerText}", expectedAnswer="${expectedAnswer}", direction="${wordObj.direction}"`);
     const result = await checkAnswerWithAI(answerText, expectedAnswer, wordObj.direction);
     console.log(`AI check result:`, result);
+    console.log(`DEBUG: result.correct=${result.correct}, result.isSynonym=${result.isSynonym}, result.isRelated=${result.isRelated}`);
     
     if (result.correct) {
       let replyText = `✅ <b>Правильно!</b>\n\n📝 <b>${wordObj.word}</b> — ${wordObj.translation}`;
@@ -4308,13 +4309,18 @@ async function checkAnswerWithAI(userAnswer, correctAnswer, direction) {
     
     try {
       const parsed = JSON.parse(result);
+      console.log(`Parsed AI response:`, parsed);
       if (parsed.isExact) {
+        console.log('AI determined: EXACT match');
         return { correct: true, isSynonym: false, isRelated: false };
       } else if (parsed.isSynonym) {
+        console.log('AI determined: SYNONYM');
         return { correct: true, isSynonym: true, isRelated: false };
       } else if (parsed.isRelated) {
+        console.log('AI determined: RELATED form');
         return { correct: true, isSynonym: false, isRelated: true };
       } else {
+        console.log('AI determined: WRONG');
         return { correct: false, isSynonym: false, isRelated: false };
       }
     } catch (e) {
