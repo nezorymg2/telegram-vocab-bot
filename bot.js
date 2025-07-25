@@ -4181,29 +4181,88 @@ async function moveToNextStage2Word(ctx, session) {
 
 // Функция проверки ответа с помощью AI
 async function checkAnswerWithAI(userAnswer, correctAnswer, direction) {
-  const prompt = `Ты проверяешь правильность перевода слова.
+  // Предварительная проверка - точное совпадение без учета регистра
+  const userAnswerLower = userAnswer.trim().toLowerCase();
+  const correctAnswerLower = correctAnswer.trim().toLowerCase();
+  
+  if (userAnswerLower === correctAnswerLower) {
+    console.log('Exact match found (case insensitive)');
+    return true;
+  }
+  
+  // Проверяем схожесть по длине - если слова сильно отличаются по длине, сразу отклоняем
+  const lengthDiff = Math.abs(userAnswerLower.length - correctAnswerLower.length);
+  const maxLength = Math.max(userAnswerLower.length, correctAnswerLower.length);
+  
+  // Если длина отличается более чем на 30%, это точно разные слова
+  if (lengthDiff / maxLength > 0.3) {
+    console.log('Length difference too large, rejecting without AI check');
+    return false;
+  }
+  
+  // Простая проверка расстояния Левенштейна
+  function levenshteinDistance(str1, str2) {
+    const matrix = [];
+    for (let i = 0; i <= str2.length; i++) {
+      matrix[i] = [i];
+    }
+    for (let j = 0; j <= str1.length; j++) {
+      matrix[0][j] = j;
+    }
+    for (let i = 1; i <= str2.length; i++) {
+      for (let j = 1; j <= str1.length; j++) {
+        if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
+          matrix[i][j] = matrix[i - 1][j - 1];
+        } else {
+          matrix[i][j] = Math.min(
+            matrix[i - 1][j - 1] + 1,
+            matrix[i][j - 1] + 1,
+            matrix[i - 1][j] + 1
+          );
+        }
+      }
+    }
+    return matrix[str2.length][str1.length];
+  }
+  
+  const distance = levenshteinDistance(userAnswerLower, correctAnswerLower);
+  const similarity = 1 - (distance / maxLength);
+  
+  // Если схожесть меньше 60%, это точно разные слова
+  if (similarity < 0.6) {
+    console.log(`Similarity too low (${Math.round(similarity * 100)}%), rejecting without AI check`);
+    return false;
+  }
+  
+  // Если не точное совпадение, проверяем через AI
+  const prompt = `Ты строгий проверяющий перевода слов для изучения английского.
 
 Направление перевода: ${direction === 'en-ru' ? 'с английского на русский' : 'с русского на английский'}
 Правильный ответ: "${correctAnswer}"
 Ответ пользователя: "${userAnswer}"
 
-СТРОГИЕ правила проверки:
-- Принимай только реальные синонимы и альтернативные переводы
-- Разрешай только мелкие опечатки (1-2 символа)
-- НЕ принимай ответы с серьезными искажениями слова
-- НЕ принимай ответы, где больше половины букв неправильные
-- Разные формы слов (падежи, времена) - разрешай
-- Сокращения - только общепринятые
+КРИТИЧЕСКИ ВАЖНО:
+- Принимай ТОЛЬКО если это ТОЧНО ТАКОЕ ЖЕ слово с мелкими опечатками (1-2 буквы)
+- НЕ принимай синонимы или близкие по смыслу слова
+- НЕ принимай альтернативные переводы
+- Цель - выучить КОНКРЕТНОЕ слово, а не похожие
+- Даже если слова означают почти одно и то же - ОТКЛОНЯЙ
 
-Примеры НЕПРАВИЛЬНЫХ ответов:
-- "pallenish" для "pollination" (слишком много ошибок)
-- "managr" для "manager" (критичная опечатка)
-- "beautifal" для "beautiful" (серьезная ошибка)
+Примеры НЕПРАВИЛЬНЫХ ответов (ОТКЛОНЯЙ):
+- "assess" для "appreciate" (разные слова)
+- "implement" для "undertake" (разные слова) 
+- "beautiful" для "pretty" (синонимы, но разные слова)
+- "big" для "large" (синонимы, но разные слова)
+- "start" для "begin" (синонимы, но разные слова)
+- "happy" для "glad" (синонимы, но разные слова)
+- "managr" для "manager" (серьезная опечатка)
 
-Примеры ПРАВИЛЬНЫХ ответов:
-- "managment" для "management" (мелкая опечатка)
-- "beatiful" для "beautiful" (одна ошибка)
-- "управлять" для "manage" (синоним)
+Примеры ПРАВИЛЬНЫХ ответов (ПРИНИМАЙ):
+- "managment" для "management" (мелкая опечатка в 1 букву)
+- "beatiful" для "beautiful" (опечатка в 1 букву)
+- "Earn" для "earn" (только регистр)
+- "managing" для "manage" (форма того же слова)
+- "manager" для "manager" (точное совпадение)
 
 Ответь только "true" или "false".`;
 
