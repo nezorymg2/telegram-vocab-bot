@@ -2918,14 +2918,8 @@ bot.on('message:text', async (ctx) => {
     
     // Функция для безопасного выбора направления теста
     function getSafeDirection(word, allWords) {
-      // Проверяем, есть ли другие слова с таким же переводом
-      const sameTranslation = allWords.filter(w => w.translation.toLowerCase() === word.translation.toLowerCase());
-      if (sameTranslation.length > 1) {
-        // Если есть дубликаты перевода, используем только en-ru
-        return 'en-ru';
-      }
-      // Если перевод уникальный, можем использовать любое направление
-      return Math.random() < 0.5 ? 'en-ru' : 'ru-en';
+      // Всегда используем en-ru для избежания неоднозначности
+      return 'en-ru';
     }
     
     session.wordsToRepeat = wordsToRepeat.map(w => {
@@ -4056,12 +4050,8 @@ async function startSmartRepeatStage2(ctx, session) {
   
   // Функция для безопасного выбора направления теста
   function getSafeDirection(word, allWords) {
-    const allUserWords = allWords || [];
-    const sameTranslation = allUserWords.filter(w => w.translation.toLowerCase() === word.translation.toLowerCase());
-    if (sameTranslation.length > 1) {
-      return 'en-ru';
-    }
-    return Math.random() < 0.5 ? 'en-ru' : 'ru-en';
+    // Всегда используем en-ru для избежания неоднозначности
+    return 'en-ru';
   }
   
   const allWords = await getWords(session.profile);
@@ -4107,6 +4097,10 @@ async function handleSmartRepeatStage2Answer(ctx, session, answerText) {
   }
 
   const wordObj = session.wordsToRepeat[session.currentIndex];
+  
+  // Правильно определяем ожидаемый ответ на основе направления
+  // en-ru: "Как переводится autonomy?" → ожидается "автономия" 
+  // ru-en: "Как по-английски автономия?" → ожидается "autonomy"
   const expectedAnswer = wordObj.direction === 'en-ru' ? wordObj.translation : wordObj.word;
   
   // Отладочная информация
@@ -4115,14 +4109,33 @@ async function handleSmartRepeatStage2Answer(ctx, session, answerText) {
     Translation: ${wordObj.translation}
     Direction: ${wordObj.direction}
     User Answer: ${answerText}
-    Expected Answer: ${expectedAnswer}`);
+    Expected Answer: ${expectedAnswer}
+    Question format: ${wordObj.direction === 'en-ru' ? 'EN->RU (translate word)' : 'RU->EN (translate to English)'}`);
+  
+  // ДОПОЛНИТЕЛЬНАЯ ПРОВЕРКА: убеждаемся что direction соответствует ожидаемому ответу
+  if (wordObj.direction === 'en-ru' && answerText.toLowerCase() === wordObj.word.toLowerCase()) {
+    console.log('⚠️ DETECTED MISMATCH: User gave English word but question was EN->RU. Fixing direction...');
+    // Пользователь дал английское слово, но вопрос был "как переводится"
+    // Это означает что direction был установлен неправильно
+    wordObj.direction = 'ru-en';
+    const correctedExpected = wordObj.word;
+    console.log(`Corrected direction to ru-en, expected answer now: ${correctedExpected}`);
+  }
   
   try {
     // Используем AI для проверки ответа
-    const isCorrect = await checkAnswerWithAI(answerText, expectedAnswer, wordObj.direction);
+    console.log(`Calling checkAnswerWithAI with: answerText="${answerText}", expectedAnswer="${expectedAnswer}", direction="${wordObj.direction}"`);
+    const result = await checkAnswerWithAI(answerText, expectedAnswer, wordObj.direction);
+    console.log(`AI check result:`, result);
     
-    if (isCorrect) {
-      await ctx.reply(`✅ <b>Правильно!</b>\n\n📝 <b>${wordObj.word}</b> — ${wordObj.translation}`, { parse_mode: 'HTML' });
+    if (result.correct) {
+      let replyText = `✅ <b>Правильно!</b>\n\n📝 <b>${wordObj.word}</b> — ${wordObj.translation}`;
+      
+      if (result.isSynonym) {
+        replyText += `\n\n💡 <i>Вы дали синоним "${answerText}". Правильный ответ: "${expectedAnswer}"</i>`;
+      }
+      
+      await ctx.reply(replyText, { parse_mode: 'HTML' });
       
       // Начисляем XP за правильный ответ
       const wordCorrectLevel = wordObj.correct || 0;
@@ -4181,13 +4194,21 @@ async function moveToNextStage2Word(ctx, session) {
 
 // Функция проверки ответа с помощью AI
 async function checkAnswerWithAI(userAnswer, correctAnswer, direction) {
+  console.log(`=== checkAnswerWithAI START ===`);
+  console.log(`userAnswer: "${userAnswer}"`);
+  console.log(`correctAnswer: "${correctAnswer}"`);
+  console.log(`direction: "${direction}"`);
+  
   // Предварительная проверка - точное совпадение без учета регистра
   const userAnswerLower = userAnswer.trim().toLowerCase();
   const correctAnswerLower = correctAnswer.trim().toLowerCase();
   
+  console.log(`userAnswerLower: "${userAnswerLower}"`);
+  console.log(`correctAnswerLower: "${correctAnswerLower}"`);
+  
   if (userAnswerLower === correctAnswerLower) {
-    console.log('Exact match found (case insensitive)');
-    return true;
+    console.log('✅ Exact match found (case insensitive)');
+    return { correct: true, isSynonym: false };
   }
   
   // Проверяем схожесть по длине - если слова сильно отличаются по длине, сразу отклоняем
@@ -4197,7 +4218,7 @@ async function checkAnswerWithAI(userAnswer, correctAnswer, direction) {
   // Если длина отличается более чем на 30%, это точно разные слова
   if (lengthDiff / maxLength > 0.3) {
     console.log('Length difference too large, rejecting without AI check');
-    return false;
+    return { correct: false, isSynonym: false };
   }
   
   // Простая проверка расстояния Левенштейна
@@ -4228,50 +4249,47 @@ async function checkAnswerWithAI(userAnswer, correctAnswer, direction) {
   const distance = levenshteinDistance(userAnswerLower, correctAnswerLower);
   const similarity = 1 - (distance / maxLength);
   
-  // Если схожесть меньше 60%, это точно разные слова
-  if (similarity < 0.6) {
-    console.log(`Similarity too low (${Math.round(similarity * 100)}%), rejecting without AI check`);
-    return false;
+  // Если схожесть больше 80%, это скорее всего опечатка
+  if (similarity > 0.8) {
+    console.log(`High similarity (${Math.round(similarity * 100)}%), treating as typo`);
+    return { correct: true, isSynonym: false };
   }
   
+  // Если схожесть меньше 30%, это точно разные слова
+  if (similarity < 0.3) {
+    console.log(`Similarity too low (${Math.round(similarity * 100)}%), rejecting without AI check`);
+    return { correct: false, isSynonym: false };
+  
   // Если не точное совпадение, проверяем через AI
-  const prompt = `Ты строгий проверяющий перевода слов для изучения английского.
+  const prompt = `Ты проверяющий перевода слов для изучения английского.
 
 Направление перевода: ${direction === 'en-ru' ? 'с английского на русский' : 'с русского на английский'}
 Правильный ответ: "${correctAnswer}"
 Ответ пользователя: "${userAnswer}"
 
-КРИТИЧЕСКИ ВАЖНО:
-- Принимай ТОЛЬКО если это ТОЧНО ТАКОЕ ЖЕ слово с мелкими опечатками (1-2 буквы)
-- НЕ принимай синонимы или близкие по смыслу слова
-- НЕ принимай альтернативные переводы
-- Цель - выучить КОНКРЕТНОЕ слово, а не похожие
-- Даже если слова означают почти одно и то же - ОТКЛОНЯЙ
+Определи:
+1. Это ТОЧНО ТАКОЕ ЖЕ слово с опечатками (1-2 буквы)?
+2. Это СИНОНИМ или близкое по смыслу слово?
+3. Это НЕПРАВИЛЬНЫЙ ответ?
 
-Примеры НЕПРАВИЛЬНЫХ ответов (ОТКЛОНЯЙ):
-- "assess" для "appreciate" (разные слова)
-- "implement" для "undertake" (разные слова) 
-- "beautiful" для "pretty" (синонимы, но разные слова)
-- "big" для "large" (синонимы, но разные слова)
-- "start" для "begin" (синонимы, но разные слова)
-- "happy" для "glad" (синонимы, но разные слова)
-- "managr" для "manager" (серьезная опечатка)
+КРИТЕРИИ:
+- ТОЧНОЕ СЛОВО: "managment" для "management", "beatiful" для "beautiful"
+- СИНОНИМ: "assess" для "evaluate", "big" для "large", "start" для "begin"
+- НЕПРАВИЛЬНО: совершенно разные слова
 
-Примеры ПРАВИЛЬНЫХ ответов (ПРИНИМАЙ):
-- "managment" для "management" (мелкая опечатка в 1 букву)
-- "beatiful" для "beautiful" (опечатка в 1 букву)
-- "Earn" для "earn" (только регистр)
-- "managing" для "manage" (форма того же слова)
-- "manager" для "manager" (точное совпадение)
-
-Ответь только "true" или "false".`;
+Ответь в формате JSON:
+{
+  "isExact": true/false,
+  "isSynonym": true/false,
+  "isWrong": true/false
+}`;
 
   try {
     const response = await axios.post('https://api.openai.com/v1/chat/completions', {
       model: 'gpt-3.5-turbo',
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.1,
-      max_tokens: 10
+      max_tokens: 100
     }, {
       headers: {
         'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
@@ -4279,8 +4297,24 @@ async function checkAnswerWithAI(userAnswer, correctAnswer, direction) {
       }
     });
     
-    const result = response.data.choices[0].message.content.trim().toLowerCase();
-    return result === 'true';
+    const result = response.data.choices[0].message.content.trim();
+    console.log(`AI response: ${result}`);
+    
+    try {
+      const parsed = JSON.parse(result);
+      if (parsed.isExact) {
+        return { correct: true, isSynonym: false };
+      } else if (parsed.isSynonym) {
+        return { correct: true, isSynonym: true };
+      } else {
+        return { correct: false, isSynonym: false };
+      }
+    } catch (e) {
+      console.log('Failed to parse AI response, using fallback');
+      // Fallback к старой логике
+      const isCorrect = result.toLowerCase().includes('true') || result.toLowerCase().includes('exact');
+      return { correct: isCorrect, isSynonym: false };
+    }
     
   } catch (error) {
     console.error('AI check failed:', error);
@@ -4289,11 +4323,11 @@ async function checkAnswerWithAI(userAnswer, correctAnswer, direction) {
     const normalizedCorrect = correctAnswer.toLowerCase().trim();
     
     // Если слова совпадают точно - правильно
-    if (normalizedUser === normalizedCorrect) return true;
+    if (normalizedUser === normalizedCorrect) return { correct: true, isSynonym: false };
     
     // Проверяем схожесть (должно быть больше 70% похожести)
     const similarity = calculateSimilarity(normalizedUser, normalizedCorrect);
-    return similarity > 0.7;
+    return { correct: similarity > 0.7, isSynonym: false };
   }
 }
 
