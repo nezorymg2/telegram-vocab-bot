@@ -4259,6 +4259,7 @@ async function checkAnswerWithAI(userAnswer, correctAnswer, direction) {
   if (similarity < 0.3) {
     console.log(`Similarity too low (${Math.round(similarity * 100)}%), rejecting without AI check`);
     return { correct: false, isSynonym: false };
+  }
   
   // Если не точное совпадение, проверяем через AI
   const prompt = `Ты проверяющий перевода слов для изучения английского.
