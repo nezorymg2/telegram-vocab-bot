@@ -449,7 +449,7 @@ const addWordsMainMenu = new Keyboard()
   .text('✍️ Добавить своё слово')
   .row()
   .text('📚 Слова из Oxford 3000')
-  .text('� Слова из IELTS')
+  .text('🎓 Слова из IELTS')
   .row()
   .text('🔙 Назад в меню')
   .row();
@@ -1047,29 +1047,30 @@ async function checkGrammar(userResponse) {
 // Функция для поиска примеров из новостей
 async function searchNewsExamples(word) {
   try {
-    const prompt = `Создай 3 обучающих примера использования английского слова "${word}" в стиле новостных заголовков и статей.
+    const prompt = `Create 3 educational examples of the English word "${word}" used in news headlines and articles.
 
-ВАЖНО:
-- Это ОБУЧАЮЩИЕ примеры, не обязательно реальные новости
-- В каждом примере ОБЯЗАТЕЛЬНО должно присутствовать слово "${word}"
-- Выдели слово "${word}" жирным шрифтом: **${word}**
-- Примеры должны быть правдоподобными и полезными для изучения
+IMPORTANT:
+- These are EDUCATIONAL examples for English learners, not necessarily real news
+- Each example MUST contain the word "${word}"
+- Make the word "${word}" bold: **${word}**
+- Examples should be realistic and useful for learning
+- ALL content should be in ENGLISH ONLY - no translations or Russian text
 
-Требования:
-- Стиль новостных заголовков или отрывков из статей со словом "${word}"
-- Показать разные контексты использования слова
-- Указать тип источника (Business News, Tech News, Sports, etc.)
-- Дать краткий перевод/объяснение
+Requirements:
+- News headline or article excerpt style with the word "${word}"
+- Show different contexts of word usage
+- Indicate source type (Business News, Tech News, Sports, etc.)
+- Keep it natural and authentic
 
-Формат ответа:
-1. **[Тип новости]**: "Текст с выделенным **${word}**"
-   Перевод: "..."
+Response format (ENGLISH ONLY):
+1. **[News Type]**: "Text with highlighted **${word}**"
+   Context: Brief explanation of the situation in English
    
-2. **[Тип новости]**: "Текст с выделенным **${word}**"
-   Перевод: "..."
+2. **[News Type]**: "Text with highlighted **${word}**"
+   Context: Brief explanation of the situation in English
 
-3. **[Тип новости]**: "Текст с выделенным **${word}**"
-   Перевод: "..."`;
+3. **[News Type]**: "Text with highlighted **${word}**"
+   Context: Brief explanation of the situation in English`;
 
     const response = await axios.post('https://api.openai.com/v1/chat/completions', {
       model: 'gpt-3.5-turbo',
@@ -1086,44 +1087,42 @@ async function searchNewsExamples(word) {
     return response.data.choices[0].message.content.trim();
   } catch (error) {
     console.error('Ошибка при поиске новостных примеров:', error);
-    return `К сожалению, не удалось создать примеры слова "${word}" в стиле новостей. Попробуйте другое слово.`;
+    return `Sorry, couldn't create news examples for "${word}". Please try another word.`;
   }
 }
 
 // Функция для поиска примеров из фильмов/сериалов
 async function searchMovieExamples(word) {
   try {
-    const prompt = `Создай 3 обучающих примера использования английского слова "${word}" в стиле диалогов из фильмов и сериалов.
+    const prompt = `Create 3 educational examples of the English word "${word}" used in movie and TV show dialogues.
 
-ВАЖНО:
-- Это ОБУЧАЮЩИЕ примеры в стиле кинодиалогов, не обязательно реальные цитаты
-- В каждом примере ОБЯЗАТЕЛЬНО должно присутствовать слово "${word}"
-- Выдели слово "${word}" жирным шрифтом: **${word}**
-- Примеры должны быть правдоподобными и полезными для изучения
+IMPORTANT:
+- These are EDUCATIONAL examples in movie dialogue style, not necessarily real quotes
+- Each example MUST contain the word "${word}"
+- Make the word "${word}" bold: **${word}**
+- Examples should be realistic and useful for English learning
+- ALL content should be in ENGLISH ONLY - no translations or Russian text
 
-Требования:
-- Стиль диалогов из популярных фильмов/сериалов со словом "${word}"
-- Указать жанр или тип фильма/сериала и персонажа
-- Дать контекст ситуации
-- Перевод на русский
+Requirements:
+- Dialogue style from popular movies/TV shows with the word "${word}"
+- Indicate genre or type of movie/show and character
+- Provide context of the situation in English
+- Keep it natural and authentic
 
-Формат ответа:
-1. **[Жанр/Тип] - Персонаж:**
-   "Диалог с выделенным **${word}**"
-   Контекст: краткое описание ситуации
-   Перевод: "..."
+Response format (ENGLISH ONLY):
+1. **[Genre/Type] - Character:**
+   "Dialogue with highlighted **${word}**"
+   Context: Brief description of the situation in English
 
-2. **[Жанр/Тип] - Персонаж:**
-   "Диалог с выделенным **${word}**"
-   Контекст: краткое описание ситуации  
-   Перевод: "..."
+2. **[Genre/Type] - Character:**
+   "Dialogue with highlighted **${word}**"
+   Context: Brief description of the situation in English
 
-3. **[Жанр/Тип] - Персонаж:**
-   "Диалог с выделенным **${word}**"
-   Контекст: краткое описание ситуации
-   Перевод: "..."
+3. **[Genre/Type] - Character:**
+   "Dialogue with highlighted **${word}**"
+   Context: Brief description of the situation in English
 
-Используй стили разных жанров: драма, комедия, фантастика, боевик, etc.`;
+Use different genre styles: drama, comedy, sci-fi, action, etc.`;
 
     const response = await axios.post('https://api.openai.com/v1/chat/completions', {
       model: 'gpt-3.5-turbo', 
@@ -1140,7 +1139,7 @@ async function searchMovieExamples(word) {
     return response.data.choices[0].message.content.trim();
   } catch (error) {
     console.error('Ошибка при поиске примеров из фильмов:', error);
-    return `К сожалению, не удалось найти примеры слова "${word}" в фильмах/сериалах. Попробуйте другое слово.`;
+    return `Sorry, couldn't find movie/TV examples for "${word}". Please try another word.`;
   }
 }
 
@@ -1251,6 +1250,87 @@ bot.command('checkdb', async (ctx) => {
   } catch (error) {
     console.error('❌ Error checking database:', error);
     await ctx.reply(`❌ Ошибка при проверке базы: ${error.message}`);
+  }
+});
+
+// Админская команда пропуска этапов (только для Нурболат)
+bot.command('skip', async (ctx) => {
+  const userId = ctx.from.id;
+  const session = sessions[userId];
+  
+  if (!session || session.profile !== 'Нурболат') {
+    return ctx.reply('❌ Доступ запрещен');
+  }
+  
+  console.log(`🚀 Admin SKIP command used. Current step: ${session.step}`);
+  
+  // Определяем, на каком этапе находится пользователь и пропускаем его
+  if (session.step === 'smart_repeat_quiz' && session.smartRepeatStage === 1) {
+    // Пропускаем викторину, переходим к этапу 2
+    session.step = 'smart_repeat_stage_2';
+    session.smartRepeatStage = 2;
+    delete session.currentQuizSession;
+    
+    await ctx.reply('⏭️ Этап 1 (викторина) пропущен!\n\n🧠 <b>Умное повторение - Этап 2/4</b>\n<b>Знаю/Не знаю</b>\n\nПереходим к быстрой оценке слов...');
+    return await startSmartRepeatStage2(ctx, session);
+    
+  } else if (session.step === 'waiting_answer' && session.smartRepeatStage === 2) {
+    // Пропускаем этап 2, переходим к этапу 3
+    session.step = 'smart_repeat_stage_3';
+    session.smartRepeatStage = 3;
+    delete session.currentIndex;
+    delete session.wordsToRepeat;
+    delete session.repeatMode;
+    
+    await ctx.reply('⏭️ Этап 2 (знаю/не знаю) пропущен!\n\n🧠 <b>Умное повторение - Этап 3/4</b>\n<b>Составление предложений</b>\n\nПереходим к практике...');
+    return await startSmartRepeatStage3(ctx, session);
+    
+  } else if (session.step === 'sentence_task' && session.smartRepeatStage === 3) {
+    // Пропускаем этап 3, переходим к этапу 4
+    session.step = 'smart_repeat_stage_4';
+    session.smartRepeatStage = 4;
+    delete session.sentenceTaskWords;
+    delete session.sentenceTaskIndex;
+    delete session.stage3Sentences;
+    delete session.stage3Context;
+    
+    await ctx.reply('⏭️ Этап 3 (предложения) пропущен!\n\n🧠 <b>Умное повторение - Этап 4/4</b>\n<b>Чтение текста</b>\n\nПереходим к финальному этапу...');
+    return await startSmartRepeatStage4(ctx, session);
+    
+  } else if (session.step === 'story_task' && session.smartRepeatStage === 4) {
+    // Завершаем умное повторение
+    await ctx.reply('⏭️ Этап 4 (чтение) пропущен!\n\n✅ <b>Умное повторение завершено!</b>');
+    return await finishSmartRepeat(ctx, session);
+    
+  } else if (session.step === 'quiz_game') {
+    // Пропускаем обычную викторину
+    await finishQuizSession(ctx, session);
+    return ctx.reply('⏭️ Викторина завершена досрочно!');
+    
+  } else if (session.step === 'waiting_answer') {
+    // Пропускаем повторение слов
+    session.step = 'main_menu';
+    delete session.wordsToRepeat;
+    delete session.currentIndex;
+    return ctx.reply('⏭️ Повторение слов завершено!', { reply_markup: mainMenu });
+    
+  } else {
+    // Возвращаем в главное меню из любого состояния
+    session.step = 'main_menu';
+    
+    // Очищаем все состояния
+    delete session.currentQuizSession;
+    delete session.smartRepeatWords;
+    delete session.smartRepeatStage;
+    delete session.currentStage2Index;
+    delete session.stage2Answers;
+    delete session.currentStage3Index;
+    delete session.stage3Sentences;
+    delete session.stage3Context;
+    delete session.wordsToRepeat;
+    delete session.currentIndex;
+    
+    await ctx.reply('⏭️ Сброшено в главное меню!', { reply_markup: mainMenu });
   }
 });
 
@@ -1595,20 +1675,26 @@ bot.command('achievements', async (ctx) => {
 
 // Обработка любых текстовых сообщений
 bot.on('message:text', async (ctx) => {
-  const userId = ctx.from.id;
-  const text = ctx.message.text.trim();
-  const normalized = text.toLowerCase();
+  try {
+    const userId = ctx.from.id;
+    const text = ctx.message.text.trim();
+    const normalized = text.toLowerCase();
 
-  // Проверка на команду /menu в любом состоянии
-  if (normalized === '/menu') {
-    const session = sessions[userId];
-    if (!session || session.step === 'awaiting_password' || !session.profile) {
-      return ctx.reply('Сначала выполните /start');
+    // Игнорируем команды (они обрабатываются через bot.command())
+    if (text.startsWith('/')) {
+      return;
     }
-    const profile = session.profile;
-    sessions[userId] = { step: 'main_menu', profile };
-    return ctx.reply('Выберите действие:', { reply_markup: mainMenu });
-  }
+
+    // Проверка на команду /menu в любом состоянии
+    if (normalized === '/menu') {
+      const session = sessions[userId];
+      if (!session || session.step === 'awaiting_password' || !session.profile) {
+        return ctx.reply('Сначала выполните /start');
+      }
+      const profile = session.profile;
+      sessions[userId] = { step: 'main_menu', profile };
+      return ctx.reply('Выберите действие:', { reply_markup: mainMenu });
+    }
 
   // Специальная обработка кнопки "🧠 Умное повторение" из напоминаний
   if (text === '🧠 Умное повторение') {
@@ -1724,6 +1810,22 @@ bot.on('message:text', async (ctx) => {
     return await handleQuizAnswer(ctx, session, text);
   }
 
+  // Обработка викторины в рамках умного повторения
+  if (session.step === 'smart_repeat_quiz') {
+    if (text === '❌ Выйти из умного повторения') {
+      session.step = 'word_tasks_menu';
+      delete session.currentQuizSession;
+      delete session.smartRepeatWords;
+      delete session.smartRepeatStage;
+      return ctx.reply('🎯 Выберите тип задания:', {
+        reply_markup: wordTasksMenu,
+      });
+    }
+    
+    // Обрабатываем ответ в викторине умного повторения
+    return await handleSmartRepeatQuizAnswer(ctx, session, text);
+  }
+
   // Обработка продолжения игры
   if (session.step === 'quiz_continue') {
     if (text === '🎯 Следующий вопрос' || text === '➡️ Следующий вопрос') {
@@ -1830,8 +1932,6 @@ bot.on('message:text', async (ctx) => {
     }
     return;
   }
-
-  console.log(`DEBUG: ${userId} | STEP: ${step} | TEXT: "${text}"`);
 
   // Главное меню: добавить / повторить
   if (step === 'main_menu') {
@@ -2042,35 +2142,52 @@ bot.on('message:text', async (ctx) => {
         .map(w => ({ ...w, priority: calculatePriority(w) }))
         .sort((a, b) => b.priority - a.priority);
       
-      // Берем топ-20 слов с наивысшим приоритетом
+      // Берем топ-20 слов с наивысшим приоритетом для умного повторения
       const wordsToRepeat = sortedWords.slice(0, 20);
       
-      // Функция для безопасного выбора направления теста
-      function getSafeDirection(word, allWords) {
-        // Проверяем, есть ли другие слова с таким же переводом
-        const sameTranslation = allWords.filter(w => w.translation.toLowerCase() === word.translation.toLowerCase());
-        if (sameTranslation.length > 1) {
-          // Если есть дубликаты перевода, используем только en-ru
-          return 'en-ru';
+      // Сохраняем слова для всех этапов умного повторения
+      session.smartRepeatWords = wordsToRepeat;
+      
+      // ЭТАП 1: Запускаем викторину "Угадай перевод" с этими словами
+      // Берем первые 10 слов для викторины
+      const quizWords = wordsToRepeat.slice(0, 10);
+      if (quizWords.length < 10) {
+        // Если слов меньше 10, дополняем случайными
+        const remainingWords = userWords.filter(w => !quizWords.includes(w));
+        while (quizWords.length < 10 && remainingWords.length > 0) {
+          const randomIndex = Math.floor(Math.random() * remainingWords.length);
+          quizWords.push(remainingWords.splice(randomIndex, 1)[0]);
         }
-        // Если перевод уникальный, можем использовать любое направление
-        return Math.random() < 0.5 ? 'en-ru' : 'ru-en';
       }
       
-      session.wordsToRepeat = wordsToRepeat.map(w => {
-        const direction = getSafeDirection(w, userWords);
-        return { ...w, direction };
-      });
-      session.currentIndex = 0;
-      session.step = 'waiting_answer';
-      session.repeatMode = 'smart';
+      // Запускаем викторину как первый этап умного повторения
+      session.step = 'smart_repeat_quiz';
+      session.smartRepeatStage = 1; // Отслеживаем этап умного повторения
       
-      const first = session.wordsToRepeat[0];
-      const question = first.direction === 'en-ru'
-        ? `Как переводится слово: "${first.word}"?`
-        : `Как по-английски: "${first.translation}"?`;
+      // Инициализируем викторину
+      const currentQuizSession = {
+        words: quizWords,
+        currentQuestionIndex: 0,
+        score: 0,
+        answers: [],
+        isSmartRepeat: true // Флаг что это викторина в рамках умного повторения
+      };
       
-      return ctx.reply(`🧠 Умное повторение активировано!\nВыбраны слова, которые нужно повторить больше всего.\n\n${question}`);
+      session.currentQuizSession = currentQuizSession;
+      
+      // Генерируем первый вопрос
+      const firstQuestion = await generateQuizQuestion(currentQuizSession.words, 0, userWords);
+      
+      return ctx.reply(
+        `🧠 <b>Умное повторение - Этап 1/4</b>\n` +
+        `🎯 <b>Викторина "Угадай перевод"</b>\n\n` +
+        `Выбраны ${wordsToRepeat.length} приоритетных слов для повторения.\n\n` +
+        `<b>Вопрос 1/10:</b>\n${firstQuestion.question}`,
+        { 
+          reply_markup: firstQuestion.keyboard,
+          parse_mode: 'HTML' 
+        }
+      );
     }
     
     if (text === '🎯 Угадай перевод' || text === 'Угадай перевод' || text === '� Угадай перевод') {
@@ -2315,7 +2432,7 @@ bot.on('message:text', async (ctx) => {
     
     try {
       const examples = await searchNewsExamples(word);
-      await ctx.reply(`📰 **Примеры слова "${word}" в стиле новостей:**\n\n${examples}`, {
+      await ctx.reply(`📰 **News Examples for "${word}":**\n\n${examples}`, {
         reply_markup: new Keyboard()
           .text('Найти другое слово')
           .text('Назад в меню')
@@ -2345,7 +2462,7 @@ bot.on('message:text', async (ctx) => {
     
     try {
       const examples = await searchMovieExamples(word);
-      await ctx.reply(`🎬 **Примеры слова "${word}" в стиле фильмов/сериалов:**\n\n${examples}`, {
+      await ctx.reply(`🎬 **Movie/TV Examples for "${word}":**\n\n${examples}`, {
         reply_markup: new Keyboard()
           .text('Найти другое слово')
           .text('Назад в меню')
@@ -2405,6 +2522,18 @@ bot.on('message:text', async (ctx) => {
 
   // Обработка ответов на повторение слов
   if (step === 'waiting_answer') {
+    // Специальная обработка для этапа 2 умного повторения
+    if (session.smartRepeatStage === 2) {
+      return await handleSmartRepeatStage2Answer(ctx, session, text);
+    }
+    
+    // Проверяем наличие массива и индекса
+    if (!session.wordsToRepeat || !Array.isArray(session.wordsToRepeat) || 
+        session.currentIndex === undefined || session.currentIndex >= session.wordsToRepeat.length) {
+      session.step = 'main_menu';
+      return ctx.reply('⚠️ Ошибка в системе повторения. Возвращаемся в меню.', { reply_markup: mainMenu });
+    }
+    
     const wordObj = session.wordsToRepeat[session.currentIndex];
     let correct, answer;
     if (wordObj.direction === 'en-ru') {
@@ -2481,33 +2610,41 @@ bot.on('message:text', async (ctx) => {
       }
       // --- Умное повторение переходит к sentence_task ---
       if (session.repeatMode === 'smart') {
-        // Отмечаем что умное повторение пройдено сегодня
-        const todayString = new Date().toDateString();
-        session.lastSmartRepeatDate = todayString;
-        
-        console.log(`DEBUG SMART REPEAT: User ${ctx.from.id} completed smart repeat`);
-        console.log(`  - Setting lastSmartRepeatDate to: "${todayString}"`);
-        
-        // Сохраняем изменения в базу данных
-        if (session.profile) {
-          await saveUserSession(ctx.from.id, session.profile, session);
-          console.log(`  - Saved to database for profile: ${session.profile}`);
-        }
-        
-        const allUserWords = await getWords(session.profile);
-        const newWords = allUserWords.filter(w => w.correct <= 2).slice(0, 7);
-        if (newWords.length > 0) {
-          session.sentenceTaskWords = newWords;
-          session.sentenceTaskIndex = 0;
-          session.step = 'sentence_task';
-          await ctx.reply(`🧠 Умное повторение завершено!\n\nТеперь напиши предложения с новыми словами (${newWords.length}): по одному предложению на слово. Пиши по одному предложению на английском.`);
-          await ctx.reply(`Первое слово: "${newWords[0].word}". Напиши предложение с этим словом на английском:`);
+        // Проверяем, какой этап умного повторения
+        if (session.smartRepeatStage === 2) {
+          // Этап 2 завершен - переходим к этапу 3 (предложения)
+          await startSmartRepeatStage3(ctx, session);
           return;
         } else {
-          session.step = 'main_menu';
-          return ctx.reply('🧠 Умное повторение завершено! Приоритетные слова проработаны.', {
-            reply_markup: mainMenu,
-          });
+          // Обычное умное повторение (не многоэтапное) или этап 3 завершен
+          // Отмечаем что умное повторение пройдено сегодня
+          const todayString = new Date().toDateString();
+          session.lastSmartRepeatDate = todayString;
+          
+          console.log(`DEBUG SMART REPEAT: User ${ctx.from.id} completed smart repeat`);
+          console.log(`  - Setting lastSmartRepeatDate to: "${todayString}"`);
+          
+          // Сохраняем изменения в базу данных
+          if (session.profile) {
+            await saveUserSession(ctx.from.id, session.profile, session);
+            console.log(`  - Saved to database for profile: ${session.profile}`);
+          }
+          
+          const allUserWords = await getWords(session.profile);
+          const newWords = allUserWords.filter(w => w.correct <= 2).slice(0, 7);
+          if (newWords.length > 0) {
+            session.sentenceTaskWords = newWords;
+            session.sentenceTaskIndex = 0;
+            session.step = 'sentence_task';
+            await ctx.reply(`🧠 Умное повторение завершено!\n\nТеперь напиши предложения с новыми словами (${newWords.length}): по одному предложению на слово. Пиши по одному предложению на английском.`);
+            await ctx.reply(`Первое слово: "${newWords[0].word}". Напиши предложение с этим словом на английском:`);
+            return;
+          } else {
+            session.step = 'main_menu';
+            return ctx.reply('🧠 Умное повторение завершено! Приоритетные слова проработаны.', {
+              reply_markup: mainMenu,
+            });
+          }
         }
       }
     }
@@ -2805,12 +2942,189 @@ bot.on('message:text', async (ctx) => {
     return ctx.reply(question);
   }
 
+  // --- Задание: предложения с новыми словами ---
+  if (step === 'sentence_task') {
+    try {
+      const idx = session.sentenceTaskIndex || 0;
+      const words = session.sentenceTaskWords || [];
+      
+      // Проверяем, что есть слова и индекс корректный
+      if (words.length === 0 || idx >= words.length) {
+        session.step = 'main_menu';
+        return ctx.reply('⚠️ Ошибка: нет слов для задания. Возвращаемся в меню.', { reply_markup: mainMenu });
+      }
+      
+      // Инициализируем массив для хранения предложений
+      if (!session.sentenceTaskAnswers) {
+        session.sentenceTaskAnswers = [];
+      }
+      
+      // Сохраняем предложение пользователя
+      const wordObj = words[idx];
+      const sentence = text.trim();
+      
+      // Простая валидация - проверяем что предложение не пустое
+      if (sentence.length < 3) {
+        return ctx.reply('Пожалуйста, напишите более содержательное предложение (минимум 3 символа).');
+      }
+      
+      // Сохраняем предложение
+      session.sentenceTaskAnswers.push({
+        word: wordObj.word,
+        translation: wordObj.translation,
+        sentence: sentence,
+        context: wordObj.context || 'общий контекст' // сохраняем контекст ситуации
+      });
+      
+      await ctx.reply('✅ Предложение записано!');
+      
+      // Переходим к следующему слову
+      session.sentenceTaskIndex = idx + 1;
+      if (session.sentenceTaskIndex < words.length) {
+        // Получаем подходящий контекст от AI для следующего слова
+        const nextWord = words[session.sentenceTaskIndex];
+        await ctx.reply('🤔 Подбираю подходящий контекст для слова...');
+        const situation = await getAIContext(nextWord.word, nextWord.translation);
+        nextWord.context = situation.context; // Сохраняем контекст для следующего слова
+        
+        await ctx.reply(
+          `Напиши предложение со словом <b>"${nextWord.word}"</b> (${nextWord.translation}) в контексте: <b>${situation.context}</b>\n\n${situation.description ? `💡 ${situation.description}` : ''}`,
+          { parse_mode: 'HTML' }
+        );
+      } else {
+        // Все предложения написаны - запускаем итоговый AI анализ
+        await analyzeSentencesWithAI(ctx, session);
+      }
+      return;
+    } catch (error) {
+      console.error('Error in sentence_task handling:', error);
+      // В случае сетевой ошибки, пытаемся отправить простое сообщение
+      try {
+        await ctx.reply('⚠️ Произошла сетевая ошибка. Попробуйте отправить предложение еще раз.');
+      } catch (retryError) {
+        console.error('Failed to send retry message:', retryError);
+      }
+      return;
+    }
+  }
+
+  // --- Story quiz ---
+  if (step === 'story_quiz') {
+    const idx = session.storyQuestionIndex || 0;
+    const questions = session.storyQuestions || [];
+    if (!Array.isArray(questions) || !questions.length) {
+      session.step = 'sentence_task';
+      await ctx.reply('Ошибка: нет вопросов для теста. Попробуйте ещё раз отправить любое сообщение, чтобы сгенерировать тест заново.', { reply_markup: mainMenu });
+      return;
+    }
+    if (idx >= questions.length) {
+      delete session.storyText;
+      delete session.storyQuestions;
+      delete session.storyQuestionIndex;
+      delete session.storyTaskWords;
+      
+      if (session.smartRepeatStage === 4) {
+        // Этап 4 умного повторения завершен - завершаем всё умное повторение
+        await completeSmartRepeat(ctx, session);
+      } else {
+        // Обычное текстовое задание - показываем поздравление
+        session.step = 'main_menu';
+        const relaxTip = getRandomRelaxTip();
+        const congratsMessage = `🎉 <b>Отличная работа!</b> Ты завершил все задания на сегодня!\n\n💡 <b>Время отдохнуть с пользой:</b>\n${relaxTip}`;
+        
+        return ctx.reply(congratsMessage, { 
+          parse_mode: 'HTML',
+          reply_markup: mainMenu 
+        });
+      }
+      return;
+    }
+    const q = questions[idx];
+    if (!Array.isArray(q.options) || !q.options.length) {
+      session.step = 'sentence_task';
+      await ctx.reply('Ошибка: нет вариантов ответа для вопроса. Попробуйте ещё раз отправить любое сообщение, чтобы сгенерировать тест заново.', { reply_markup: mainMenu });
+      return;
+    }
+    if (!q.options.includes(text)) {
+      // Если пользователь ввёл не вариант, а что-то другое
+      return ctx.reply('Пожалуйста, выберите один из предложенных вариантов.', {
+        reply_markup: Keyboard.from(q.options.map(opt => [opt]), { one_time_keyboard: true, resize_keyboard: true })
+      });
+    }
+    if (text === q.correct_option) {
+      await ctx.reply('✅ Верно!');
+    } else {
+      await ctx.reply(`❌ Неверно. Правильный ответ: ${q.correct_option}`);
+    }
+    session.storyQuestionIndex = idx + 1;
+    if (session.storyQuestionIndex < questions.length) {
+      const nextQ = questions[session.storyQuestionIndex];
+      if (!Array.isArray(nextQ.options) || !nextQ.options.length) {
+        session.step = 'sentence_task';
+        await ctx.reply('Ошибка: нет вариантов ответа для следующего вопроса. Попробуйте ещё раз отправить любое сообщение, чтобы сгенерировать тест заново.', { reply_markup: mainMenu });
+        return;
+      }
+      await ctx.reply(`Вопрос ${session.storyQuestionIndex + 1}/${questions.length}: ${nextQ.question}`, {
+        reply_markup: Keyboard.from(nextQ.options.map(opt => [opt]), { one_time_keyboard: true, resize_keyboard: true })
+      });
+    } else {
+      delete session.storyText;
+      delete session.storyQuestions;
+      delete session.storyQuestionIndex;
+      delete session.storyTaskWords;
+      
+      if (session.smartRepeatStage === 4) {
+        // Этап 4 умного повторения завершен - завершаем всё умное повторение
+        await completeSmartRepeat(ctx, session);
+      } else {
+        // Обычное текстовое задание - показываем поздравление
+        session.step = 'main_menu';
+        const relaxTip = getRandomRelaxTip();
+        const congratsMessage = `🎉 <b>Отличная работа!</b> Ты завершил все задания на сегодня!\n\n💡 <b>Время отдохнуть с пользой:</b>\n${relaxTip}`;
+        
+        await ctx.reply(congratsMessage, { 
+          parse_mode: 'HTML',
+          reply_markup: mainMenu 
+        });
+      }
+    }
+    return;
+  }
+
+  // На всякий случай: если ничего не подошло
+  return ctx.reply('Не понял. Используйте меню или введите /menu.', {
+    reply_markup: mainMenu,
+  });
+  } catch (error) {
+    console.error('Error in message handler:', error);
+    try {
+      await ctx.reply('⚠️ Произошла ошибка. Попробуйте /menu для возврата в главное меню.');
+    } catch (replyError) {
+      console.error('Failed to send error message:', replyError);
+    }
+  }
+});
+
 // Функция для генерации story task контента
 async function generateStoryTaskContent(session, ctx) {
-  const storyWords = session.storyTaskWords || [];
-  
-  // Исправленный промпт для разнообразных ситуаций
-  const prompt = `Ты — опытный автор коротких рассказов.
+  try {
+    console.log('=== GENERATE STORY TASK CONTENT START ===');
+    
+    const storyWords = session.storyTaskWords || [];
+    console.log('Story words:', storyWords);
+    
+    // Проверяем наличие API ключа
+    if (!process.env.OPENAI_API_KEY) {
+      console.error('No OpenAI API key found');
+      session.step = 'main_menu';
+      await ctx.reply('❌ Функция генерации текста временно недоступна. Обратитесь к администратору.', { reply_markup: mainMenu });
+      return;
+    }
+    
+    console.log('API key available, creating prompt...');
+    
+    // Исправленный промпт для разнообразных ситуаций
+    const prompt = `Ты — опытный автор коротких рассказов.
 
 Напиши увлекательный текст на английском языке из 10-15 предложений на ЛЮБУЮ интересную тему (НЕ про школу или учителей).
 
@@ -2852,7 +3166,6 @@ async function generateStoryTaskContent(session, ctx) {
   ]
 }`;
 
-  try {
     const gptRes = await axios.post('https://api.openai.com/v1/chat/completions', {
       model: 'gpt-3.5-turbo',
       messages: [{ role: 'user', content: prompt }],
@@ -2909,182 +3222,36 @@ async function generateStoryTaskContent(session, ctx) {
     });
     
   } catch (e) {
-    session.step = 'main_menu';
-    let errorMsg = 'Ошибка при генерации текста через AI. Попробуйте позже.';
-    if (e.response && e.response.data && e.response.data.error && e.response.data.error.message) {
-      errorMsg += `\n\nAI ответил: ${e.response.data.error.message}`;
-    } else if (e.message) {
-      errorMsg += `\n\n${e.message}`;
+    console.error('Error in generateStoryTaskContent:', e);
+    
+    // Логируем детали ошибки
+    if (e.response && e.response.data) {
+      console.error('API response error:', e.response.data);
     }
+    
+    session.step = 'main_menu';
+    let errorMsg = 'Произошла ошибка при генерации текста. ';
+    
+    if (e.response && e.response.data && e.response.data.error) {
+      const apiError = e.response.data.error;
+      console.error('OpenAI API Error:', apiError);
+      
+      if (apiError.code === 'insufficient_quota') {
+        errorMsg += 'Превышен лимит API запросов. Попробуйте позже.';
+      } else if (apiError.code === 'invalid_api_key') {
+        errorMsg += 'Проблема с API ключом. Обратитесь к администратору.';
+      } else {
+        errorMsg += `API ошибка: ${apiError.message}`;
+      }
+    } else if (e.message.includes('JSON')) {
+      errorMsg += 'AI вернул некорректный ответ. Попробуйте еще раз.';
+    } else {
+      errorMsg += `Ошибка: ${e.message}`;
+    }
+    
     await ctx.reply(errorMsg, { reply_markup: mainMenu });
   }
 }
-
-  // --- Задание: предложения с новыми словами ---
-  if (step === 'sentence_task') {
-    const idx = session.sentenceTaskIndex || 0;
-    const words = session.sentenceTaskWords || [];
-    
-    // Этот блок обрабатывает пользовательский ввод (предложения)
-    const wordObj = words[idx];
-    const sentence = text;
-    // Промпт для ChatGPT
-    const prompt = `Ты — учитель английского языка. Твоя задача — подробно проверить, правильно ли использовано слово '${wordObj.word}' в предложении: '${sentence}'.\n\nОцени по критериям:\n- Грамматическая корректность.\n- Правильность и уместность слова в контексте.\n- Естественность звучания предложения.\n\nОтвет должен быть строго в формате JSON:\n{\n  "ok": true или false,\n  "explanation": "Подробное, но краткое объяснение на русском (до 6 предложений), что именно неправильно или правильно, как исправить ошибку и на что обратить внимание.\",\n  "example": \"Обязательный пример правильного использования этого слова в предлождении на английском с переводом на русский. Формат: 'Example: ... (Перевод: ...)'\"\n}\n\nНе добавляй никакого текста помимо JSON.`;
-    await ctx.reply('Проверяю предложение через AI, подождите...');
-    try {
-      const gptRes = await axios.post('https://api.openai.com/v1/chat/completions', {
-        model: 'gpt-3.5-turbo',
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.7,
-        max_tokens: 500
-      }, {
-        headers: {
-          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      let answer = gptRes.data.choices[0].message.content;
-      // Ищем JSON в ответе
-      const match = answer.match(/\{[\s\S]*\}/);
-      let result = null;
-      if (match) {
-        result = JSON.parse(match[0]);
-      } else {
-        throw new Error('AI не вернул JSON.');
-      }
-      // Обновляем correct
-      const all = await getWords(session.profile);
-      const userWordIdx = all.findIndex(w => w.word === wordObj.word && w.translation === wordObj.translation);
-      if (userWordIdx !== -1) {
-        if (result.ok === true) {
-          await updateWordCorrect(session.profile, wordObj.word, wordObj.translation, Math.max((all[userWordIdx].correct || 0) + 1, 0));
-        } else {
-          await updateWordCorrect(session.profile, wordObj.word, wordObj.translation, Math.max((all[userWordIdx].correct || 0) - 1, 0));
-        }
-      }
-      // Явная обратная связь по JSON-ответу
-      if (result.ok === true) {
-        await ctx.reply('✅ Хорошо! Предложение правильно использует слово!');
-      } else {
-        await ctx.reply('❌ Увы не правильно использовали слово в предложении. Вот что AI говорит:');
-      }
-      await ctx.reply(result.explanation);
-      // Показываем пример правильного использования (если есть)
-      if (result.example) {
-        await ctx.reply(result.example);
-      }
-      // Показываем перевод слова
-      await ctx.reply(`Перевод: ${wordObj.translation}`);
-    } catch (e) {
-      let errorMsg = 'Ошибка при проверке предложения через AI. Попробуйте позже.';
-      if (e.response && e.response.data && e.response.data.error && e.response.data.error.message) {
-        errorMsg += `\n\nAI ответил: ${e.response.data.error.message}`;
-      } else if (e.message) {
-        errorMsg += `\n\n${e.message}`;
-      }
-      await ctx.reply(errorMsg);
-    }
-    // Следующее слово
-    session.sentenceTaskIndex = idx + 1;
-    if (session.sentenceTaskIndex < words.length) {
-      await ctx.reply(`Следующее слово: "${words[session.sentenceTaskIndex].word}". Напиши предложение с этим словом на английском:`);
-    } else {
-      // Все предложения написаны, запускаем story_task
-      const storyWords = (session.lastWordsToRepeat || session.wordsToRepeat || session.sentenceTaskWords || []).map(w => w.word);
-      if (storyWords.length > 0) {
-        session.storyTaskWords = storyWords;
-        session.step = 'story_task';
-        // Явное сообщение перед генерацией текста
-        await ctx.reply('Отлично! Все предложения написаны. Сейчас будет задание на понимание текста. Генерирую текст...');
-        // Генерируем текст сразу
-        await generateStoryTaskContent(session, ctx);
-      } else {
-        session.step = 'main_menu';
-        delete session.sentenceTaskWords;
-        delete session.sentenceTaskIndex;
-        await ctx.reply('Задание завершено!', { reply_markup: mainMenu });
-      }
-    }
-    return;
-  }
-
-  // --- Story quiz ---
-  if (step === 'story_quiz') {
-    const idx = session.storyQuestionIndex || 0;
-    const questions = session.storyQuestions || [];
-    if (!Array.isArray(questions) || !questions.length) {
-      session.step = 'sentence_task';
-      await ctx.reply('Ошибка: нет вопросов для теста. Попробуйте ещё раз отправить любое сообщение, чтобы сгенерировать тест заново.', { reply_markup: mainMenu });
-      return;
-    }
-    if (idx >= questions.length) {
-      session.step = 'main_menu';
-      delete session.storyText;
-      delete session.storyQuestions;
-      delete session.storyQuestionIndex;
-      delete session.storyTaskWords;
-      
-      // Показываем поздравление и совет для отдыха
-      const relaxTip = getRandomRelaxTip();
-      const congratsMessage = `🎉 <b>Отличная работа!</b> Ты завершил все задания на сегодня!\n\n💡 <b>Время отдохнуть с пользой:</b>\n${relaxTip}`;
-      
-      return ctx.reply(congratsMessage, { 
-        parse_mode: 'HTML',
-        reply_markup: mainMenu 
-      });
-    }
-    const q = questions[idx];
-    if (!Array.isArray(q.options) || !q.options.length) {
-      session.step = 'sentence_task';
-      await ctx.reply('Ошибка: нет вариантов ответа для вопроса. Попробуйте ещё раз отправить любое сообщение, чтобы сгенерировать тест заново.', { reply_markup: mainMenu });
-      return;
-    }
-    if (!q.options.includes(text)) {
-      // Если пользователь ввёл не вариант, а что-то другое
-      return ctx.reply('Пожалуйста, выберите один из предложенных вариантов.', {
-        reply_markup: Keyboard.from(q.options.map(opt => [opt]), { one_time_keyboard: true, resize_keyboard: true })
-      });
-    }
-    if (text === q.correct_option) {
-      await ctx.reply('✅ Верно!');
-    } else {
-      await ctx.reply(`❌ Неверно. Правильный ответ: ${q.correct_option}`);
-    }
-    session.storyQuestionIndex = idx + 1;
-    if (session.storyQuestionIndex < questions.length) {
-      const nextQ = questions[session.storyQuestionIndex];
-      if (!Array.isArray(nextQ.options) || !nextQ.options.length) {
-        session.step = 'sentence_task';
-        await ctx.reply('Ошибка: нет вариантов ответа для следующего вопроса. Попробуйте ещё раз отправить любое сообщение, чтобы сгенерировать тест заново.', { reply_markup: mainMenu });
-        return;
-      }
-      await ctx.reply(`Вопрос ${session.storyQuestionIndex + 1}/${questions.length}: ${nextQ.question}`, {
-        reply_markup: Keyboard.from(nextQ.options.map(opt => [opt]), { one_time_keyboard: true, resize_keyboard: true })
-      });
-    } else {
-      session.step = 'main_menu';
-      delete session.storyText;
-      delete session.storyQuestions;
-      delete session.storyQuestionIndex;
-      delete session.storyTaskWords;
-      
-      // Показываем поздравление и совет для отдыха
-      const relaxTip = getRandomRelaxTip();
-      const congratsMessage = `🎉 <b>Отличная работа!</b> Ты завершил все задания на сегодня!\n\n💡 <b>Время отдохнуть с пользой:</b>\n${relaxTip}`;
-      
-      await ctx.reply(congratsMessage, { 
-        parse_mode: 'HTML',
-        reply_markup: mainMenu 
-      });
-    }
-    return;
-  }
-
-  // На всякий случай: если ничего не подошло
-  return ctx.reply('Не понял. Используйте меню или введите /menu.', {
-    reply_markup: mainMenu,
-  });
-});
 
 // Обработка команд бота
 bot.api.setMyCommands([
@@ -3482,6 +3649,50 @@ async function startQuizGame(ctx, session) {
   }
 }
 
+// Функция генерации вопроса для викторины (для умного повторения)
+async function generateQuizQuestion(words, questionIndex, allUserWords) {
+  try {
+    // Проверяем входные параметры
+    if (!Array.isArray(words) || questionIndex < 0 || questionIndex >= words.length) {
+      throw new Error('Invalid words array or questionIndex');
+    }
+    
+    const targetWord = words[questionIndex];
+    if (!targetWord || !targetWord.word || !targetWord.translation) {
+      throw new Error('Invalid target word structure');
+    }
+    
+    // Генерируем варианты ответов
+    const options = await generateQuizOptions(targetWord, allUserWords);
+    
+    // Проверяем, что получили варианты ответов
+    if (!Array.isArray(options) || options.length === 0) {
+      throw new Error('Failed to generate quiz options');
+    }
+    
+    // Создаем клавиатуру
+    const keyboard = new Keyboard();
+    options.forEach((option, index) => {
+      keyboard.text(`${index + 1}️⃣ ${option}`).row();
+    });
+    keyboard.text('❌ Выйти из умного повторения').row();
+    
+    return {
+      question: `📝 <b>Слово:</b> <code>${targetWord.word}</code>\n\n🤔 Выберите правильный перевод:`,
+      keyboard,
+      correctAnswer: targetWord.translation
+    };
+  } catch (error) {
+    console.error('Error in generateQuizQuestion:', error);
+    // Возвращаем безопасный fallback
+    return {
+      question: '⚠️ Ошибка при генерации вопроса',
+      keyboard: new Keyboard().text('❌ Выйти из умного повторения').row(),
+      correctAnswer: 'unknown'
+    };
+  }
+}
+
 // Функция генерации вариантов ответов для викторины
 async function generateQuizOptions(targetWord, userWords) {
   const options = [targetWord.translation];
@@ -3523,16 +3734,20 @@ async function generateQuizOptions(targetWord, userWords) {
 
 // Функция обработки ответа в викторине
 async function handleQuizAnswer(ctx, session, answerText) {
-  const quiz = session.currentQuiz;
-  const quizSession = session.currentQuizSession;
-  if (!quiz || !quizSession) return false;
-  
-  // Определяем, какой вариант выбрал пользователь
-  const answerMatch = answerText.match(/^([1-4])️⃣\s(.+)$/);
-  if (!answerMatch) return false;
-  
-  const selectedAnswer = answerMatch[2];
-  const isCorrect = selectedAnswer === quiz.correctAnswer;
+  try {
+    const quiz = session.currentQuiz;
+    const quizSession = session.currentQuizSession;
+    if (!quiz || !quizSession || !Array.isArray(quizSession.words)) {
+      console.log('Invalid quiz state in handleQuizAnswer');
+      return false;
+    }
+    
+    // Определяем, какой вариант выбрал пользователь
+    const answerMatch = answerText.match(/^([1-4])️⃣\s(.+)$/);
+    if (!answerMatch) return false;
+    
+    const selectedAnswer = answerMatch[2];
+    const isCorrect = selectedAnswer === quiz.correctAnswer;
   
   // Обновляем статистику викторины (не общую статистику - она обновится в конце)
   if (isCorrect) {
@@ -3664,6 +3879,11 @@ async function handleQuizAnswer(ctx, session, answerText) {
       parse_mode: 'HTML'
     });
   }
+  } catch (error) {
+    console.error('Error in handleQuizAnswer:', error);
+    await ctx.reply('⚠️ Произошла ошибка в викторине. Попробуйте /menu.');
+    return false;
+  }
 }
 
 // Функция завершения викторины
@@ -3736,6 +3956,802 @@ async function finishQuizSession(ctx, session) {
   });
 }
 
+// Функция обработки ответа в викторине умного повторения
+async function handleSmartRepeatQuizAnswer(ctx, session, answerText) {
+  const quizSession = session.currentQuizSession;
+  if (!quizSession || !quizSession.isSmartRepeat) return false;
+  
+  const currentQuestionIndex = quizSession.currentQuestionIndex;
+  const word = quizSession.words[currentQuestionIndex];
+  
+  // Генерируем вопрос для текущего слова чтобы получить правильный ответ
+  const allWords = await getWords(session.profile);
+  const questionData = await generateQuizQuestion(quizSession.words, currentQuestionIndex, allWords);
+  
+  // Определяем, какой вариант выбрал пользователь
+  const answerMatch = answerText.match(/^([1-4])️⃣\s(.+)$/);
+  if (!answerMatch) return false;
+  
+  const selectedAnswer = answerMatch[2];
+  const isCorrect = selectedAnswer === questionData.correctAnswer;
+  
+  // Обновляем статистику слова в базе данных
+  if (isCorrect) {
+    try {
+      await updateWordCorrect(session.profile, word.word, word.translation, word.correct + 1);
+      console.log(`Smart repeat quiz: ${word.word} correct count increased`);
+    } catch (error) {
+      console.error('Error updating word progress in smart repeat quiz:', error);
+    }
+    
+    quizSession.score++;
+  }
+  
+  // Сохраняем ответ
+  quizSession.answers.push({
+    word: word.word,
+    translation: word.translation,
+    isCorrect: isCorrect,
+    selectedAnswer: selectedAnswer,
+    correctAnswer: questionData.correctAnswer
+  });
+  
+  // Переходим к следующему вопросу
+  quizSession.currentQuestionIndex++;
+  
+  let responseMessage;
+  
+  if (isCorrect) {
+    responseMessage = `✅ <b>Правильно!</b>\n\n` +
+      `📝 <b>${word.word}</b> — ${questionData.correctAnswer}`;
+  } else {
+    responseMessage = `❌ <b>Неправильно!</b>\n\n` +
+      `📝 <b>${word.word}</b> — <b>${questionData.correctAnswer}</b>\n` +
+      `🎯 Вы выбрали: ${selectedAnswer}`;
+  }
+  
+  // Проверяем, закончились ли вопросы
+  if (quizSession.currentQuestionIndex >= quizSession.words.length) {
+    // Викторина завершена - показываем итоги
+    const correctCount = quizSession.score;
+    const totalQuestions = quizSession.words.length;
+    const percentage = Math.round((correctCount / totalQuestions) * 100);
+    
+    responseMessage += `\n\n🏆 <b>Этап 1 завершен!</b>\n` +
+      `📊 Результат: ${correctCount}/${totalQuestions} (${percentage}%)\n\n` +
+      `➡️ Переходим к этапу 2/4: "Знаю/Не знаю"`;
+    
+    // Сначала отправляем итоги викторины
+    await ctx.reply(responseMessage, { parse_mode: 'HTML' });
+    
+    // Потом переходим к этапу 2
+    await startSmartRepeatStage2(ctx, session);
+    
+    return;
+  } else {
+    // Есть еще вопросы - показываем следующий
+    const nextQuestion = await generateQuizQuestion(quizSession.words, quizSession.currentQuestionIndex, allWords);
+    
+    responseMessage += `\n\n📊 <b>Прогресс:</b> ${quizSession.currentQuestionIndex + 1}/${quizSession.words.length}` +
+      `\n\n<b>Вопрос ${quizSession.currentQuestionIndex + 1}/10:</b>\n${nextQuestion.question}`;
+    
+    return ctx.reply(responseMessage, {
+      reply_markup: nextQuestion.keyboard,
+      parse_mode: 'HTML'
+    });
+  }
+}
+
+// Функция запуска этапа 2 умного повторения (Знаю/Не знаю)
+async function startSmartRepeatStage2(ctx, session) {
+  // Используем слова из умного повторения
+  const wordsToRepeat = session.smartRepeatWords || [];
+  
+  if (wordsToRepeat.length === 0) {
+    session.step = 'word_tasks_menu';
+    return ctx.reply('🧠 Умное повторение завершено!', {
+      reply_markup: wordTasksMenu,
+    });
+  }
+  
+  // Функция для безопасного выбора направления теста
+  function getSafeDirection(word, allWords) {
+    const allUserWords = allWords || [];
+    const sameTranslation = allUserWords.filter(w => w.translation.toLowerCase() === word.translation.toLowerCase());
+    if (sameTranslation.length > 1) {
+      return 'en-ru';
+    }
+    return Math.random() < 0.5 ? 'en-ru' : 'ru-en';
+  }
+  
+  const allWords = await getWords(session.profile);
+  
+  session.wordsToRepeat = wordsToRepeat.map(w => {
+    const direction = getSafeDirection(w, allWords);
+    return { ...w, direction };
+  });
+  session.currentIndex = 0;
+  session.step = 'waiting_answer';
+  session.repeatMode = 'smart';
+  session.smartRepeatStage = 2;
+  
+  const first = session.wordsToRepeat[0];
+  const question = first.direction === 'en-ru'
+    ? `Как переводится слово: "${first.word}"?`
+    : `Как по-английски: "${first.translation}"?`;
+
+  // Создаем клавиатуру с кнопкой "Пропустить"
+  const skipKeyboard = new Keyboard()
+    .text('⏭️ Пропустить слово')
+    .row()
+    .oneTime()
+    .resized();
+
+  return ctx.reply(
+    `🧠 <b>Умное повторение - Этап 2/4</b>\n` +
+    `🎯 <b>"Знаю/Не знаю"</b>\n\n${question}`,
+    { 
+      parse_mode: 'HTML',
+      reply_markup: skipKeyboard
+    }
+  );
+}
+
+// Обработка ответов в этапе 2 умного повторения
+async function handleSmartRepeatStage2Answer(ctx, session, answerText) {
+  // Проверяем кнопку "Пропустить"
+  if (answerText === '⏭️ Пропустить слово') {
+    const wordObj = session.wordsToRepeat[session.currentIndex];
+    await ctx.reply(`⏭️ Пропущено: <b>${wordObj.word}</b> — ${wordObj.translation}`, { parse_mode: 'HTML' });
+    return await moveToNextStage2Word(ctx, session);
+  }
+
+  const wordObj = session.wordsToRepeat[session.currentIndex];
+  const expectedAnswer = wordObj.direction === 'en-ru' ? wordObj.translation : wordObj.word;
+  
+  // Отладочная информация
+  console.log(`DEBUG Stage 2 Answer Check:
+    Word: ${wordObj.word}
+    Translation: ${wordObj.translation}
+    Direction: ${wordObj.direction}
+    User Answer: ${answerText}
+    Expected Answer: ${expectedAnswer}`);
+  
+  try {
+    // Используем AI для проверки ответа
+    const isCorrect = await checkAnswerWithAI(answerText, expectedAnswer, wordObj.direction);
+    
+    if (isCorrect) {
+      await ctx.reply(`✅ <b>Правильно!</b>\n\n📝 <b>${wordObj.word}</b> — ${wordObj.translation}`, { parse_mode: 'HTML' });
+      
+      // Начисляем XP за правильный ответ
+      const wordCorrectLevel = wordObj.correct || 0;
+      const xpGained = await awardXP(session, wordCorrectLevel, ctx);
+      await ctx.reply(`💫 +${xpGained} XP`);
+      
+      // Увеличиваем счетчик правильных ответов
+      try {
+        await updateWordCorrect(session.profile, wordObj.word, wordObj.translation, wordObj.correct + 1);
+      } catch (error) {
+        console.error('Error updating word progress in stage 2:', error);
+      }
+    } else {
+      await ctx.reply(`❌ <b>Неправильно!</b>\n\n📝 <b>${wordObj.word}</b> — <b>${wordObj.translation}</b>\n🎯 Вы ответили: ${answerText}`, { parse_mode: 'HTML' });
+      
+      // Мягко уменьшаем счетчик (не сбрасываем в 0)
+      try {
+        const newCorrect = Math.max(0, (wordObj.correct || 0) - 1);
+        await updateWordCorrect(session.profile, wordObj.word, wordObj.translation, newCorrect);
+      } catch (error) {
+        console.error('Error updating word progress in stage 2:', error);
+      }
+    }
+    
+    return await moveToNextStage2Word(ctx, session);
+    
+  } catch (error) {
+    console.error('Error checking answer with AI:', error);
+    await ctx.reply('❌ Ошибка проверки ответа. Попробуйте еще раз.');
+  }
+}
+
+// Переход к следующему слову в этапе 2
+async function moveToNextStage2Word(ctx, session) {
+  session.currentIndex++;
+  
+  if (session.currentIndex < session.wordsToRepeat.length) {
+    // Есть еще слова - показываем следующее
+    const next = session.wordsToRepeat[session.currentIndex];
+    const question = next.direction === 'en-ru'
+      ? `Как переводится слово: "${next.word}"?`
+      : `Как по-английски: "${next.translation}"?`;
+      
+    const skipKeyboard = new Keyboard()
+      .text('⏭️ Пропустить слово')
+      .row()
+      .oneTime()
+      .resized();
+      
+    return ctx.reply(question, { reply_markup: skipKeyboard });
+  } else {
+    // Этап 2 завершен - переходим к этапу 3
+    await startSmartRepeatStage3(ctx, session);
+  }
+}
+
+// Функция проверки ответа с помощью AI
+async function checkAnswerWithAI(userAnswer, correctAnswer, direction) {
+  const prompt = `Ты проверяешь правильность перевода слова.
+
+Направление перевода: ${direction === 'en-ru' ? 'с английского на русский' : 'с русского на английский'}
+Правильный ответ: "${correctAnswer}"
+Ответ пользователя: "${userAnswer}"
+
+СТРОГИЕ правила проверки:
+- Принимай только реальные синонимы и альтернативные переводы
+- Разрешай только мелкие опечатки (1-2 символа)
+- НЕ принимай ответы с серьезными искажениями слова
+- НЕ принимай ответы, где больше половины букв неправильные
+- Разные формы слов (падежи, времена) - разрешай
+- Сокращения - только общепринятые
+
+Примеры НЕПРАВИЛЬНЫХ ответов:
+- "pallenish" для "pollination" (слишком много ошибок)
+- "managr" для "manager" (критичная опечатка)
+- "beautifal" для "beautiful" (серьезная ошибка)
+
+Примеры ПРАВИЛЬНЫХ ответов:
+- "managment" для "management" (мелкая опечатка)
+- "beatiful" для "beautiful" (одна ошибка)
+- "управлять" для "manage" (синоним)
+
+Ответь только "true" или "false".`;
+
+  try {
+    const response = await axios.post('https://api.openai.com/v1/chat/completions', {
+      model: 'gpt-3.5-turbo',
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.1,
+      max_tokens: 10
+    }, {
+      headers: {
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    const result = response.data.choices[0].message.content.trim().toLowerCase();
+    return result === 'true';
+    
+  } catch (error) {
+    console.error('AI check failed:', error);
+    // Fallback - более строгая проверка с алгоритмом схожести
+    const normalizedUser = userAnswer.toLowerCase().trim();
+    const normalizedCorrect = correctAnswer.toLowerCase().trim();
+    
+    // Если слова совпадают точно - правильно
+    if (normalizedUser === normalizedCorrect) return true;
+    
+    // Проверяем схожесть (должно быть больше 70% похожести)
+    const similarity = calculateSimilarity(normalizedUser, normalizedCorrect);
+    return similarity > 0.7;
+  }
+}
+
+// Функция расчета схожести строк (алгоритм Левенштейна)
+function calculateSimilarity(str1, str2) {
+  const matrix = [];
+  
+  for (let i = 0; i <= str2.length; i++) {
+    matrix[i] = [i];
+  }
+  
+  for (let j = 0; j <= str1.length; j++) {
+    matrix[0][j] = j;
+  }
+  
+  for (let i = 1; i <= str2.length; i++) {
+    for (let j = 1; j <= str1.length; j++) {
+      if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1, // замена
+          matrix[i][j - 1] + 1,     // вставка
+          matrix[i - 1][j] + 1      // удаление
+        );
+      }
+    }
+  }
+  
+  const distance = matrix[str2.length][str1.length];
+  const maxLength = Math.max(str1.length, str2.length);
+  return 1 - (distance / maxLength);
+}
+
+// Функция генерации случайной ситуации для предложений
+function getRandomSituation() {
+  const situations = [
+    // Места
+    { context: "в ресторане", example: "как заказать блюдо или пообщаться с официантом" },
+    { context: "в офисе", example: "как обсудить проект с коллегами или решить рабочую задачу" },
+    { context: "в магазине", example: "как выбрать товар или спросить о цене" },
+    { context: "в парке", example: "как описать природу или активности на свежем воздухе" },
+    { context: "дома", example: "как организовать быт или провести время с семьей" },
+    { context: "в аэропорту", example: "как пройти регистрацию или найти нужный терминал" },
+    { context: "в больнице", example: "как описать симптомы или пообщаться с врачом" },
+    { context: "в университете", example: "как обсудить учебу или пообщаться с преподавателем" },
+    
+    // Люди и социальные ситуации
+    { context: "с другом", example: "как поделиться новостями или планами на выходные" },
+    { context: "с боссом", example: "как обсудить карьерные вопросы или отчитаться о работе" },
+    { context: "с незнакомцем", example: "как завязать разговор или попросить помощь" },
+    { context: "с семьей", example: "как обсудить планы или поделиться впечатлениями" },
+    { context: "на собеседовании", example: "как представить себя или ответить на вопросы HR" },
+    { context: "на свидании", example: "как узнать человека лучше или поделиться интересами" },
+    
+    // Активности и ситуации
+    { context: "во время путешествия", example: "как описать достопримечательности или спросить дорогу" },
+    { context: "на тренировке", example: "как мотивировать себя или обсудить фитнес-цели" },
+    { context: "в повседневной жизни", example: "как выразить мысли или описать ситуацию" },
+    { context: "в разговоре", example: "как выразить идею или поделиться мнением" }
+  ];
+  
+  return situations[Math.floor(Math.random() * situations.length)];
+}
+
+// Функция для получения подходящего контекста от AI
+async function getAIContext(word, translation) {
+  try {
+    // Проверяем наличие обязательных параметров
+    if (!word || !translation) {
+      console.log('Missing word or translation for AI context');
+      return getRandomSituation();
+    }
+    
+    const prompt = `Для английского слова "${word}" (${translation}) подбери наиболее подходящий жизненный контекст для составления предложения. Верни ответ строго в формате JSON:
+{
+  "context": "краткое описание ситуации (например: в больнице, в офисе, с друзьями)",
+  "description": "краткое описание темы или сферы применения слова, БЕЗ примеров предложений"
+}
+
+ВАЖНО: 
+- НЕ давай готовые примеры предложений с этим словом
+- Только указывай контекст и тематику
+- Выбери контекст, где это слово действительно уместно и естественно звучит
+- Описание должно помочь понять сферу применения, но не подсказывать готовое предложение`;
+
+    const response = await axios.post('https://api.openai.com/v1/chat/completions', {
+      model: 'gpt-3.5-turbo',
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.3,
+      max_tokens: 120
+    }, {
+      headers: {
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    // Проверяем валидность ответа от API
+    if (!response.data || !response.data.choices || !response.data.choices[0] || 
+        !response.data.choices[0].message || !response.data.choices[0].message.content) {
+      console.log('Invalid AI response structure, using fallback');
+      return getRandomSituation();
+    }
+
+    const aiResponse = response.data.choices[0].message.content.trim();
+    
+    // Пытаемся распарсить JSON ответ
+    try {
+      const contextData = JSON.parse(aiResponse);
+      if (contextData && contextData.context && contextData.description && 
+          typeof contextData.context === 'string' && typeof contextData.description === 'string') {
+        return contextData;
+      } else {
+        console.log('AI response missing required fields, using fallback');
+        return getRandomSituation();
+      }
+    } catch (parseError) {
+      console.log('Failed to parse AI context response, using fallback');
+      return getRandomSituation();
+    }
+  } catch (error) {
+    console.log('Failed to get AI context, using fallback:', error.message);
+    return getRandomSituation();
+  }
+  
+  // Fallback: возвращаем случайную ситуацию вместо фиксированного контекста
+  return getRandomSituation();
+}
+
+// Функция запуска этапа 3 умного повторения (предложения)
+async function startSmartRepeatStage3(ctx, session) {
+  // Собираем слова из предыдущих этапов
+  const quizWords = session.currentQuizSession ? session.currentQuizSession.words : [];
+  const wordsToRepeat = session.wordsToRepeat || [];
+  
+  // Объединяем все слова и убираем дубликаты
+  const allWordsFromStages = [...quizWords, ...wordsToRepeat];
+  const uniqueWords = allWordsFromStages.filter((word, index, self) => 
+    index === self.findIndex(w => w.id === word.id)
+  );
+  
+  // Берем слова с низким рейтингом для предложений
+  const wordsForSentences = uniqueWords.filter(w => w.correct <= 2).slice(0, 7);
+  
+  if (wordsForSentences.length > 0) {
+    // Получаем подходящий контекст от AI для первого слова
+    const firstWord = wordsForSentences[0];
+    await ctx.reply('🤔 Подбираю подходящий контекст для первого слова...');
+    const situation = await getAIContext(firstWord.word, firstWord.translation);
+    firstWord.context = situation.context; // Сохраняем контекст для первого слова
+    
+    session.sentenceTaskWords = wordsForSentences;
+    session.sentenceTaskIndex = 0;
+    session.step = 'sentence_task';
+    session.smartRepeatStage = 3;
+    
+    await ctx.reply(
+      `🧠 <b>Умное повторение - Этап 3/4</b>\n` +
+      `✏️ <b>Составить предложения</b>\n\n` +
+      `Напиши предложения с словами из предыдущих этапов (${wordsForSentences.length}): по одному предложению на слово. Пиши по одному предложению на английском.`,
+      { parse_mode: 'HTML' }
+    );
+    
+    await ctx.reply(
+      `Напиши предложение со словом <b>"${firstWord.word}"</b> (${firstWord.translation}) в контексте: <b>${situation.context}</b>\n\n${situation.description ? `💡 ${situation.description}` : ''}`,
+      { parse_mode: 'HTML' }
+    );
+  } else {
+    // Нет слов для предложений - используем слова из smartRepeatWords
+    const fallbackWords = session.smartRepeatWords || [];
+    if (fallbackWords.length > 0) {
+      const wordsForSentences = fallbackWords.slice(0, 7);
+      
+      // Получаем подходящий контекст от AI для первого слова
+      const firstWord = wordsForSentences[0];
+      await ctx.reply('🤔 Подбираю подходящий контекст для первого слова...');
+      const situation = await getAIContext(firstWord.word, firstWord.translation);
+      firstWord.context = situation.context;
+      
+      session.sentenceTaskWords = wordsForSentences;
+      session.sentenceTaskIndex = 0;
+      session.step = 'sentence_task';
+      session.smartRepeatStage = 3;
+      
+      await ctx.reply(
+        `🧠 <b>Умное повторение - Этап 3/4</b>\n` +
+        `✏️ <b>Составить предложения</b>\n\n` +
+        `Напиши предложения с приоритетными словами (${wordsForSentences.length}): по одному предложению на слово. Пиши по одному предложению на английском.`,
+        { parse_mode: 'HTML' }
+      );
+      
+      await ctx.reply(
+        `Напиши предложение со словом <b>"${firstWord.word}"</b> (${firstWord.translation}) в контексте: <b>${situation.context}</b>\n\n${situation.description ? `💡 ${situation.description}` : ''}`,
+        { parse_mode: 'HTML' }
+      );
+    } else {
+      // Совсем нет слов - переходим к этапу 4
+      await startSmartRepeatStage4(ctx, session);
+    }
+  }
+}
+
+// Функция для итогового анализа предложений с помощью AI
+async function analyzeSentencesWithAI(ctx, session) {
+  const answers = session.sentenceTaskAnswers || [];
+  
+  if (answers.length === 0) {
+    await ctx.reply('Нет предложений для анализа.');
+    return;
+  }
+  
+  await ctx.reply('📝 Анализирую ваши предложения... Это займет немного времени, но результат будет стоящим!');
+  
+  // Формируем детальный промпт для AI
+  const sentencesText = answers.map((item, index) => 
+    `${index + 1}. Слово: "${item.word}" (${item.translation})\n   Предложение: "${item.sentence}"`
+  ).join('\n\n');
+  
+  const prompt = `Ты — строгий, но справедливый преподаватель английского языка с высокими стандартами. Твоя задача — тщательно проанализировать предложения студента и дать ЧЕСТНУЮ оценку.
+
+ПРЕДЛОЖЕНИЯ СТУДЕНТА:
+${sentencesText}
+
+СТРОГИЕ КРИТЕРИИ ОЦЕНКИ:
+- Грамматическая корректность (времена, согласование, порядок слов)
+- Правильность использования слова в контексте
+- Естественность для носителей языка
+- Полнота и логичность предложения
+
+ПРАВИЛА ОЦЕНКИ:
+- correct: true ТОЛЬКО если предложение полностью корректно грамматически И естественно звучит
+- correct: false если есть ЛЮБЫЕ грамматические ошибки, неестественное звучание, неправильное использование слова
+- Не будь слишком мягким - студенту нужна честная оценка для прогресса
+
+Дай ответ в формате JSON:
+{
+  "evaluations": [
+    {
+      "word": "слово",
+      "correct": true/false,
+      "analysis": "КОНКРЕТНЫЙ разбор: какие ошибки, как исправить, правильный вариант"
+    },
+    ...
+  ],
+  "overall_feedback": "Честная оценка общего уровня с КОНКРЕТНЫМИ шагами для улучшения",
+  "grammar_tips": "ТОЧНЫЕ грамматические правила с примерами, которые нужно изучить",
+  "vocabulary_suggestions": "КОНКРЕТНЫЕ слова и фразы для изучения с примерами использования",
+  "encouragement": "Реалистичная мотивация с четкими целями"
+}
+
+ВАЖНО: 
+- Будь ЧЕСТНЫМ в оценках - не завышай баллы
+- Давай КОНКРЕТНЫЕ исправления, не общие фразы
+- Укажи ТОЧНЫЕ грамматические ошибки
+- Предложи КОНКРЕТНЫЕ способы улучшения
+- Если предложение неестественно - объясни почему и дай лучший вариант`;
+
+  try {
+    const gptRes = await axios.post('https://api.openai.com/v1/chat/completions', {
+      model: 'gpt-3.5-turbo',
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.7,
+      max_tokens: 2000
+    }, {
+      headers: {
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    let answer = gptRes.data.choices[0].message.content;
+    const match = answer.match(/\{[\s\S]*\}/);
+    
+    if (!match) {
+      throw new Error('AI не вернул JSON.');
+    }
+    
+    const analysis = JSON.parse(match[0]);
+    
+    // Обновляем прогресс слов в базе данных
+    await updateWordProgressFromAnalysis(session, analysis.evaluations);
+    
+    // Отправляем красивый фидбек пользователю
+    await sendBeautifulFeedback(ctx, session, analysis);
+    
+    // Переходим к следующему этапу
+    await proceedAfterSentenceAnalysis(ctx, session);
+    
+  } catch (error) {
+    console.error('Error in AI sentence analysis:', error);
+    await ctx.reply('❌ Произошла ошибка при анализе предложений. Попробуйте позже.');
+    
+    // В случае ошибки все равно переходим дальше
+    await proceedAfterSentenceAnalysis(ctx, session);
+  }
+}
+
+// Обновляем прогресс слов на основе AI оценок
+async function updateWordProgressFromAnalysis(session, evaluations) {
+  try {
+    const allWords = await getWords(session.profile);
+    
+    for (const evaluation of evaluations) {
+      const wordIdx = allWords.findIndex(w => 
+        w.word === evaluation.word && 
+        session.sentenceTaskAnswers.find(a => a.word === evaluation.word)
+      );
+      
+      if (wordIdx !== -1) {
+        const currentCorrect = allWords[wordIdx].correct || 0;
+        const word = allWords[wordIdx];
+        
+        if (evaluation.correct === true) {
+          // Правильное использование - увеличиваем счетчик
+          await updateWordCorrect(session.profile, word.word, word.translation, currentCorrect + 1);
+        } else {
+          // Неправильное использование - мягко уменьшаем счетчик
+          const newCorrect = Math.max(0, currentCorrect - 1);
+          await updateWordCorrect(session.profile, word.word, word.translation, newCorrect);
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error updating word progress:', error);
+  }
+}
+
+// Отправляем красивый фидбек пользователю
+async function sendBeautifulFeedback(ctx, session, analysis) {
+  try {
+    // 1. Заголовок
+    await ctx.reply('🎓 <b>Детальный анализ ваших предложений</b>', { parse_mode: 'HTML' });
+    
+    // 2. Разбор каждого предложения с более подробной информацией
+    for (let i = 0; i < analysis.evaluations.length; i++) {
+      const eval = analysis.evaluations[i];
+      const sentence = session.sentenceTaskAnswers[i];
+      
+      const status = eval.correct ? '✅' : '❌';
+      const statusText = eval.correct ? 'ПРАВИЛЬНО' : 'ТРЕБУЕТ ИСПРАВЛЕНИЯ';
+      
+      const message = `${status} <b>${i + 1}. "${eval.word}"</b> - ${statusText}\n` +
+                     `💬 <i>"${sentence.sentence}"</i>\n\n` +
+                     `📝 <b>Анализ:</b> ${eval.analysis}`;
+      
+      await ctx.reply(message, { parse_mode: 'HTML' });
+      
+      // Небольшая пауза между сообщениями
+      await new Promise(resolve => setTimeout(resolve, 1500));
+    }
+    
+    // 3. Статистика
+    const correctCount = analysis.evaluations.filter(e => e.correct).length;
+    const totalCount = analysis.evaluations.length;
+    const percentage = Math.round((correctCount / totalCount) * 100);
+    
+    await ctx.reply(
+      `📊 <b>Статистика:</b>\n` +
+      `✅ Правильно: ${correctCount}/${totalCount} (${percentage}%)\n` +
+      `❌ Требует работы: ${totalCount - correctCount}/${totalCount}`,
+      { parse_mode: 'HTML' }
+    );
+    
+    // 4. Общий фидбек с конкретными шагами
+    if (analysis.overall_feedback) {
+      await ctx.reply(`🌟 <b>Общая оценка и план действий:</b>\n\n${analysis.overall_feedback}`, { parse_mode: 'HTML' });
+    }
+    
+    // 5. Конкретные грамматические правила
+    if (analysis.grammar_tips) {
+      await ctx.reply(`📚 <b>Грамматика - изучите эти правила:</b>\n\n${analysis.grammar_tips}`, { parse_mode: 'HTML' });
+    }
+    
+    // 6. Конкретные слова и фразы для изучения
+    if (analysis.vocabulary_suggestions) {
+      await ctx.reply(`💡 <b>Новые слова и фразы для изучения:</b>\n\n${analysis.vocabulary_suggestions}`, { parse_mode: 'HTML' });
+    }
+    
+    // 7. Мотивация с четкими целями
+    if (analysis.encouragement) {
+      await ctx.reply(`🎯 <b>Мотивация и следующие шаги:</b>\n\n${analysis.encouragement}`, { parse_mode: 'HTML' });
+    }
+    
+  } catch (error) {
+    console.error('Error sending feedback:', error);
+    await ctx.reply('✅ Анализ завершен! Продолжаем изучение.');
+  }
+}
+
+// Переход к следующему этапу после анализа предложений
+async function proceedAfterSentenceAnalysis(ctx, session) {
+  // Очищаем данные предложений
+  delete session.sentenceTaskWords;
+  delete session.sentenceTaskIndex;
+  delete session.sentenceTaskAnswers;
+  
+  if (session.smartRepeatStage === 3) {
+    // Этап 3 умного повторения завершен - переходим к этапу 4
+    await startSmartRepeatStage4(ctx, session);
+  } else {
+    // Обычное задание предложений - запускаем story_task
+    const storyWords = (session.lastWordsToRepeat || session.wordsToRepeat || []).map(w => w.word);
+    if (storyWords.length > 0) {
+      session.storyTaskWords = storyWords;
+      session.step = 'story_task';
+      await ctx.reply('📖 Отлично! Теперь переходим к заданию на понимание текста. Генерирую текст...');
+      await generateStoryTaskContent(session, ctx);
+    } else {
+      session.step = 'main_menu';
+      await ctx.reply('🎉 Задание завершено! Отличная работа!', { reply_markup: mainMenu });
+    }
+  }
+}
+
+// Функция запуска этапа 4 умного повторения (текстовое задание)
+async function startSmartRepeatStage4(ctx, session) {
+  try {
+    console.log('=== SMART REPEAT STAGE 4 START ===');
+    console.log('User ID:', ctx.from.id);
+    console.log('Session smartRepeatWords:', session.smartRepeatWords?.length || 0);
+    
+    const words = session.smartRepeatWords || [];
+    
+    if (words.length === 0) {
+      console.log('ERROR: No words found for smart repeat stage 4');
+      await finishSmartRepeat(ctx, session);
+      return;
+    }
+
+    // Проверяем API ключ
+    if (!process.env.OPENAI_API_KEY) {
+      console.error('ERROR: OPENAI_API_KEY not found');
+      session.step = 'main_menu';
+      await ctx.reply('❌ Ошибка конфигурации API. Обратитесь к администратору.', { reply_markup: mainMenu });
+      return;
+    }
+
+    console.log('API key is available');
+    console.log('Words for stage 4:', words.map(w => w.word));
+
+    // Переходим к этапу 4 - текстовое задание
+    session.smartRepeatStage = 4;
+    session.storyTaskWords = words.map(w => w.word);
+    session.step = 'story_task';
+    
+    console.log('Set session variables:');
+    console.log('- smartRepeatStage:', session.smartRepeatStage);
+    console.log('- storyTaskWords:', session.storyTaskWords);
+    console.log('- step:', session.step);
+    
+    await ctx.reply(
+      `🧠 <b>Умное повторение - Этап 4/4</b>\n` +
+      `📖 <b>Текстовое задание</b>\n\n` +
+      `Сейчас будет сгенерирован текст с вашими словами. Внимательно прочитайте его и ответьте на вопросы.`,
+      { parse_mode: 'HTML' }
+    );
+    
+    console.log('Reply sent, calling generateStoryTaskContent...');
+    
+    // Генерируем текст с дополнительной проверкой
+    await generateStoryTaskContent(session, ctx);
+    
+    console.log('generateStoryTaskContent completed successfully');
+    
+  } catch (error) {
+    console.error('=== ERROR IN SMART REPEAT STAGE 4 ===');
+    console.error('Error details:', error);
+    console.error('Error stack:', error.stack);
+    console.error('Session state:', {
+      step: session.step,
+      smartRepeatStage: session.smartRepeatStage,
+      smartRepeatWords: session.smartRepeatWords?.length || 0,
+      storyTaskWords: session.storyTaskWords?.length || 0
+    });
+    
+    session.step = 'main_menu';
+    await ctx.reply('Произошла ошибка при запуске этапа текста. Попробуйте позже.', { reply_markup: mainMenu });
+  }
+}
+
+// Функция завершения умного повторения
+async function completeSmartRepeat(ctx, session) {
+  // Отмечаем что умное повторение пройдено сегодня
+  const todayString = new Date().toDateString();
+  session.lastSmartRepeatDate = todayString;
+  
+  console.log(`DEBUG SMART REPEAT: User ${ctx.from.id} completed all smart repeat stages`);
+  console.log(`  - Setting lastSmartRepeatDate to: "${todayString}"`);
+  
+  // Сохраняем изменения в базу данных
+  if (session.profile) {
+    await saveUserSession(ctx.from.id, session.profile, session);
+    console.log(`  - Saved to database for profile: ${session.profile}`);
+  }
+  
+  // Очищаем данные сессии
+  session.step = 'main_menu';
+  session.smartRepeatStage = undefined;
+  session.smartRepeatWords = undefined;
+  session.currentQuizSession = undefined;
+  
+  return ctx.reply(
+    `🧠 <b>Умное повторение завершено!</b>\n\n` +
+    `✅ Пройдены все 4 этапа:\n` +
+    `1️⃣ Викторина "Угадай перевод"\n` +
+    `2️⃣ "Знаю/Не знаю"\n` +
+    `3️⃣ Составить предложения\n` +
+    `4️⃣ Текстовое задание\n\n` +
+    `🎉 Отличная работа!`,
+    { 
+      reply_markup: mainMenu,
+      parse_mode: 'HTML' 
+    }
+  );
+}
+
 // Запускаем бота с инициализацией базы данных
 initializeDatabase().then(() => {
   console.log('🚀 Starting bot...');
@@ -3745,3 +4761,25 @@ initializeDatabase().then(() => {
   process.exit(1);
 });
 
+// Функция завершения умного повторения
+async function finishSmartRepeat(ctx, session) {
+  console.log(`DEBUG: Finishing smart repeat for user ${ctx.from.id}`);
+  
+  // Очищаем все состояния умного повторения
+  delete session.currentQuizSession;
+  delete session.smartRepeatWords;
+  delete session.smartRepeatStage;
+  delete session.currentStage2Index;
+  delete session.stage2Answers;
+  delete session.currentStage3Index;
+  delete session.stage3Sentences;
+  delete session.stage3Context;
+  
+  // Возвращаемся в главное меню
+  session.step = 'main_menu';
+  
+  await ctx.reply('🎉 <b>Умное повторение завершено!</b>\n\nОтличная работа! Все этапы пройдены.', {
+    reply_markup: mainMenu,
+    parse_mode: 'HTML'
+  });
+}
