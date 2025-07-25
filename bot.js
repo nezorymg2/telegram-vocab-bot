@@ -4218,8 +4218,8 @@ async function checkAnswerWithAI(userAnswer, correctAnswer, direction) {
   const lengthDiff = Math.abs(userAnswerLower.length - correctAnswerLower.length);
   const maxLength = Math.max(userAnswerLower.length, correctAnswerLower.length);
   
-  // Если длина отличается более чем на 30%, это точно разные слова
-  if (lengthDiff / maxLength > 0.3) {
+  // Увеличиваем порог до 60% для родственных форм (было 30%)
+  if (lengthDiff / maxLength > 0.6) {
     console.log('Length difference too large, rejecting without AI check');
     return { correct: false, isSynonym: false, isRelated: false };
   }
@@ -4258,8 +4258,8 @@ async function checkAnswerWithAI(userAnswer, correctAnswer, direction) {
     return { correct: true, isSynonym: false, isRelated: false };
   }
   
-  // Если схожесть меньше 30%, это точно разные слова
-  if (similarity < 0.3) {
+  // Снижаем порог до 15% чтобы больше слов доходило до AI (было 30%)
+  if (similarity < 0.15) {
     console.log(`Similarity too low (${Math.round(similarity * 100)}%), rejecting without AI check`);
     return { correct: false, isSynonym: false, isRelated: false };
   }
