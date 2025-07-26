@@ -3173,10 +3173,43 @@ async function generateStoryTaskContent(session, ctx) {
     });
     
     let answer = gptRes.data.choices[0].message.content;
-    const match = answer.match(/\{[\s\S]*\}/);
-    if (!match) throw new Error('AI не вернул JSON.');
+    console.log('Raw AI response:', answer);
     
-    const storyData = JSON.parse(match[0]);
+    // Пробуем разные способы извлечения JSON
+    let jsonString = null;
+    
+    // Способ 1: Поиск JSON между фигурными скобками
+    const match = answer.match(/\{[\s\S]*\}/);
+    if (match) {
+      jsonString = match[0];
+    } else {
+      // Способ 2: Поиск JSON между кодовыми блоками
+      const codeMatch = answer.match(/```(?:json)?\s*(\{[\s\S]*\})\s*```/);
+      if (codeMatch) {
+        jsonString = codeMatch[1];
+      } else {
+        // Способ 3: Очистка от лишнего текста
+        const lines = answer.split('\n');
+        const jsonLines = [];
+        let insideJson = false;
+        for (const line of lines) {
+          if (line.trim().startsWith('{')) insideJson = true;
+          if (insideJson) jsonLines.push(line);
+          if (line.trim().endsWith('}')) break;
+        }
+        if (jsonLines.length > 0) {
+          jsonString = jsonLines.join('\n');
+        }
+      }
+    }
+    
+    if (!jsonString) {
+      console.error('Не удалось извлечь JSON из ответа AI');
+      throw new Error('AI не вернул корректный JSON');
+    }
+    
+    console.log('Extracted JSON:', jsonString);
+    const storyData = JSON.parse(jsonString);
     session.storyText = storyData.text;
     session.storyQuestions = storyData.questions;
     session.storyQuestionIndex = 0;
@@ -3217,10 +3250,13 @@ async function generateStoryTaskContent(session, ctx) {
     
   } catch (e) {
     console.error('Error in generateStoryTaskContent:', e);
+    console.error('Error stack:', e.stack);
     
     // Логируем детали ошибки
     if (e.response && e.response.data) {
       console.error('API response error:', e.response.data);
+      console.error('API response status:', e.response.status);
+      console.error('API response headers:', e.response.headers);
     }
     
     session.step = 'main_menu';
