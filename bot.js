@@ -4249,19 +4249,30 @@ async function checkAnswerWithAI(userAnswer, correctAnswer, direction) {
     return matrix[str2.length][str1.length];
   }
   
-  const distance = levenshteinDistance(userAnswerLower, correctAnswerLower);
-  const similarity = 1 - (distance / maxLength);
+  // Проверяем, содержат ли слова кириллицу (разные языки)
+  const hasCyrillic = /[а-яё]/i;
+  const userHasCyrillic = hasCyrillic.test(userAnswerLower);
+  const correctHasCyrillic = hasCyrillic.test(correctAnswerLower);
   
-  // Если схожесть больше 80%, это скорее всего опечатка
-  if (similarity > 0.8) {
-    console.log(`High similarity (${Math.round(similarity * 100)}%), treating as typo`);
-    return { correct: true, isSynonym: false, isRelated: false };
-  }
-  
-  // Снижаем порог до 15% чтобы больше слов доходило до AI (было 30%)
-  if (similarity < 0.15) {
-    console.log(`Similarity too low (${Math.round(similarity * 100)}%), rejecting without AI check`);
-    return { correct: false, isSynonym: false, isRelated: false };
+  // Если одно слово на кириллице, а другое на латинице - это разные языки, пропускаем проверку схожести
+  if (userHasCyrillic !== correctHasCyrillic) {
+    console.log('Different languages detected (cyrillic vs latin), skipping similarity check');
+  } else {
+    // Проверяем схожесть только для слов на одном языке
+    const distance = levenshteinDistance(userAnswerLower, correctAnswerLower);
+    const similarity = 1 - (distance / maxLength);
+    
+    // Если схожесть больше 80%, это скорее всего опечатка
+    if (similarity > 0.8) {
+      console.log(`High similarity (${Math.round(similarity * 100)}%), treating as typo`);
+      return { correct: true, isSynonym: false, isRelated: false };
+    }
+    
+    // Снижаем порог до 15% чтобы больше слов доходило до AI (было 30%)
+    if (similarity < 0.15) {
+      console.log(`Similarity too low (${Math.round(similarity * 100)}%), rejecting without AI check`);
+      return { correct: false, isSynonym: false, isRelated: false };
+    }
   }
   
   // Если не точное совпадение, проверяем через AI
