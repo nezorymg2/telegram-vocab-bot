@@ -343,6 +343,21 @@ async function checkDailyBonus(session, ctx) {
   session.lastBonusDate = today;
   session.xp += bonusXP;
   
+  // ВАЖНО: Сохраняем обновленный streak и дату в базу данных
+  try {
+    await prisma.profile.update({
+      where: { telegramId: session.profile },
+      data: {
+        loginStreak: session.loginStreak,
+        lastBonusDate: session.lastBonusDate,
+        xp: session.xp
+      }
+    });
+    console.log(`✅ Saved login streak: ${session.loginStreak} for user ${session.profile}`);
+  } catch (error) {
+    console.error('❌ Failed to save login streak to database:', error);
+  }
+  
   // Специальные награды
   let specialReward = '';
   if (streak === 7) specialReward = '\n🏆 Титул: "Постоянный ученик"';
@@ -569,7 +584,9 @@ async function getOrCreateUserProfile(telegramId, profileName) {
           xp: 0,
           level: 1,
           loginStreak: 0,
+          studyStreak: 0,
           lastBonusDate: null,
+          lastStudyDate: null,
           lastSmartRepeatDate: null,
           reminderTime: null
         }
@@ -679,7 +696,9 @@ bot.command('start', async (ctx) => {
         xp: profile.xp,
         level: profile.level,
         loginStreak: profile.loginStreak,
+        studyStreak: profile.studyStreak || 0,
         lastBonusDate: profile.lastBonusDate,
+        lastStudyDate: profile.lastStudyDate,
         lastSmartRepeatDate: profile.lastSmartRepeatDate,
         reminderTime: profile.reminderTime
       };
@@ -1569,34 +1588,59 @@ bot.command('achievements', async (ctx) => {
   const xpToNext = nextLevel ? nextLevel.required_xp - currentXP : 0;
   const loginStreak = session.loginStreak || 0;
   
-  // --- Streak ---
-  // Получаем даты повторения (используем поле updatedAt, если есть, иначе createdAt)
-  const dates = words
-    .map(w => w.updatedAt || w.createdAt)
-    .filter(Boolean)
-    .map(d => new Date(d).toDateString());
-  const uniqueDays = Array.from(new Set(dates)).sort();
-  let studyStreak = session.streak || 0;
-  if (!session.slothOfTheDay) {
-    // Считаем streak (дней подряд с активностью)
-    if (uniqueDays.length) {
-      let prev = new Date(uniqueDays[uniqueDays.length - 1]);
-      studyStreak = 1;
-      for (let i = uniqueDays.length - 2; i >= 0; i--) {
-        const curr = new Date(uniqueDays[i]);
-        const diff = (prev - curr) / (1000 * 60 * 60 * 24);
-        if (diff === 1) {
-          studyStreak++;
-          prev = curr;
-        } else if (diff > 1) {
-          break;
-        }
+  // --- Study Streak (правильная логика) ---
+  const today = new Date().toDateString();
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayStr = yesterday.toDateString();
+  
+  let studyStreak = session.studyStreak || 0;
+  const lastStudyDate = session.lastStudyDate;
+  
+  // Проверяем была ли активность сегодня
+  const todayActivity = words.some(w => {
+    const activityDate = new Date(w.updatedAt || w.createdAt).toDateString();
+    return activityDate === today;
+  });
+  
+  if (todayActivity) {
+    // Есть активность сегодня
+    if (lastStudyDate === yesterdayStr) {
+      // Продолжаем streak
+      if (session.lastStudyDate !== today) {
+        studyStreak += 1;
+        session.studyStreak = studyStreak;
+        session.lastStudyDate = today;
       }
+    } else if (lastStudyDate !== today) {
+      // Новый streak или возобновление после перерыва
+      studyStreak = 1;
+      session.studyStreak = studyStreak;
+      session.lastStudyDate = today;
     }
-    session.streak = studyStreak;
   } else {
-    studyStreak = 0;
-    session.streak = 0;
+    // Нет активности сегодня
+    if (lastStudyDate && lastStudyDate !== today && lastStudyDate !== yesterdayStr) {
+      // Прошло больше дня без активности - сбрасываем streak
+      studyStreak = 0;
+      session.studyStreak = 0;
+    }
+  }
+  
+  // Сохраняем study streak в базу данных
+  if (session.lastStudyDate && (todayActivity || studyStreak === 0)) {
+    try {
+      await prisma.profile.update({
+        where: { telegramId: session.profile },
+        data: {
+          studyStreak: session.studyStreak,
+          lastStudyDate: session.lastStudyDate
+        }
+      });
+      console.log(`✅ Saved study streak: ${session.studyStreak} for user ${session.profile}`);
+    } catch (error) {
+      console.error('❌ Failed to save study streak to database:', error);
+    }
   }
   
   // --- Мультипликатор XP ---
@@ -1716,7 +1760,9 @@ bot.on('message:text', async (ctx) => {
             xp: profile.xp,
             level: profile.level,
             loginStreak: profile.loginStreak,
+            studyStreak: profile.studyStreak || 0,
             lastBonusDate: profile.lastBonusDate,
+            lastStudyDate: profile.lastStudyDate,
             lastSmartRepeatDate: profile.lastSmartRepeatDate,
             reminderTime: profile.reminderTime
           };
@@ -1779,7 +1825,9 @@ bot.on('message:text', async (ctx) => {
     session.xp = userProfile.xp;
     session.level = userProfile.level;
     session.loginStreak = userProfile.loginStreak;
+    session.studyStreak = userProfile.studyStreak || 0;
     session.lastBonusDate = userProfile.lastBonusDate;
+    session.lastStudyDate = userProfile.lastStudyDate;
     session.lastSmartRepeatDate = userProfile.lastSmartRepeatDate;
     session.reminderTime = userProfile.reminderTime;
     
