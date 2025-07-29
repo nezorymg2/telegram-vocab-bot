@@ -244,7 +244,7 @@ function getStreakMultiplier(streak) {
 }
 
 // Функция начисления XP и проверки повышения уровня
-async function awardXP(session, wordCorrectLevel, ctx) {
+async function awardXP(session, wordCorrectLevel, ctx, telegramId) {
   if (!session.xp) session.xp = 0;
   if (!session.level) session.level = 1;
   
@@ -255,6 +255,25 @@ async function awardXP(session, wordCorrectLevel, ctx) {
   const oldLevel = getLevelByXP(session.xp);
   session.xp += xpGained;
   const newLevel = getLevelByXP(session.xp);
+  
+  // ВАЖНО: Сохраняем XP и уровень в базу данных
+  try {
+    await prisma.userProfile.update({
+      where: { 
+        telegramId_profileName: {
+          telegramId: telegramId.toString(),
+          profileName: session.profile
+        }
+      },
+      data: {
+        xp: session.xp,
+        level: newLevel.level
+      }
+    });
+    console.log(`✅ Saved XP: ${session.xp}, Level: ${newLevel.level} for user ${session.profile}`);
+  } catch (error) {
+    console.error('❌ Failed to save XP/level to database:', error);
+  }
   
   // Проверяем повышение уровня
   if (newLevel.level > oldLevel.level) {
@@ -623,7 +642,9 @@ async function saveUserSession(telegramId, profileName, session) {
         xp: session.xp || 0,
         level: session.level || 1,
         loginStreak: session.loginStreak || 0,
+        studyStreak: session.studyStreak || 0,
         lastBonusDate: session.lastBonusDate,
+        lastStudyDate: session.lastStudyDate,
         lastSmartRepeatDate: session.lastSmartRepeatDate,
         reminderTime: session.reminderTime
       }
@@ -660,8 +681,54 @@ async function getWords(profile, filter = {}) {
 async function updateWordCorrect(profile, word, translation, correct) {
   await prisma.word.updateMany({
     where: { profile, word, translation },
-    data: { correct },
+    data: { correct, updatedAt: new Date() }
   });
+}
+
+// Функция для обновления study streak после активности с словами
+async function updateStudyStreakAfterActivity(session, telegramId) {
+  if (!session.profile) return;
+  
+  const today = new Date().toDateString();
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayStr = yesterday.toDateString();
+  
+  const lastStudyDate = session.lastStudyDate;
+  let studyStreak = session.studyStreak || 0;
+  
+  // Если сегодня уже была активность, не обновляем
+  if (lastStudyDate === today) return;
+  
+  // Проверяем непрерывность
+  if (lastStudyDate === yesterdayStr) {
+    // Продолжаем streak
+    studyStreak += 1;
+  } else {
+    // Новый streak или возобновление
+    studyStreak = 1;
+  }
+  
+  // Обновляем сессию
+  session.studyStreak = studyStreak;
+  session.lastStudyDate = today;
+  
+  // Сохраняем в базу данных
+  try {
+    await prisma.userProfile.updateMany({
+      where: { 
+        telegramId: telegramId.toString(),
+        profileName: session.profile 
+      },
+      data: {
+        studyStreak: session.studyStreak,
+        lastStudyDate: session.lastStudyDate
+      }
+    });
+    console.log(`✅ Updated study streak: ${session.studyStreak} for user ${session.profile}`);
+  } catch (error) {
+    console.error('❌ Failed to update study streak:', error);
+  }
 }
 
 // /start — начало сеанса
@@ -2605,9 +2672,12 @@ bot.on('message:text', async (ctx) => {
       
       // Начисляем XP за правильный ответ
       const wordCorrectLevel = (all[idx]?.correct || 0);
-      const xpGained = await awardXP(session, wordCorrectLevel, ctx);
+      const xpGained = await awardXP(session, wordCorrectLevel, ctx, ctx.from.id);
       
-      if (idx !== -1) await updateWordCorrect(session.profile, wordObj.word, wordObj.translation, (all[idx].correct || 0) + 1);
+      if (idx !== -1) {
+        await updateWordCorrect(session.profile, wordObj.word, wordObj.translation, (all[idx].correct || 0) + 1);
+        await updateStudyStreakAfterActivity(session, ctx.from.id);
+      }
       
       // Показываем полученный XP
       await ctx.reply(`💫 +${xpGained} XP`);
@@ -4226,12 +4296,13 @@ async function handleSmartRepeatStage2Answer(ctx, session, answerText) {
       
       // Начисляем XP за правильный ответ
       const wordCorrectLevel = wordObj.correct || 0;
-      const xpGained = await awardXP(session, wordCorrectLevel, ctx);
+      const xpGained = await awardXP(session, wordCorrectLevel, ctx, ctx.from.id);
       await ctx.reply(`💫 +${xpGained} XP`);
       
       // Увеличиваем счетчик правильных ответов
       try {
         await updateWordCorrect(session.profile, wordObj.word, wordObj.translation, wordObj.correct + 1);
+        await updateStudyStreakAfterActivity(session, ctx.from.id);
       } catch (error) {
         console.error('Error updating word progress in stage 2:', error);
       }
