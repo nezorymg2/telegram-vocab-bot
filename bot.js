@@ -760,12 +760,12 @@ bot.command('start', async (ctx) => {
       sessions[userId] = {
         profile: profile.profileName,
         step: 'main_menu',
-        xp: profile.xp,
-        level: profile.level,
-        loginStreak: profile.loginStreak,
+        xp: profile.xp || 0,
+        level: profile.level || 1,
+        loginStreak: profile.loginStreak || 0,
         studyStreak: profile.studyStreak || 0,
         lastBonusDate: profile.lastBonusDate,
-        lastStudyDate: profile.lastStudyDate,
+        lastStudyDate: profile.lastStudyDate || null,
         lastSmartRepeatDate: profile.lastSmartRepeatDate,
         reminderTime: profile.reminderTime
       };
@@ -1824,12 +1824,12 @@ bot.on('message:text', async (ctx) => {
           sessions[userId] = {
             profile: profile.profileName,
             step: 'word_tasks_menu',
-            xp: profile.xp,
-            level: profile.level,
-            loginStreak: profile.loginStreak,
+            xp: profile.xp || 0,
+            level: profile.level || 1,
+            loginStreak: profile.loginStreak || 0,
             studyStreak: profile.studyStreak || 0,
             lastBonusDate: profile.lastBonusDate,
-            lastStudyDate: profile.lastStudyDate,
+            lastStudyDate: profile.lastStudyDate || null,
             lastSmartRepeatDate: profile.lastSmartRepeatDate,
             reminderTime: profile.reminderTime
           };
@@ -1889,12 +1889,12 @@ bot.on('message:text', async (ctx) => {
     
     session.profile = text;
     session.step = 'main_menu';
-    session.xp = userProfile.xp;
-    session.level = userProfile.level;
-    session.loginStreak = userProfile.loginStreak;
+    session.xp = userProfile.xp || 0;
+    session.level = userProfile.level || 1;
+    session.loginStreak = userProfile.loginStreak || 0;
     session.studyStreak = userProfile.studyStreak || 0;
     session.lastBonusDate = userProfile.lastBonusDate;
-    session.lastStudyDate = userProfile.lastStudyDate;
+    session.lastStudyDate = userProfile.lastStudyDate || null;
     session.lastSmartRepeatDate = userProfile.lastSmartRepeatDate;
     session.reminderTime = userProfile.reminderTime;
     
