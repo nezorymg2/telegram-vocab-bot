@@ -4290,13 +4290,19 @@ async function checkAnswerWithAI(userAnswer, correctAnswer, direction) {
   const userHasCyrillic = hasCyrillic.test(userAnswerLower);
   const correctHasCyrillic = hasCyrillic.test(correctAnswerLower);
   
+  console.log(`Language check: user "${userAnswerLower}" has cyrillic: ${userHasCyrillic}, correct "${correctAnswerLower}" has cyrillic: ${correctHasCyrillic}`);
+  
   // Если одно слово на кириллице, а другое на латинице - это разные языки, пропускаем проверку схожести
   if (userHasCyrillic !== correctHasCyrillic) {
-    console.log('Different languages detected (cyrillic vs latin), skipping similarity check');
+    console.log('Different languages detected (cyrillic vs latin), skipping similarity check, going to AI');
+    // Пропускаем similarity check и сразу идем к AI
   } else {
+    console.log('Same language detected, checking similarity');
     // Проверяем схожесть только для слов на одном языке
     const distance = levenshteinDistance(userAnswerLower, correctAnswerLower);
     const similarity = 1 - (distance / maxLength);
+    
+    console.log(`Similarity calculation: distance=${distance}, maxLength=${maxLength}, similarity=${Math.round(similarity * 100)}%`);
     
     // Если схожесть больше 80%, это скорее всего опечатка
     if (similarity > 0.8) {
@@ -4309,31 +4315,53 @@ async function checkAnswerWithAI(userAnswer, correctAnswer, direction) {
       console.log(`Similarity too low (${Math.round(similarity * 100)}%), rejecting without AI check`);
       return { correct: false, isSynonym: false, isRelated: false };
     }
+    
+    console.log(`Similarity is medium (${Math.round(similarity * 100)}%), proceeding to AI check`);
   }
   
+  console.log('=== STARTING AI CHECK ===');
+  console.log(`About to call OpenAI API with: userAnswer="${userAnswer}", correctAnswer="${correctAnswer}", direction="${direction}"`);
+  
   // Если не точное совпадение, проверяем через AI
-  const prompt = `Ты проверяющий перевода слов для изучения английского.
+  const prompt = `Ты эксперт по английскому и русскому языкам. Проверь правильность перевода.
 
-Направление перевода: ${direction === 'en-ru' ? 'с английского на русский' : 'с русского на английский'}
-Правильный ответ: "${correctAnswer}"
-Ответ пользователя: "${userAnswer}"
+ВХОДНЫЕ ДАННЫЕ:
+Направление: ${direction === 'en-ru' ? 'английский → русский' : 'русский → английский'}
+Эталон: "${correctAnswer}"
+Ответ: "${userAnswer}"
 
-Определи:
-1. Это ТОЧНО ТАКОЕ ЖЕ слово с опечатками (1-2 буквы)?
-2. Это СИНОНИМ или близкое по смыслу слово?
-3. Это РОДСТВЕННАЯ ФОРМА слова (глагол-существительное, разные части речи)?
-4. Это НЕПРАВИЛЬНЫЙ ответ?
+ЗАДАЧА: Определи, является ли ответ пользователя правильным для изучения языка.
 
-КРИТЕРИИ:
-- ТОЧНОЕ СЛОВО: "managment" для "management", "beatiful" для "beautiful"
-- СИНОНИМ: "assess" для "evaluate", "big" для "large", "start" для "begin"  
-- РОДСТВЕННАЯ ФОРМА: "оценка" для "оценивать", "выпускать" для "производить", "production" для "produce"
-- НЕПРАВИЛЬНО: совершенно разные слова
+КАТЕГОРИИ ПРАВИЛЬНЫХ ОТВЕТОВ:
 
-Ответь в формате JSON:
+1. ТОЧНОЕ СОВПАДЕНИЕ (включая опечатки 1-2 буквы):
+   ✅ "managment" для "management"
+   ✅ "автономя" для "автономия"
+
+2. СИНОНИМЫ (разные слова, одно значение):
+   ✅ "большой" ↔ "огромный" 
+   ✅ "start" ↔ "begin"
+   ✅ "оценивать" ↔ "анализировать"
+
+3. РОДСТВЕННЫЕ ФОРМЫ (однокоренные слова, разные части речи):
+   ✅ "питание" ↔ "питать" (сущ. ↔ глагол)
+   ✅ "бесконечность" ↔ "бесконечный" (сущ. ↔ прилаг.)
+   ✅ "способен" ↔ "способный" (краткая ↔ полная форма)
+   ✅ "отказать" ↔ "отклонять" (синонимичные глаголы)
+   ✅ "осталось" ↔ "оставаться" (форма ↔ инфинитив)
+   ✅ "время затратное" ↔ "затратный на время" (перестановка слов)
+   ✅ "долго не" ↔ "больше не" (близкие по смыслу)
+
+4. НЕПРАВИЛЬНЫЕ ОТВЕТЫ:
+   ❌ Совершенно разные по смыслу слова
+   ❌ "стол" для "собака"
+
+ВАЖНО: Будь ЛОЯЛЬНЫМ к ученику. Если есть хоть какая-то смысловая связь - засчитывай как правильно.
+
+Ответь ТОЛЬКО JSON без лишнего текста:
 {
   "isExact": true/false,
-  "isSynonym": true/false,
+  "isSynonym": true/false,  
   "isRelated": true/false,
   "isWrong": true/false
 }`;
@@ -4348,15 +4376,39 @@ async function checkAnswerWithAI(userAnswer, correctAnswer, direction) {
       headers: {
         'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
         'Content-Type': 'application/json'
-      }
+      },
+      timeout: 30000 // 30 секунд таймаут
     });
     
     const result = response.data.choices[0].message.content.trim();
-    console.log(`AI response: ${result}`);
+    console.log(`AI raw response: ${result}`);
+    
+    // Улучшенное извлечение JSON
+    let jsonStr = result;
+    
+    // Убираем возможные обертки
+    if (result.includes('```')) {
+      const match = result.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
+      if (match) jsonStr = match[1];
+    } else if (result.includes('{')) {
+      const match = result.match(/\{[\s\S]*?\}/);
+      if (match) jsonStr = match[0];
+    }
+    
+    console.log(`Extracted JSON string: ${jsonStr}`);
     
     try {
-      const parsed = JSON.parse(result);
-      console.log(`Parsed AI response:`, parsed);
+      const parsed = JSON.parse(jsonStr);
+      console.log(`Successfully parsed AI response:`, parsed);
+      
+      // Проверяем корректность структуры
+      if (typeof parsed.isExact !== 'boolean' || 
+          typeof parsed.isSynonym !== 'boolean' || 
+          typeof parsed.isRelated !== 'boolean' || 
+          typeof parsed.isWrong !== 'boolean') {
+        throw new Error('Invalid JSON structure from AI');
+      }
+      
       if (parsed.isExact) {
         console.log('AI determined: EXACT match');
         return { correct: true, isSynonym: false, isRelated: false };
@@ -4370,25 +4422,54 @@ async function checkAnswerWithAI(userAnswer, correctAnswer, direction) {
         console.log('AI determined: WRONG');
         return { correct: false, isSynonym: false, isRelated: false };
       }
-    } catch (e) {
-      console.log('Failed to parse AI response, using fallback');
-      // Fallback к старой логике
-      const isCorrect = result.toLowerCase().includes('true') || result.toLowerCase().includes('exact');
-      return { correct: isCorrect, isSynonym: false, isRelated: false };
+    } catch (parseError) {
+      console.error('JSON parsing failed:', parseError);
+      console.error('Attempting fallback analysis...');
+      
+      // Fallback: анализируем текст ответа
+      const lowerResult = result.toLowerCase();
+      if (lowerResult.includes('exact') || lowerResult.includes('точное')) {
+        console.log('Fallback: detected EXACT');
+        return { correct: true, isSynonym: false, isRelated: false };
+      } else if (lowerResult.includes('synonym') || lowerResult.includes('синоним')) {
+        console.log('Fallback: detected SYNONYM');
+        return { correct: true, isSynonym: true, isRelated: false };
+      } else if (lowerResult.includes('related') || lowerResult.includes('родственн')) {
+        console.log('Fallback: detected RELATED');
+        return { correct: true, isSynonym: false, isRelated: true };
+      } else {
+        console.log('Fallback: treating as WRONG');
+        return { correct: false, isSynonym: false, isRelated: false };
+      }
     }
     
   } catch (error) {
     console.error('AI check failed:', error);
-    // Fallback - более строгая проверка с алгоритмом схожести
+    console.error('Full error details:', error.message);
+    
+    // Fallback - более строгая проверка с алгоритмом схожости
     const normalizedUser = userAnswer.toLowerCase().trim();
     const normalizedCorrect = correctAnswer.toLowerCase().trim();
     
     // Если слова совпадают точно - правильно
-    if (normalizedUser === normalizedCorrect) return { correct: true, isSynonym: false, isRelated: false };
+    if (normalizedUser === normalizedCorrect) {
+      console.log('Fallback: exact match found');
+      return { correct: true, isSynonym: false, isRelated: false };
+    }
     
-    // Проверяем схожесть (должно быть больше 70% похожести)
+    // Для разных языков (кириллица vs латиница) - отклоняем
+    const hasCyrillicUser = /[а-яё]/i.test(normalizedUser);
+    const hasCyrillicCorrect = /[а-яё]/i.test(normalizedCorrect);
+    
+    if (hasCyrillicUser !== hasCyrillicCorrect) {
+      console.log('Fallback: different languages, rejecting');
+      return { correct: false, isSynonym: false, isRelated: false };
+    }
+    
+    // Проверяем схожесть только для одного языка
     const similarity = calculateSimilarity(normalizedUser, normalizedCorrect);
-    return { correct: similarity > 0.7, isSynonym: false, isRelated: false };
+    console.log(`Fallback: similarity ${Math.round(similarity * 100)}%`);
+    return { correct: similarity > 0.8, isSynonym: false, isRelated: false };
   }
 }
 
@@ -4657,17 +4738,98 @@ ${sentencesText}
       headers: {
         'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
         'Content-Type': 'application/json'
-      }
+      },
+      timeout: 60000 // 60 секунд для анализа предложений
     });
     
     let answer = gptRes.data.choices[0].message.content;
-    const match = answer.match(/\{[\s\S]*\}/);
+    console.log('Raw sentence analysis response:', answer);
     
-    if (!match) {
-      throw new Error('AI не вернул JSON.');
+    // Улучшенное извлечение JSON
+    let jsonString = null;
+    
+    // Способ 1: Поиск JSON между фигурными скобками
+    const match = answer.match(/\{[\s\S]*\}/);
+    if (match) {
+      jsonString = match[0];
+    } else {
+      // Способ 2: Поиск JSON между кодовыми блоками
+      const codeMatch = answer.match(/```(?:json)?\s*(\{[\s\S]*\})\s*```/);
+      if (codeMatch) {
+        jsonString = codeMatch[1];
+      } else {
+        // Способ 3: Очистка от лишнего текста построчно
+        const lines = answer.split('\n');
+        const jsonLines = [];
+        let insideJson = false;
+        let braceCount = 0;
+        
+        for (const line of lines) {
+          if (line.trim().startsWith('{')) {
+            insideJson = true;
+            braceCount = 1;
+            jsonLines.push(line);
+          } else if (insideJson) {
+            jsonLines.push(line);
+            // Подсчитываем скобки для правильного закрытия
+            braceCount += (line.match(/\{/g) || []).length;
+            braceCount -= (line.match(/\}/g) || []).length;
+            if (braceCount === 0) break;
+          }
+        }
+        
+        if (jsonLines.length > 0) {
+          jsonString = jsonLines.join('\n');
+        }
+      }
     }
     
-    const analysis = JSON.parse(match[0]);
+    if (!jsonString) {
+      console.error('Не удалось извлечь JSON из ответа AI для анализа предложений');
+      throw new Error('AI не вернул корректный JSON для анализа предложений');
+    }
+    
+    console.log('Extracted sentence analysis JSON:', jsonString);
+    
+    let analysis;
+    try {
+      analysis = JSON.parse(jsonString);
+    } catch (parseError) {
+      console.error('JSON parsing failed for sentence analysis:', parseError);
+      
+      // Создаем fallback анализ
+      analysis = {
+        evaluations: answers.map(item => ({
+          word: item.word,
+          correct: false, // По умолчанию считаем неправильным при ошибке
+          analysis: "Не удалось проанализировать предложение. Попробуйте еще раз."
+        })),
+        overall_feedback: "Произошла ошибка при анализе. Попробуйте отправить предложения еще раз.",
+        grammar_tips: "Рекомендуем изучить базовые грамматические правила английского языка.",
+        vocabulary_suggestions: "Расширяйте словарный запас, изучая новые слова каждый день.",
+        encouragement: "Не останавливайтесь! Ошибки - это часть процесса обучения."
+      };
+    }
+    
+    // Проверяем корректность структуры ответа
+    if (!analysis.evaluations || !Array.isArray(analysis.evaluations)) {
+      console.error('Invalid analysis structure - no evaluations array');
+      throw new Error('AI вернул некорректную структуру анализа');
+    }
+    
+    // Убеждаемся, что количество оценок соответствует количеству предложений
+    if (analysis.evaluations.length !== answers.length) {
+      console.error(`Mismatch: expected ${answers.length} evaluations, got ${analysis.evaluations.length}`);
+      // Дополняем недостающие оценки
+      while (analysis.evaluations.length < answers.length) {
+        const missingIndex = analysis.evaluations.length;
+        analysis.evaluations.push({
+          word: answers[missingIndex].word,
+          correct: false,
+          analysis: "Анализ не был получен для этого предложения."
+        });
+      }
+    }
     
     // Обновляем прогресс слов в базе данных
     await updateWordProgressFromAnalysis(session, analysis.evaluations);
@@ -4724,17 +4886,37 @@ async function sendBeautifulFeedback(ctx, session, analysis) {
     await ctx.reply('🎓 <b>Детальный анализ ваших предложений</b>', { parse_mode: 'HTML' });
     
     // 2. Разбор каждого предложения с более подробной информацией
+    console.log('=== SENDING FEEDBACK ===');
+    console.log(`Analysis evaluations count: ${analysis.evaluations.length}`);
+    console.log(`Session answers count: ${session.sentenceTaskAnswers.length}`);
+    
     for (let i = 0; i < analysis.evaluations.length; i++) {
       const eval = analysis.evaluations[i];
-      const sentence = session.sentenceTaskAnswers[i];
+      
+      console.log(`Processing evaluation ${i + 1}: word="${eval.word}"`);
+      
+      // Находим предложение по слову из анализа
+      const userAnswer = session.sentenceTaskAnswers.find(answer => answer.word === eval.word);
+      
+      if (!userAnswer) {
+        console.error(`Не найдено предложение для слова: ${eval.word}`);
+        console.error('Available words:', session.sentenceTaskAnswers.map(a => a.word));
+        
+        // Создаем fallback сообщение
+        const fallbackMessage = `❓ <b>${i + 1}. "${eval.word}"</b> - ОШИБКА АНАЛИЗА\n` +
+                               `📝 <b>Анализ:</b> Не удалось найти ваше предложение для этого слова.`;
+        await ctx.reply(fallbackMessage, { parse_mode: 'HTML' });
+        continue;
+      }
       
       const status = eval.correct ? '✅' : '❌';
       const statusText = eval.correct ? 'ПРАВИЛЬНО' : 'ТРЕБУЕТ ИСПРАВЛЕНИЯ';
       
       const message = `${status} <b>${i + 1}. "${eval.word}"</b> - ${statusText}\n` +
-                     `💬 <i>"${sentence.sentence}"</i>\n\n` +
-                     `📝 <b>Анализ:</b> ${eval.analysis}`;
+                     `💬 <i>"${userAnswer.sentence}"</i>\n\n` +
+                     `📝 <b>Анализ:</b> ${eval.analysis || 'Анализ не предоставлен.'}`;
       
+      console.log(`Sending message for word "${eval.word}": ${status}`);
       await ctx.reply(message, { parse_mode: 'HTML' });
       
       // Небольшая пауза между сообщениями
