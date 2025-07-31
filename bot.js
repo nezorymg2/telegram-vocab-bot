@@ -244,7 +244,7 @@ function getStreakMultiplier(streak) {
 }
 
 // Функция начисления XP и проверки повышения уровня
-async function awardXP(session, wordCorrectLevel, ctx, telegramId) {
+async function awardXP(session, wordCorrectLevel, ctx) {
   if (!session.xp) session.xp = 0;
   if (!session.level) session.level = 1;
   
@@ -255,25 +255,6 @@ async function awardXP(session, wordCorrectLevel, ctx, telegramId) {
   const oldLevel = getLevelByXP(session.xp);
   session.xp += xpGained;
   const newLevel = getLevelByXP(session.xp);
-  
-  // ВАЖНО: Сохраняем XP и уровень в базу данных
-  try {
-    await prisma.userProfile.update({
-      where: { 
-        telegramId_profileName: {
-          telegramId: telegramId.toString(),
-          profileName: session.profile
-        }
-      },
-      data: {
-        xp: session.xp,
-        level: newLevel.level
-      }
-    });
-    console.log(`✅ Saved XP: ${session.xp}, Level: ${newLevel.level} for user ${session.profile}`);
-  } catch (error) {
-    console.error('❌ Failed to save XP/level to database:', error);
-  }
   
   // Проверяем повышение уровня
   if (newLevel.level > oldLevel.level) {
@@ -361,21 +342,6 @@ async function checkDailyBonus(session, ctx) {
   
   session.lastBonusDate = today;
   session.xp += bonusXP;
-  
-  // ВАЖНО: Сохраняем обновленный streak и дату в базу данных
-  try {
-    await prisma.profile.update({
-      where: { telegramId: session.profile },
-      data: {
-        loginStreak: session.loginStreak,
-        lastBonusDate: session.lastBonusDate,
-        xp: session.xp
-      }
-    });
-    console.log(`✅ Saved login streak: ${session.loginStreak} for user ${session.profile}`);
-  } catch (error) {
-    console.error('❌ Failed to save login streak to database:', error);
-  }
   
   // Специальные награды
   let specialReward = '';
@@ -603,9 +569,7 @@ async function getOrCreateUserProfile(telegramId, profileName) {
           xp: 0,
           level: 1,
           loginStreak: 0,
-          studyStreak: 0,
           lastBonusDate: null,
-          lastStudyDate: null,
           lastSmartRepeatDate: null,
           reminderTime: null
         }
@@ -642,9 +606,7 @@ async function saveUserSession(telegramId, profileName, session) {
         xp: session.xp || 0,
         level: session.level || 1,
         loginStreak: session.loginStreak || 0,
-        studyStreak: session.studyStreak || 0,
         lastBonusDate: session.lastBonusDate,
-        lastStudyDate: session.lastStudyDate,
         lastSmartRepeatDate: session.lastSmartRepeatDate,
         reminderTime: session.reminderTime
       }
@@ -681,54 +643,8 @@ async function getWords(profile, filter = {}) {
 async function updateWordCorrect(profile, word, translation, correct) {
   await prisma.word.updateMany({
     where: { profile, word, translation },
-    data: { correct, updatedAt: new Date() }
+    data: { correct },
   });
-}
-
-// Функция для обновления study streak после активности с словами
-async function updateStudyStreakAfterActivity(session, telegramId) {
-  if (!session.profile) return;
-  
-  const today = new Date().toDateString();
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  const yesterdayStr = yesterday.toDateString();
-  
-  const lastStudyDate = session.lastStudyDate;
-  let studyStreak = session.studyStreak || 0;
-  
-  // Если сегодня уже была активность, не обновляем
-  if (lastStudyDate === today) return;
-  
-  // Проверяем непрерывность
-  if (lastStudyDate === yesterdayStr) {
-    // Продолжаем streak
-    studyStreak += 1;
-  } else {
-    // Новый streak или возобновление
-    studyStreak = 1;
-  }
-  
-  // Обновляем сессию
-  session.studyStreak = studyStreak;
-  session.lastStudyDate = today;
-  
-  // Сохраняем в базу данных
-  try {
-    await prisma.userProfile.updateMany({
-      where: { 
-        telegramId: telegramId.toString(),
-        profileName: session.profile 
-      },
-      data: {
-        studyStreak: session.studyStreak,
-        lastStudyDate: session.lastStudyDate
-      }
-    });
-    console.log(`✅ Updated study streak: ${session.studyStreak} for user ${session.profile}`);
-  } catch (error) {
-    console.error('❌ Failed to update study streak:', error);
-  }
 }
 
 // /start — начало сеанса
@@ -760,12 +676,10 @@ bot.command('start', async (ctx) => {
       sessions[userId] = {
         profile: profile.profileName,
         step: 'main_menu',
-        xp: profile.xp || 0,
-        level: profile.level || 1,
-        loginStreak: profile.loginStreak || 0,
-        studyStreak: profile.studyStreak || 0,
+        xp: profile.xp,
+        level: profile.level,
+        loginStreak: profile.loginStreak,
         lastBonusDate: profile.lastBonusDate,
-        lastStudyDate: profile.lastStudyDate || null,
         lastSmartRepeatDate: profile.lastSmartRepeatDate,
         reminderTime: profile.reminderTime
       };
@@ -1655,59 +1569,34 @@ bot.command('achievements', async (ctx) => {
   const xpToNext = nextLevel ? nextLevel.required_xp - currentXP : 0;
   const loginStreak = session.loginStreak || 0;
   
-  // --- Study Streak (правильная логика) ---
-  const today = new Date().toDateString();
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  const yesterdayStr = yesterday.toDateString();
-  
-  let studyStreak = session.studyStreak || 0;
-  const lastStudyDate = session.lastStudyDate;
-  
-  // Проверяем была ли активность сегодня
-  const todayActivity = words.some(w => {
-    const activityDate = new Date(w.updatedAt || w.createdAt).toDateString();
-    return activityDate === today;
-  });
-  
-  if (todayActivity) {
-    // Есть активность сегодня
-    if (lastStudyDate === yesterdayStr) {
-      // Продолжаем streak
-      if (session.lastStudyDate !== today) {
-        studyStreak += 1;
-        session.studyStreak = studyStreak;
-        session.lastStudyDate = today;
-      }
-    } else if (lastStudyDate !== today) {
-      // Новый streak или возобновление после перерыва
+  // --- Streak ---
+  // Получаем даты повторения (используем поле updatedAt, если есть, иначе createdAt)
+  const dates = words
+    .map(w => w.updatedAt || w.createdAt)
+    .filter(Boolean)
+    .map(d => new Date(d).toDateString());
+  const uniqueDays = Array.from(new Set(dates)).sort();
+  let studyStreak = session.streak || 0;
+  if (!session.slothOfTheDay) {
+    // Считаем streak (дней подряд с активностью)
+    if (uniqueDays.length) {
+      let prev = new Date(uniqueDays[uniqueDays.length - 1]);
       studyStreak = 1;
-      session.studyStreak = studyStreak;
-      session.lastStudyDate = today;
-    }
-  } else {
-    // Нет активности сегодня
-    if (lastStudyDate && lastStudyDate !== today && lastStudyDate !== yesterdayStr) {
-      // Прошло больше дня без активности - сбрасываем streak
-      studyStreak = 0;
-      session.studyStreak = 0;
-    }
-  }
-  
-  // Сохраняем study streak в базу данных
-  if (session.lastStudyDate && (todayActivity || studyStreak === 0)) {
-    try {
-      await prisma.profile.update({
-        where: { telegramId: session.profile },
-        data: {
-          studyStreak: session.studyStreak,
-          lastStudyDate: session.lastStudyDate
+      for (let i = uniqueDays.length - 2; i >= 0; i--) {
+        const curr = new Date(uniqueDays[i]);
+        const diff = (prev - curr) / (1000 * 60 * 60 * 24);
+        if (diff === 1) {
+          studyStreak++;
+          prev = curr;
+        } else if (diff > 1) {
+          break;
         }
-      });
-      console.log(`✅ Saved study streak: ${session.studyStreak} for user ${session.profile}`);
-    } catch (error) {
-      console.error('❌ Failed to save study streak to database:', error);
+      }
     }
+    session.streak = studyStreak;
+  } else {
+    studyStreak = 0;
+    session.streak = 0;
   }
   
   // --- Мультипликатор XP ---
@@ -1792,7 +1681,8 @@ bot.on('message:text', async (ctx) => {
     const normalized = text.toLowerCase();
 
     // Игнорируем команды (они обрабатываются через bot.command())
-    if (text.startsWith('/')) {
+    // ИСКЛЮЧЕНИЕ: разрешаем /auto и /autogen для автогенерации предложений
+    if (text.startsWith('/') && text !== '/auto' && text !== '/autogen') {
       return;
     }
 
@@ -1824,12 +1714,10 @@ bot.on('message:text', async (ctx) => {
           sessions[userId] = {
             profile: profile.profileName,
             step: 'word_tasks_menu',
-            xp: profile.xp || 0,
-            level: profile.level || 1,
-            loginStreak: profile.loginStreak || 0,
-            studyStreak: profile.studyStreak || 0,
+            xp: profile.xp,
+            level: profile.level,
+            loginStreak: profile.loginStreak,
             lastBonusDate: profile.lastBonusDate,
-            lastStudyDate: profile.lastStudyDate || null,
             lastSmartRepeatDate: profile.lastSmartRepeatDate,
             reminderTime: profile.reminderTime
           };
@@ -1889,12 +1777,10 @@ bot.on('message:text', async (ctx) => {
     
     session.profile = text;
     session.step = 'main_menu';
-    session.xp = userProfile.xp || 0;
-    session.level = userProfile.level || 1;
-    session.loginStreak = userProfile.loginStreak || 0;
-    session.studyStreak = userProfile.studyStreak || 0;
+    session.xp = userProfile.xp;
+    session.level = userProfile.level;
+    session.loginStreak = userProfile.loginStreak;
     session.lastBonusDate = userProfile.lastBonusDate;
-    session.lastStudyDate = userProfile.lastStudyDate || null;
     session.lastSmartRepeatDate = userProfile.lastSmartRepeatDate;
     session.reminderTime = userProfile.reminderTime;
     
@@ -2672,12 +2558,9 @@ bot.on('message:text', async (ctx) => {
       
       // Начисляем XP за правильный ответ
       const wordCorrectLevel = (all[idx]?.correct || 0);
-      const xpGained = await awardXP(session, wordCorrectLevel, ctx, ctx.from.id);
+      const xpGained = await awardXP(session, wordCorrectLevel, ctx);
       
-      if (idx !== -1) {
-        await updateWordCorrect(session.profile, wordObj.word, wordObj.translation, (all[idx].correct || 0) + 1);
-        await updateStudyStreakAfterActivity(session, ctx.from.id);
-      }
+      if (idx !== -1) await updateWordCorrect(session.profile, wordObj.word, wordObj.translation, (all[idx].correct || 0) + 1);
       
       // Показываем полученный XP
       await ctx.reply(`💫 +${xpGained} XP`);
@@ -3036,8 +2919,14 @@ bot.on('message:text', async (ctx) => {
     
     // Функция для безопасного выбора направления теста
     function getSafeDirection(word, allWords) {
-      // Всегда используем en-ru для избежания неоднозначности
-      return 'en-ru';
+      // Проверяем, есть ли другие слова с таким же переводом
+      const sameTranslation = allWords.filter(w => w.translation.toLowerCase() === word.translation.toLowerCase());
+      if (sameTranslation.length > 1) {
+        // Если есть дубликаты перевода, используем только en-ru
+        return 'en-ru';
+      }
+      // Если перевод уникальный, можем использовать любое направление
+      return Math.random() < 0.5 ? 'en-ru' : 'ru-en';
     }
     
     session.wordsToRepeat = wordsToRepeat.map(w => {
@@ -3054,8 +2943,32 @@ bot.on('message:text', async (ctx) => {
     return ctx.reply(question);
   }
 
+  // --- Выбор способа создания предложений ---
+  if (step === 'sentence_task_choice') {
+    if (text === '✍️ Написать самому') {
+      // Запускаем ручной ввод предложений
+      await startManualSentenceInput(ctx, session);
+      return;
+    } else if (text === '/auto' || text === '/autogen') {
+      // Запускаем автоматическую генерацию (скрытая команда)
+      await autoGenerateAndAnalyzeSentences(ctx, session);
+      return;
+    } else {
+      // Неизвестный выбор - переходим к ручному вводу
+      await startManualSentenceInput(ctx, session);
+      return;
+    }
+  }
+
   // --- Задание: предложения с новыми словами ---
   if (step === 'sentence_task') {
+    // Проверяем команды автогенерации
+    if (text === '/auto' || text === '/autogen') {
+      await ctx.reply('🤖 Переключаюсь на автоматическую генерацию...');
+      await autoGenerateAndAnalyzeSentences(ctx, session);
+      return;
+    }
+    
     try {
       const idx = session.sentenceTaskIndex || 0;
       const words = session.sentenceTaskWords || [];
@@ -3291,43 +3204,10 @@ async function generateStoryTaskContent(session, ctx) {
     });
     
     let answer = gptRes.data.choices[0].message.content;
-    console.log('Raw AI response:', answer);
-    
-    // Пробуем разные способы извлечения JSON
-    let jsonString = null;
-    
-    // Способ 1: Поиск JSON между фигурными скобками
     const match = answer.match(/\{[\s\S]*\}/);
-    if (match) {
-      jsonString = match[0];
-    } else {
-      // Способ 2: Поиск JSON между кодовыми блоками
-      const codeMatch = answer.match(/```(?:json)?\s*(\{[\s\S]*\})\s*```/);
-      if (codeMatch) {
-        jsonString = codeMatch[1];
-      } else {
-        // Способ 3: Очистка от лишнего текста
-        const lines = answer.split('\n');
-        const jsonLines = [];
-        let insideJson = false;
-        for (const line of lines) {
-          if (line.trim().startsWith('{')) insideJson = true;
-          if (insideJson) jsonLines.push(line);
-          if (line.trim().endsWith('}')) break;
-        }
-        if (jsonLines.length > 0) {
-          jsonString = jsonLines.join('\n');
-        }
-      }
-    }
+    if (!match) throw new Error('AI не вернул JSON.');
     
-    if (!jsonString) {
-      console.error('Не удалось извлечь JSON из ответа AI');
-      throw new Error('AI не вернул корректный JSON');
-    }
-    
-    console.log('Extracted JSON:', jsonString);
-    const storyData = JSON.parse(jsonString);
+    const storyData = JSON.parse(match[0]);
     session.storyText = storyData.text;
     session.storyQuestions = storyData.questions;
     session.storyQuestionIndex = 0;
@@ -3368,13 +3248,10 @@ async function generateStoryTaskContent(session, ctx) {
     
   } catch (e) {
     console.error('Error in generateStoryTaskContent:', e);
-    console.error('Error stack:', e.stack);
     
     // Логируем детали ошибки
     if (e.response && e.response.data) {
       console.error('API response error:', e.response.data);
-      console.error('API response status:', e.response.status);
-      console.error('API response headers:', e.response.headers);
     }
     
     session.step = 'main_menu';
@@ -4204,8 +4081,12 @@ async function startSmartRepeatStage2(ctx, session) {
   
   // Функция для безопасного выбора направления теста
   function getSafeDirection(word, allWords) {
-    // Всегда используем en-ru для избежания неоднозначности
-    return 'en-ru';
+    const allUserWords = allWords || [];
+    const sameTranslation = allUserWords.filter(w => w.translation.toLowerCase() === word.translation.toLowerCase());
+    if (sameTranslation.length > 1) {
+      return 'en-ru';
+    }
+    return Math.random() < 0.5 ? 'en-ru' : 'ru-en';
   }
   
   const allWords = await getWords(session.profile);
@@ -4251,10 +4132,6 @@ async function handleSmartRepeatStage2Answer(ctx, session, answerText) {
   }
 
   const wordObj = session.wordsToRepeat[session.currentIndex];
-  
-  // Правильно определяем ожидаемый ответ на основе направления
-  // en-ru: "Как переводится autonomy?" → ожидается "автономия" 
-  // ru-en: "Как по-английски автономия?" → ожидается "autonomy"
   const expectedAnswer = wordObj.direction === 'en-ru' ? wordObj.translation : wordObj.word;
   
   // Отладочная информация
@@ -4263,46 +4140,23 @@ async function handleSmartRepeatStage2Answer(ctx, session, answerText) {
     Translation: ${wordObj.translation}
     Direction: ${wordObj.direction}
     User Answer: ${answerText}
-    Expected Answer: ${expectedAnswer}
-    Question format: ${wordObj.direction === 'en-ru' ? 'EN->RU (translate word)' : 'RU->EN (translate to English)'}`);
-  
-  // ДОПОЛНИТЕЛЬНАЯ ПРОВЕРКА: убеждаемся что direction соответствует ожидаемому ответу
-  if (wordObj.direction === 'en-ru' && answerText.toLowerCase() === wordObj.word.toLowerCase()) {
-    console.log('⚠️ DETECTED MISMATCH: User gave English word but question was EN->RU. Fixing direction...');
-    // Пользователь дал английское слово, но вопрос был "как переводится"
-    // Это означает что direction был установлен неправильно
-    wordObj.direction = 'ru-en';
-    const correctedExpected = wordObj.word;
-    console.log(`Corrected direction to ru-en, expected answer now: ${correctedExpected}`);
-  }
+    Expected Answer: ${expectedAnswer}`);
   
   try {
     // Используем AI для проверки ответа
-    console.log(`Calling checkAnswerWithAI with: answerText="${answerText}", expectedAnswer="${expectedAnswer}", direction="${wordObj.direction}"`);
-    const result = await checkAnswerWithAI(answerText, expectedAnswer, wordObj.direction);
-    console.log(`AI check result:`, result);
-    console.log(`DEBUG: result.correct=${result.correct}, result.isSynonym=${result.isSynonym}, result.isRelated=${result.isRelated}`);
+    const isCorrect = await checkAnswerWithAI(answerText, expectedAnswer, wordObj.direction);
     
-    if (result.correct) {
-      let replyText = `✅ <b>Правильно!</b>\n\n📝 <b>${wordObj.word}</b> — ${wordObj.translation}`;
-      
-      if (result.isSynonym) {
-        replyText += `\n\n💡 <i>Вы дали синоним "${answerText}". Правильный ответ: "${expectedAnswer}"</i>`;
-      } else if (result.isRelated) {
-        replyText += `\n\n💡 <i>Вы дали родственную форму "${answerText}". Точный ответ: "${expectedAnswer}"</i>`;
-      }
-      
-      await ctx.reply(replyText, { parse_mode: 'HTML' });
+    if (isCorrect) {
+      await ctx.reply(`✅ <b>Правильно!</b>\n\n📝 <b>${wordObj.word}</b> — ${wordObj.translation}`, { parse_mode: 'HTML' });
       
       // Начисляем XP за правильный ответ
       const wordCorrectLevel = wordObj.correct || 0;
-      const xpGained = await awardXP(session, wordCorrectLevel, ctx, ctx.from.id);
+      const xpGained = await awardXP(session, wordCorrectLevel, ctx);
       await ctx.reply(`💫 +${xpGained} XP`);
       
       // Увеличиваем счетчик правильных ответов
       try {
         await updateWordCorrect(session.profile, wordObj.word, wordObj.translation, wordObj.correct + 1);
-        await updateStudyStreakAfterActivity(session, ctx.from.id);
       } catch (error) {
         console.error('Error updating word progress in stage 2:', error);
       }
@@ -4352,243 +4206,60 @@ async function moveToNextStage2Word(ctx, session) {
 
 // Функция проверки ответа с помощью AI
 async function checkAnswerWithAI(userAnswer, correctAnswer, direction) {
-  console.log(`=== checkAnswerWithAI START ===`);
-  console.log(`userAnswer: "${userAnswer}"`);
-  console.log(`correctAnswer: "${correctAnswer}"`);
-  console.log(`direction: "${direction}"`);
-  
-  // Предварительная проверка - точное совпадение без учета регистра
-  const userAnswerLower = userAnswer.trim().toLowerCase();
-  const correctAnswerLower = correctAnswer.trim().toLowerCase();
-  
-  console.log(`userAnswerLower: "${userAnswerLower}"`);
-  console.log(`correctAnswerLower: "${correctAnswerLower}"`);
-  
-  if (userAnswerLower === correctAnswerLower) {
-    console.log('✅ Exact match found (case insensitive)');
-    return { correct: true, isSynonym: false, isRelated: false };
-  }
-  
-  // Проверяем схожесть по длине - если слова сильно отличаются по длине, сразу отклоняем
-  const lengthDiff = Math.abs(userAnswerLower.length - correctAnswerLower.length);
-  const maxLength = Math.max(userAnswerLower.length, correctAnswerLower.length);
-  
-  // Увеличиваем порог до 60% для родственных форм (было 30%)
-  if (lengthDiff / maxLength > 0.6) {
-    console.log('Length difference too large, rejecting without AI check');
-    return { correct: false, isSynonym: false, isRelated: false };
-  }
-  
-  // Простая проверка расстояния Левенштейна
-  function levenshteinDistance(str1, str2) {
-    const matrix = [];
-    for (let i = 0; i <= str2.length; i++) {
-      matrix[i] = [i];
-    }
-    for (let j = 0; j <= str1.length; j++) {
-      matrix[0][j] = j;
-    }
-    for (let i = 1; i <= str2.length; i++) {
-      for (let j = 1; j <= str1.length; j++) {
-        if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
-          matrix[i][j] = matrix[i - 1][j - 1];
-        } else {
-          matrix[i][j] = Math.min(
-            matrix[i - 1][j - 1] + 1,
-            matrix[i][j - 1] + 1,
-            matrix[i - 1][j] + 1
-          );
-        }
-      }
-    }
-    return matrix[str2.length][str1.length];
-  }
-  
-  // Проверяем, содержат ли слова кириллицу (разные языки)
-  const hasCyrillic = /[а-яё]/i;
-  const userHasCyrillic = hasCyrillic.test(userAnswerLower);
-  const correctHasCyrillic = hasCyrillic.test(correctAnswerLower);
-  
-  console.log(`Language check: user "${userAnswerLower}" has cyrillic: ${userHasCyrillic}, correct "${correctAnswerLower}" has cyrillic: ${correctHasCyrillic}`);
-  
-  // Если одно слово на кириллице, а другое на латинице - это разные языки, пропускаем проверку схожести
-  if (userHasCyrillic !== correctHasCyrillic) {
-    console.log('Different languages detected (cyrillic vs latin), skipping similarity check, going to AI');
-    // Пропускаем similarity check и сразу идем к AI
-  } else {
-    console.log('Same language detected, checking similarity');
-    // Проверяем схожесть только для слов на одном языке
-    const distance = levenshteinDistance(userAnswerLower, correctAnswerLower);
-    const similarity = 1 - (distance / maxLength);
-    
-    console.log(`Similarity calculation: distance=${distance}, maxLength=${maxLength}, similarity=${Math.round(similarity * 100)}%`);
-    
-    // Если схожесть больше 80%, это скорее всего опечатка
-    if (similarity > 0.8) {
-      console.log(`High similarity (${Math.round(similarity * 100)}%), treating as typo`);
-      return { correct: true, isSynonym: false, isRelated: false };
-    }
-    
-    // Снижаем порог до 15% чтобы больше слов доходило до AI (было 30%)
-    if (similarity < 0.15) {
-      console.log(`Similarity too low (${Math.round(similarity * 100)}%), rejecting without AI check`);
-      return { correct: false, isSynonym: false, isRelated: false };
-    }
-    
-    console.log(`Similarity is medium (${Math.round(similarity * 100)}%), proceeding to AI check`);
-  }
-  
-  console.log('=== STARTING AI CHECK ===');
-  console.log(`About to call OpenAI API with: userAnswer="${userAnswer}", correctAnswer="${correctAnswer}", direction="${direction}"`);
-  
-  // Если не точное совпадение, проверяем через AI
-  const prompt = `Ты эксперт по английскому и русскому языкам. Проверь правильность перевода.
+  const prompt = `Ты проверяешь правильность перевода слова.
 
-ВХОДНЫЕ ДАННЫЕ:
-Направление: ${direction === 'en-ru' ? 'английский → русский' : 'русский → английский'}
-Эталон: "${correctAnswer}"
-Ответ: "${userAnswer}"
+Направление перевода: ${direction === 'en-ru' ? 'с английского на русский' : 'с русского на английский'}
+Правильный ответ: "${correctAnswer}"
+Ответ пользователя: "${userAnswer}"
 
-ЗАДАЧА: Определи, является ли ответ пользователя правильным для изучения языка.
+СТРОГИЕ правила проверки:
+- Принимай только реальные синонимы и альтернативные переводы
+- Разрешай только мелкие опечатки (1-2 символа)
+- НЕ принимай ответы с серьезными искажениями слова
+- НЕ принимай ответы, где больше половины букв неправильные
+- Разные формы слов (падежи, времена) - разрешай
+- Сокращения - только общепринятые
 
-КАТЕГОРИИ ПРАВИЛЬНЫХ ОТВЕТОВ:
+Примеры НЕПРАВИЛЬНЫХ ответов:
+- "pallenish" для "pollination" (слишком много ошибок)
+- "managr" для "manager" (критичная опечатка)
+- "beautifal" для "beautiful" (серьезная ошибка)
 
-1. ТОЧНОЕ СОВПАДЕНИЕ (включая опечатки 1-2 буквы):
-   ✅ "managment" для "management"
-   ✅ "автономя" для "автономия"
+Примеры ПРАВИЛЬНЫХ ответов:
+- "managment" для "management" (мелкая опечатка)
+- "beatiful" для "beautiful" (одна ошибка)
+- "управлять" для "manage" (синоним)
 
-2. СИНОНИМЫ (разные слова, одно значение):
-   ✅ "большой" ↔ "огромный" 
-   ✅ "start" ↔ "begin"
-   ✅ "оценивать" ↔ "анализировать"
-
-3. РОДСТВЕННЫЕ ФОРМЫ (однокоренные слова, разные части речи):
-   ✅ "питание" ↔ "питать" (сущ. ↔ глагол)
-   ✅ "бесконечность" ↔ "бесконечный" (сущ. ↔ прилаг.)
-   ✅ "способен" ↔ "способный" (краткая ↔ полная форма)
-   ✅ "отказать" ↔ "отклонять" (синонимичные глаголы)
-   ✅ "осталось" ↔ "оставаться" (форма ↔ инфинитив)
-   ✅ "время затратное" ↔ "затратный на время" (перестановка слов)
-   ✅ "долго не" ↔ "больше не" (близкие по смыслу)
-
-4. НЕПРАВИЛЬНЫЕ ОТВЕТЫ:
-   ❌ Совершенно разные по смыслу слова
-   ❌ "стол" для "собака"
-
-ВАЖНО: Будь ЛОЯЛЬНЫМ к ученику. Если есть хоть какая-то смысловая связь - засчитывай как правильно.
-
-Ответь ТОЛЬКО JSON без лишнего текста:
-{
-  "isExact": true/false,
-  "isSynonym": true/false,  
-  "isRelated": true/false,
-  "isWrong": true/false
-}`;
+Ответь только "true" или "false".`;
 
   try {
     const response = await axios.post('https://api.openai.com/v1/chat/completions', {
       model: 'gpt-3.5-turbo',
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.1,
-      max_tokens: 100
+      max_tokens: 10
     }, {
       headers: {
         'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
         'Content-Type': 'application/json'
-      },
-      timeout: 30000 // 30 секунд таймаут
+      }
     });
     
-    const result = response.data.choices[0].message.content.trim();
-    console.log(`AI raw response: ${result}`);
-    
-    // Улучшенное извлечение JSON
-    let jsonStr = result;
-    
-    // Убираем возможные обертки
-    if (result.includes('```')) {
-      const match = result.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
-      if (match) jsonStr = match[1];
-    } else if (result.includes('{')) {
-      const match = result.match(/\{[\s\S]*?\}/);
-      if (match) jsonStr = match[0];
-    }
-    
-    console.log(`Extracted JSON string: ${jsonStr}`);
-    
-    try {
-      const parsed = JSON.parse(jsonStr);
-      console.log(`Successfully parsed AI response:`, parsed);
-      
-      // Проверяем корректность структуры
-      if (typeof parsed.isExact !== 'boolean' || 
-          typeof parsed.isSynonym !== 'boolean' || 
-          typeof parsed.isRelated !== 'boolean' || 
-          typeof parsed.isWrong !== 'boolean') {
-        throw new Error('Invalid JSON structure from AI');
-      }
-      
-      if (parsed.isExact) {
-        console.log('AI determined: EXACT match');
-        return { correct: true, isSynonym: false, isRelated: false };
-      } else if (parsed.isSynonym) {
-        console.log('AI determined: SYNONYM');
-        return { correct: true, isSynonym: true, isRelated: false };
-      } else if (parsed.isRelated) {
-        console.log('AI determined: RELATED form');
-        return { correct: true, isSynonym: false, isRelated: true };
-      } else {
-        console.log('AI determined: WRONG');
-        return { correct: false, isSynonym: false, isRelated: false };
-      }
-    } catch (parseError) {
-      console.error('JSON parsing failed:', parseError);
-      console.error('Attempting fallback analysis...');
-      
-      // Fallback: анализируем текст ответа
-      const lowerResult = result.toLowerCase();
-      if (lowerResult.includes('exact') || lowerResult.includes('точное')) {
-        console.log('Fallback: detected EXACT');
-        return { correct: true, isSynonym: false, isRelated: false };
-      } else if (lowerResult.includes('synonym') || lowerResult.includes('синоним')) {
-        console.log('Fallback: detected SYNONYM');
-        return { correct: true, isSynonym: true, isRelated: false };
-      } else if (lowerResult.includes('related') || lowerResult.includes('родственн')) {
-        console.log('Fallback: detected RELATED');
-        return { correct: true, isSynonym: false, isRelated: true };
-      } else {
-        console.log('Fallback: treating as WRONG');
-        return { correct: false, isSynonym: false, isRelated: false };
-      }
-    }
+    const result = response.data.choices[0].message.content.trim().toLowerCase();
+    return result === 'true';
     
   } catch (error) {
     console.error('AI check failed:', error);
-    console.error('Full error details:', error.message);
-    
-    // Fallback - более строгая проверка с алгоритмом схожости
+    // Fallback - более строгая проверка с алгоритмом схожести
     const normalizedUser = userAnswer.toLowerCase().trim();
     const normalizedCorrect = correctAnswer.toLowerCase().trim();
     
     // Если слова совпадают точно - правильно
-    if (normalizedUser === normalizedCorrect) {
-      console.log('Fallback: exact match found');
-      return { correct: true, isSynonym: false, isRelated: false };
-    }
+    if (normalizedUser === normalizedCorrect) return true;
     
-    // Для разных языков (кириллица vs латиница) - отклоняем
-    const hasCyrillicUser = /[а-яё]/i.test(normalizedUser);
-    const hasCyrillicCorrect = /[а-яё]/i.test(normalizedCorrect);
-    
-    if (hasCyrillicUser !== hasCyrillicCorrect) {
-      console.log('Fallback: different languages, rejecting');
-      return { correct: false, isSynonym: false, isRelated: false };
-    }
-    
-    // Проверяем схожесть только для одного языка
+    // Проверяем схожесть (должно быть больше 70% похожести)
     const similarity = calculateSimilarity(normalizedUser, normalizedCorrect);
-    console.log(`Fallback: similarity ${Math.round(similarity * 100)}%`);
-    return { correct: similarity > 0.8, isSynonym: false, isRelated: false };
+    return similarity > 0.7;
   }
 }
 
@@ -4719,6 +4390,99 @@ async function getAIContext(word, translation) {
   return getRandomSituation();
 }
 
+// Функция автоматической генерации предложений с AI
+async function generateSentencesWithAI(words) {
+  try {
+    console.log('=== GENERATING SENTENCES WITH AI ===');
+    console.log(`Words to generate sentences for:`, words.map(w => w.word));
+    
+    // Формируем промпт для генерации предложений С ОШИБКАМИ для обучения
+    const wordsText = words.map(w => `"${w.word}" (${w.translation})`).join(', ');
+    
+    const prompt = `Составь одно предложение на английском языке для каждого из этих слов: ${wordsText}
+
+ВАЖНО: В каждом предложении должна быть ОДНА типичная ошибка для изучающих английский язык:
+- Грамматические ошибки (времена, артикли, предлоги, порядок слов)
+- Лексические ошибки (неправильное использование слов)
+- Ошибки согласования (единственное/множественное число)
+
+ТРЕБОВАНИЯ:
+- Каждое предложение должно содержать ТОЛЬКО ОДНО из указанных слов
+- Предложения должны быть понятными, но с ОДНОЙ ошибкой
+- Длина предложения: 5-12 слов
+- Ошибки должны быть РАЗНЫМИ в каждом предложении
+
+Примеры типов ошибок:
+- "He go to school every day" (go вместо goes)
+- "I have much friends" (much вместо many)
+- "She is more taller than me" (more taller вместо taller)
+- "I am going to home" (to home вместо home)
+
+Верни ответ строго в формате JSON:
+{
+  "sentences": [
+    {
+      "word": "первое_слово",
+      "sentence": "предложение с первым словом (с ошибкой)"
+    },
+    {
+      "word": "второе_слово", 
+      "sentence": "предложение со вторым словом (с ошибкой)"
+    }
+  ]
+}`;
+
+    const response = await axios.post('https://api.openai.com/v1/chat/completions', {
+      model: 'gpt-3.5-turbo',
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.8,
+      max_tokens: 800
+    }, {
+      headers: {
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    let answer = response.data.choices[0].message.content;
+    const match = answer.match(/\{[\s\S]*\}/);
+    if (!match) {
+      throw new Error('AI не вернул JSON.');
+    }
+
+    const result = JSON.parse(match[0]);
+    
+    // Проверяем корректность структуры
+    if (!result.sentences || !Array.isArray(result.sentences)) {
+      throw new Error('Некорректная структура ответа AI');
+    }
+
+    // Проверяем, что все слова получили предложения
+    const generatedWords = result.sentences.map(s => s.word);
+    const missingWords = words.filter(w => !generatedWords.includes(w.word));
+    
+    // Добавляем fallback предложения с ошибками для пропущенных слов
+    for (const missingWord of missingWords) {
+      result.sentences.push({
+        word: missingWord.word,
+        sentence: `I need learn the word "${missingWord.word}" more better.` // специально с ошибками
+      });
+    }
+
+    console.log(`Generated ${result.sentences.length} sentences with errors for ${words.length} words`);
+    return result.sentences;
+
+  } catch (error) {
+    console.error('Error generating sentences with AI:', error);
+    
+    // Fallback: генерируем простые предложения с ошибками
+    return words.map(word => ({
+      word: word.word,
+      sentence: `I should practice use the word "${word.word}" more often.` // намеренная ошибка: use вместо using
+    }));
+  }
+}
+
 // Функция запуска этапа 3 умного повторения (предложения)
 async function startSmartRepeatStage3(ctx, session) {
   // Собираем слова из предыдущих этапов
@@ -4735,56 +4499,24 @@ async function startSmartRepeatStage3(ctx, session) {
   const wordsForSentences = uniqueWords.filter(w => w.correct <= 2).slice(0, 7);
   
   if (wordsForSentences.length > 0) {
-    // Получаем подходящий контекст от AI для первого слова
-    const firstWord = wordsForSentences[0];
-    await ctx.reply('🤔 Подбираю подходящий контекст для первого слова...');
-    const situation = await getAIContext(firstWord.word, firstWord.translation);
-    firstWord.context = situation.context; // Сохраняем контекст для первого слова
-    
     session.sentenceTaskWords = wordsForSentences;
     session.sentenceTaskIndex = 0;
-    session.step = 'sentence_task';
     session.smartRepeatStage = 3;
     
-    await ctx.reply(
-      `🧠 <b>Умное повторение - Этап 3/4</b>\n` +
-      `✏️ <b>Составить предложения</b>\n\n` +
-      `Напиши предложения с словами из предыдущих этапов (${wordsForSentences.length}): по одному предложению на слово. Пиши по одному предложению на английском.`,
-      { parse_mode: 'HTML' }
-    );
-    
-    await ctx.reply(
-      `Напиши предложение со словом <b>"${firstWord.word}"</b> (${firstWord.translation}) в контексте: <b>${situation.context}</b>\n\n${situation.description ? `💡 ${situation.description}` : ''}`,
-      { parse_mode: 'HTML' }
-    );
+    // Сразу запускаем ручной ввод предложений
+    await startManualSentenceInput(ctx, session);
   } else {
     // Нет слов для предложений - используем слова из smartRepeatWords
     const fallbackWords = session.smartRepeatWords || [];
     if (fallbackWords.length > 0) {
       const wordsForSentences = fallbackWords.slice(0, 7);
       
-      // Получаем подходящий контекст от AI для первого слова
-      const firstWord = wordsForSentences[0];
-      await ctx.reply('🤔 Подбираю подходящий контекст для первого слова...');
-      const situation = await getAIContext(firstWord.word, firstWord.translation);
-      firstWord.context = situation.context;
-      
       session.sentenceTaskWords = wordsForSentences;
       session.sentenceTaskIndex = 0;
-      session.step = 'sentence_task';
       session.smartRepeatStage = 3;
       
-      await ctx.reply(
-        `🧠 <b>Умное повторение - Этап 3/4</b>\n` +
-        `✏️ <b>Составить предложения</b>\n\n` +
-        `Напиши предложения с приоритетными словами (${wordsForSentences.length}): по одному предложению на слово. Пиши по одному предложению на английском.`,
-        { parse_mode: 'HTML' }
-      );
-      
-      await ctx.reply(
-        `Напиши предложение со словом <b>"${firstWord.word}"</b> (${firstWord.translation}) в контексте: <b>${situation.context}</b>\n\n${situation.description ? `💡 ${situation.description}` : ''}`,
-        { parse_mode: 'HTML' }
-      );
+      // Сразу запускаем ручной ввод предложений
+      await startManualSentenceInput(ctx, session);
     } else {
       // Совсем нет слов - переходим к этапу 4
       await startSmartRepeatStage4(ctx, session);
@@ -4792,198 +4524,318 @@ async function startSmartRepeatStage3(ctx, session) {
   }
 }
 
-// Функция для итогового анализа предложений с помощью AI
-async function analyzeSentencesWithAI(ctx, session) {
-  const answers = session.sentenceTaskAnswers || [];
+// Функция автоматической генерации и анализа предложений
+async function autoGenerateAndAnalyzeSentences(ctx, session) {
+  try {
+    const wordsForSentences = session.sentenceTaskWords || [];
+    
+    if (wordsForSentences.length === 0) {
+      await ctx.reply('❌ Нет слов для генерации предложений.');
+      await startSmartRepeatStage4(ctx, session);
+      return;
+    }
+
+    await ctx.reply('🤖 Генерирую предложения автоматически...');
+
+    // Генерируем предложения с помощью AI
+    const generatedSentences = await generateSentencesWithAI(wordsForSentences);
+    
+    // Сохраняем сгенерированные предложения в формате, ожидаемом анализатором
+    session.sentenceTaskAnswers = generatedSentences.map(item => ({
+      word: item.word,
+      sentence: item.sentence
+    }));
+
+    // Показываем сгенерированные предложения пользователю
+    let message = '🤖 <b>Сгенерированные предложения с ошибками для обучения:</b>\n\n';
+    message += '💡 <i>Каждое предложение содержит типичную ошибку изучающих английский язык</i>\n\n';
+    for (let i = 0; i < generatedSentences.length; i++) {
+      const item = generatedSentences[i];
+      const wordData = wordsForSentences.find(w => w.word === item.word);
+      const translation = wordData ? wordData.translation : '';
+      message += `${i + 1}. <b>${item.word}</b> (${translation})\n`;
+      message += `   "${item.sentence}"\n\n`;
+    }
+    
+    await ctx.reply(message, { parse_mode: 'HTML' });
+    await ctx.reply('📝 Начинаю детальный анализ предложений...');
+
+    // Запускаем анализ предложений
+    await analyzeSentencesWithAI(ctx, session);
+
+  } catch (error) {
+    console.error('Error in auto generate and analyze sentences:', error);
+    await ctx.reply('❌ Ошибка при автоматической генерации предложений. Переходим к следующему этапу.');
+    await startSmartRepeatStage4(ctx, session);
+  }
+}
+
+// Функция запуска ручного ввода предложений
+async function startManualSentenceInput(ctx, session) {
+  const wordsForSentences = session.sentenceTaskWords || [];
   
+  if (wordsForSentences.length === 0) {
+    await startSmartRepeatStage4(ctx, session);
+    return;
+  }
+
+  // Получаем подходящий контекст от AI для первого слова
+  const firstWord = wordsForSentences[0];
+  await ctx.reply('🤔 Подбираю подходящий контекст для первого слова...');
+  const situation = await getAIContext(firstWord.word, firstWord.translation);
+  firstWord.context = situation.context;
+  
+  session.sentenceTaskIndex = 0;
+  session.step = 'sentence_task';
+  session.sentenceTaskAnswers = [];
+  
+  await ctx.reply(
+    `✍️ <b>Ручной ввод предложений</b>\n\n` +
+    `Напиши предложения с словами (${wordsForSentences.length}): по одному предложению на слово. Пиши по одному предложению на английском.`,
+    { parse_mode: 'HTML' }
+  );
+  
+  await ctx.reply(
+    `Напиши предложение со словом <b>"${firstWord.word}"</b> (${firstWord.translation}) в контексте: <b>${situation.context}</b>\n\n${situation.description ? `💡 ${situation.description}` : ''}`,
+    { parse_mode: 'HTML' }
+  );
+}
+async function analyzeSentencesWithAI(ctx, session) {
+
+  const answers = session.sentenceTaskAnswers || [];
   if (answers.length === 0) {
     await ctx.reply('Нет предложений для анализа.');
     return;
   }
-  
+
+  console.log(`=== STARTING SENTENCE ANALYSIS ===`);
+  console.log(`Total sentences to analyze: ${answers.length}`);
+  console.log(`Sentences:`, answers.map((item, index) => `${index + 1}. ${item.word}: "${item.sentence}"`));
+
   await ctx.reply('📝 Анализирую ваши предложения... Это займет немного времени, но результат будет стоящим!');
-  
-  // Формируем детальный промпт для AI
-  const sentencesText = answers.map((item, index) => 
-    `${index + 1}. Слово: "${item.word}" (${item.translation})\n   Предложение: "${item.sentence}"`
-  ).join('\n\n');
-  
-  const prompt = `Ты — строгий, но справедливый преподаватель английского языка с высокими стандартами. Твоя задача — тщательно проанализировать предложения студента и дать ЧЕСТНУЮ оценку.
 
-ПРЕДЛОЖЕНИЯ СТУДЕНТА:
-${sentencesText}
+  // --- Автоматическое разбиение на части ---
+  const CHUNK_SIZE = 3;
+  let allAnalysis = [];
+  for (let chunkStart = 0; chunkStart < answers.length; chunkStart += CHUNK_SIZE) {
+    const chunk = answers.slice(chunkStart, chunkStart + CHUNK_SIZE);
+    console.log(`Processing chunk ${Math.floor(chunkStart / CHUNK_SIZE) + 1}: sentences ${chunkStart + 1}-${chunkStart + chunk.length}`);
+    console.log(`Chunk words:`, chunk.map(item => item.word));
+    
+    const sentencesText = chunk.map((item, index) =>
+      `${chunkStart + index + 1}. Слово: "${item.word}" (${item.translation})\n   Предложение: "${item.sentence}"`
+    ).join('\n\n');
 
-СТРОГИЕ КРИТЕРИИ ОЦЕНКИ:
-- Грамматическая корректность (времена, согласование, порядок слов)
-- Правильность использования слова в контексте
-- Естественность для носителей языка
-- Полнота и логичность предложения
+    const prompt = `${sentencesText}
 
-ПРАВИЛА ОЦЕНКИ:
-- correct: true ТОЛЬКО если предложение полностью корректно грамматически И естественно звучит
-- correct: false если есть ЛЮБЫЕ грамматические ошибки, неестественное звучание, неправильное использование слова
-- Не будь слишком мягким - студенту нужна честная оценка для прогресса
+ЗАДАЧИ АНАЛИЗА:
+1. Грамматическая экспертиза: Найди ВСЕ грамматические ошибки (времена, артикли, предлоги, порядок слов, согласование)
+2. Лексическая точность: Проверь естественность использования слов и контекст
+3. Тест носителя языка: Сказал бы носитель языка именно так?
 
-Дай ответ в формате JSON:
+КРИТЕРИИ ОЦЕНКИ:
+- correct: true - ТОЛЬКО если предложение абсолютно корректное грамматически И звучит естественно для носителя языка
+- correct: false - если есть ЛЮБЫЕ ошибки (грамматические, лексические, стилистические)
+
+ВАЖНЫЕ ПРАВИЛА:
+- НЕ придирайся к мелочам, если предложение в целом правильное
+- Заглавные буквы в середине предложения - НЕ ошибка для обычных слов
+- "poverty" (маленькими буквами) - ПРАВИЛЬНО, это обычное существительное
+- "The charity event raised funds to fight poverty" - АБСОЛЮТНО ПРАВИЛЬНО
+- Фокусируйся на РЕАЛЬНЫХ ошибках: грамматика, времена, артикли, предлоги
+
+ДЛЯ КАЖДОГО предложения, содержащего РЕАЛЬНЫЕ ошибки, предоставь:
+- Подробный разбор ошибок на русском языке.
+- Исправленную версию с объяснением.
+- ХИТРЫЙ ТРЮК-СОВЕТ (креативный, яркий и чёткий) для запоминания этого правила.
+- Краткое объяснение самого правила.
+- 2 практических примера для закрепления.
+
+ДЛЯ ПРАВИЛЬНЫХ предложений: просто отметь correct: true, БЕЗ дополнительных полей.
+
+ВАЖНО:
+- Ответ должен содержать ТОЛЬКО JSON и ничего больше.
+- Не добавляй никаких комментариев или текста вне JSON.
+- Начинай ответ символом '{' и заканчивай символом '}'.
+- Поле "word" должно точно соответствовать целевому слову, которое было в исходном предложении студента.
+
+ПРИМЕР ПРАВИЛЬНОГО АНАЛИЗА (Ориентируйся на него):
 {
-  "evaluations": [
+  "detailed_analysis": [
     {
-      "word": "слово",
-      "correct": true/false,
-      "analysis": "КОНКРЕТНЫЙ разбор: какие ошибки, как исправить, правильный вариант"
+      "word": "poverty",
+      "sentence": "The charity event raised funds to fight poverty.",
+      "correct": true
     },
-    ...
-  ],
-  "overall_feedback": "Честная оценка общего уровня с КОНКРЕТНЫМИ шагами для улучшения",
-  "grammar_tips": "ТОЧНЫЕ грамматические правила с примерами, которые нужно изучить",
-  "vocabulary_suggestions": "КОНКРЕТНЫЕ слова и фразы для изучения с примерами использования",
-  "encouragement": "Реалистичная мотивация с четкими целями"
+    {
+      "word": "distribute",
+      "sentence": "He is already distribute us some tasks.",
+      "correct": false,
+      "error_analysis": "Ошибка в форме глагола 'distribute'. Здесь нужно использовать прошедшее время 'distributed', потому что действие уже произошло. Также нужно добавить предлог 'to' перед объектом.",
+      "corrected_version": "He has already distributed some tasks to us.",
+      "clever_trick": "Если действие уже произошло (already), всегда добавляй -ed или используй третью форму глагола. Представь, что задачи уже раздали.",
+      "rule_explanation": "Для завершённых действий используй present perfect: have/has + глагол в третьей форме.",
+      "practice_examples": [
+        "I have already finished my homework.",
+        "She has already sent the email."
+      ]
+    }
+  ]
 }
 
-ВАЖНО: 
-- Будь ЧЕСТНЫМ в оценках - не завышай баллы
-- Давай КОНКРЕТНЫЕ исправления, не общие фразы
-- Укажи ТОЧНЫЕ грамматические ошибки
-- Предложи КОНКРЕТНЫЕ способы улучшения
-- Если предложение неестественно - объясни почему и дай лучший вариант`;
+БУДЬ ТОЧНЫМ И СПРАВЕДЛИВЫМ! Правильные предложения должны получать correct: true. ВСЕ ОБЪЯСНЕНИЯ НА РУССКОМ ЯЗЫКЕ!`;
 
-  try {
-    const gptRes = await axios.post('https://api.openai.com/v1/chat/completions', {
-      model: 'gpt-3.5-turbo',
-      messages: [{ role: 'user', content: prompt }],
-      temperature: 0.7,
-      max_tokens: 2000
-    }, {
-      headers: {
-        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      timeout: 60000 // 60 секунд для анализа предложений
-    });
-    
-    let answer = gptRes.data.choices[0].message.content;
-    console.log('Raw sentence analysis response:', answer);
-    
-    // Улучшенное извлечение JSON
-    let jsonString = null;
-    
-    // Способ 1: Поиск JSON между фигурными скобками
-    const match = answer.match(/\{[\s\S]*\}/);
-    if (match) {
-      jsonString = match[0];
-    } else {
-      // Способ 2: Поиск JSON между кодовыми блоками
-      const codeMatch = answer.match(/```(?:json)?\s*(\{[\s\S]*\})\s*```/);
-      if (codeMatch) {
-        jsonString = codeMatch[1];
-      } else {
-        // Способ 3: Очистка от лишнего текста построчно
-        const lines = answer.split('\n');
-        const jsonLines = [];
-        let insideJson = false;
-        let braceCount = 0;
-        
-        for (const line of lines) {
-          if (line.trim().startsWith('{')) {
-            insideJson = true;
-            braceCount = 1;
-            jsonLines.push(line);
-          } else if (insideJson) {
-            jsonLines.push(line);
-            // Подсчитываем скобки для правильного закрытия
-            braceCount += (line.match(/\{/g) || []).length;
-            braceCount -= (line.match(/\}/g) || []).length;
-            if (braceCount === 0) break;
-          }
-        }
-        
-        if (jsonLines.length > 0) {
-          jsonString = jsonLines.join('\n');
-        }
-      }
-    }
-    
-    if (!jsonString) {
-      console.error('Не удалось извлечь JSON из ответа AI для анализа предложений');
-      throw new Error('AI не вернул корректный JSON для анализа предложений');
-    }
-    
-    console.log('Extracted sentence analysis JSON:', jsonString);
-    
-    let analysis;
     try {
-      analysis = JSON.parse(jsonString);
-    } catch (parseError) {
-      console.error('JSON parsing failed for sentence analysis:', parseError);
-      
-      // Создаем fallback анализ
-      analysis = {
-        evaluations: answers.map(item => ({
-          word: item.word,
-          correct: false, // По умолчанию считаем неправильным при ошибке
-          analysis: "Не удалось проанализировать предложение. Попробуйте еще раз."
-        })),
-        overall_feedback: "Произошла ошибка при анализе. Попробуйте отправить предложения еще раз.",
-        grammar_tips: "Рекомендуем изучить базовые грамматические правила английского языка.",
-        vocabulary_suggestions: "Расширяйте словарный запас, изучая новые слова каждый день.",
-        encouragement: "Не останавливайтесь! Ошибки - это часть процесса обучения."
-      };
-    }
-    
-    // Проверяем корректность структуры ответа
-    if (!analysis.evaluations || !Array.isArray(analysis.evaluations)) {
-      console.error('Invalid analysis structure - no evaluations array');
-      throw new Error('AI вернул некорректную структуру анализа');
-    }
-    
-    // Убеждаемся, что количество оценок соответствует количеству предложений
-    if (analysis.evaluations.length !== answers.length) {
-      console.error(`Mismatch: expected ${answers.length} evaluations, got ${analysis.evaluations.length}`);
-      // Дополняем недостающие оценки
-      while (analysis.evaluations.length < answers.length) {
-        const missingIndex = analysis.evaluations.length;
-        analysis.evaluations.push({
-          word: answers[missingIndex].word,
-          correct: false,
-          analysis: "Анализ не был получен для этого предложения."
-        });
+      const gptRes = await axios.post('https://api.openai.com/v1/chat/completions', {
+        model: 'gpt-3.5-turbo',
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.7,
+        max_tokens: 3500
+      }, {
+        headers: {
+          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      let answer = gptRes.data.choices[0].message.content;
+      const match = answer.match(/\{[\s\S]*\}/);
+      if (!match) {
+        throw new Error('AI не вернул JSON.');
       }
+      let analysis;
+      try {
+        analysis = JSON.parse(match[0]);
+        console.log(`Successfully parsed analysis for chunk, got ${analysis.detailed_analysis?.length || 0} evaluations`);
+      } catch (parseError) {
+        console.error('JSON parsing failed for detailed sentence analysis:', parseError);
+        console.error('Raw AI response:', answer);
+        // Создаем fallback анализ с упрощённой структурой
+        analysis = {
+          detailed_analysis: chunk.map(item => ({
+            word: item.word,
+            sentence: item.sentence,
+            correct: false,
+            error_analysis: "Не удалось проанализировать предложение. Попробуйте еще раз.",
+            corrected_version: "Анализ временно недоступен",
+            clever_trick: "💡 Попробуйте перефразировать предложение более простыми словами",
+            rule_explanation: "Анализ будет доступен при повторной отправке",
+            practice_examples: ["Попробуйте еще раз", "Используйте более простые конструкции"]
+          }))
+        };
+      }
+      // Проверяем корректность новой структуры ответа
+      if (!analysis.detailed_analysis || !Array.isArray(analysis.detailed_analysis)) {
+        console.error('Invalid analysis structure - no detailed_analysis array');
+        throw new Error('AI вернул некорректную структуру детального анализа');
+      }
+      // Убеждаемся, что количество оценок соответствует количеству предложений
+      if (analysis.detailed_analysis.length !== chunk.length) {
+        console.error(`Mismatch: expected ${chunk.length} detailed evaluations, got ${analysis.detailed_analysis.length}`);
+        console.error(`Chunk words:`, chunk.map(item => item.word));
+        console.error(`Analysis words:`, analysis.detailed_analysis.map(item => item.word));
+        
+        // Дополняем недостающие оценки
+        while (analysis.detailed_analysis.length < chunk.length) {
+          const missingIndex = analysis.detailed_analysis.length;
+          console.log(`Adding fallback analysis for missing sentence ${chunkStart + missingIndex + 1}: word="${chunk[missingIndex].word}"`);
+          analysis.detailed_analysis.push({
+            word: chunk[missingIndex].word,
+            sentence: chunk[missingIndex].sentence,
+            correct: false,
+            error_analysis: "Анализ не был получен для этого предложения.",
+            corrected_version: "Попробуйте еще раз",
+            clever_trick: "💡 Используйте более простые конструкции",
+            rule_explanation: "Анализ будет доступен при повторной отправке",
+            practice_examples: ["Попробуйте еще раз"]
+          });
+        }
+      }
+      allAnalysis = allAnalysis.concat(analysis.detailed_analysis);
+    } catch (error) {
+      console.error('Error in AI sentence analysis:', error);
+      // fallback для всего чанка
+      allAnalysis = allAnalysis.concat(chunk.map(item => ({
+        word: item.word,
+        sentence: item.sentence,
+        correct: false,
+        error_analysis: "Не удалось проанализировать предложение. Попробуйте еще раз.",
+        corrected_version: "Анализ временно недоступен",
+        clever_trick: "💡 Попробуйте перефразировать предложение более простыми словами",
+        rule_explanation: "Анализ будет доступен при повторной отправке",
+        practice_examples: ["Попробуйте еще раз", "Используйте более простые конструкции"]
+      })));
     }
-    
-    // Обновляем прогресс слов в базе данных
-    await updateWordProgressFromAnalysis(session, analysis.evaluations);
-    
-    // Отправляем красивый фидбек пользователю
-    await sendBeautifulFeedback(ctx, session, analysis);
-    
-    // Переходим к следующему этапу
-    await proceedAfterSentenceAnalysis(ctx, session);
-    
-  } catch (error) {
-    console.error('Error in AI sentence analysis:', error);
-    await ctx.reply('❌ Произошла ошибка при анализе предложений. Попробуйте позже.');
-    
-    // В случае ошибки все равно переходим дальше
-    await proceedAfterSentenceAnalysis(ctx, session);
   }
+
+  // Дедупликация: удаляем дублирующиеся анализы по слову и предложению
+  const uniqueAnalysis = [];
+  const seenCombinations = new Set();
+  
+  for (const analysis of allAnalysis) {
+    const key = `${analysis.word}:${analysis.sentence}`;
+    if (!seenCombinations.has(key)) {
+      seenCombinations.add(key);
+      uniqueAnalysis.push(analysis);
+    } else {
+      console.log(`Removing duplicate analysis for word: ${analysis.word}`);
+    }
+  }
+
+  console.log(`Total analysis before dedup: ${allAnalysis.length}, after dedup: ${uniqueAnalysis.length}`);
+  
+  // Проверяем, что все исходные предложения получили анализ
+  const missingAnalysis = [];
+  for (const originalAnswer of answers) {
+    const hasAnalysis = uniqueAnalysis.some(analysis => 
+      analysis.word === originalAnswer.word && analysis.sentence === originalAnswer.sentence
+    );
+    if (!hasAnalysis) {
+      missingAnalysis.push(originalAnswer);
+    }
+  }
+  
+  if (missingAnalysis.length > 0) {
+    console.error(`Missing analysis for ${missingAnalysis.length} sentences:`, missingAnalysis.map(item => item.word));
+    // Добавляем fallback для пропущенных предложений
+    for (const missingItem of missingAnalysis) {
+      uniqueAnalysis.push({
+        word: missingItem.word,
+        sentence: missingItem.sentence,
+        correct: false,
+        error_analysis: "Анализ не был получен для этого предложения.",
+        corrected_version: "Попробуйте еще раз",
+        clever_trick: "💡 Используйте более простые конструкции",
+        rule_explanation: "Анализ будет доступен при повторной отправке",
+        practice_examples: ["Попробуйте еще раз"]
+      });
+    }
+    console.log(`Added ${missingAnalysis.length} fallback analyses. Final count: ${uniqueAnalysis.length}`);
+  }
+
+  // Обновляем прогресс слов в базе данных
+  await updateWordProgressFromDetailedAnalysis(session, uniqueAnalysis);
+  // Отправляем детальный фидбек пользователю
+  await sendDetailedFeedback(ctx, session, { detailed_analysis: uniqueAnalysis });
+  // Переходим к следующему этапу
+  await proceedAfterSentenceAnalysis(ctx, session);
 }
 
 // Обновляем прогресс слов на основе AI оценок
-async function updateWordProgressFromAnalysis(session, evaluations) {
+async function updateWordProgressFromDetailedAnalysis(session, detailedAnalysis) {
   try {
     const allWords = await getWords(session.profile);
     
-    for (const evaluation of evaluations) {
+    for (const analysis of detailedAnalysis) {
       const wordIdx = allWords.findIndex(w => 
-        w.word === evaluation.word && 
-        session.sentenceTaskAnswers.find(a => a.word === evaluation.word)
+        w.word === analysis.word && 
+        session.sentenceTaskAnswers.find(a => a.word === analysis.word)
       );
       
       if (wordIdx !== -1) {
         const currentCorrect = allWords[wordIdx].correct || 0;
         const word = allWords[wordIdx];
         
-        if (evaluation.correct === true) {
+        if (analysis.correct === true) {
           // Правильное использование - увеличиваем счетчик
           await updateWordCorrect(session.profile, word.word, word.translation, currentCorrect + 1);
         } else {
@@ -4994,25 +4846,25 @@ async function updateWordProgressFromAnalysis(session, evaluations) {
       }
     }
   } catch (error) {
-    console.error('Error updating word progress:', error);
+    console.error('Error updating word progress from detailed analysis:', error);
   }
 }
 
-// Отправляем красивый фидбек пользователю
-async function sendBeautifulFeedback(ctx, session, analysis) {
+// Отправляем детальный фидбек с русскими объяснениями и трюками запоминания
+async function sendDetailedFeedback(ctx, session, analysis) {
   try {
     // 1. Заголовок
     await ctx.reply('🎓 <b>Детальный анализ ваших предложений</b>', { parse_mode: 'HTML' });
     
-    // 2. Разбор каждого предложения с более подробной информацией
-    console.log('=== SENDING FEEDBACK ===');
-    console.log(`Analysis evaluations count: ${analysis.evaluations.length}`);
+    // 2. Разбор каждого предложения с подробными русскими объяснениями
+    console.log('=== SENDING DETAILED RUSSIAN FEEDBACK ===');
+    console.log(`Analysis detailed_analysis count: ${analysis.detailed_analysis.length}`);
     console.log(`Session answers count: ${session.sentenceTaskAnswers.length}`);
     
-    for (let i = 0; i < analysis.evaluations.length; i++) {
-      const eval = analysis.evaluations[i];
+    for (let i = 0; i < analysis.detailed_analysis.length; i++) {
+      const eval = analysis.detailed_analysis[i];
       
-      console.log(`Processing evaluation ${i + 1}: word="${eval.word}"`);
+      console.log(`Processing detailed analysis ${i + 1}: word="${eval.word}"`);
       
       // Находим предложение по слову из анализа
       const userAnswer = session.sentenceTaskAnswers.find(answer => answer.word === eval.word);
@@ -5023,7 +4875,7 @@ async function sendBeautifulFeedback(ctx, session, analysis) {
         
         // Создаем fallback сообщение
         const fallbackMessage = `❓ <b>${i + 1}. "${eval.word}"</b> - ОШИБКА АНАЛИЗА\n` +
-                               `📝 <b>Анализ:</b> Не удалось найти ваше предложение для этого слова.`;
+                               `📝 <b>Анализ ошибки:</b> Не удалось найти ваше предложение для этого слова.`;
         await ctx.reply(fallbackMessage, { parse_mode: 'HTML' });
         continue;
       }
@@ -5031,20 +4883,48 @@ async function sendBeautifulFeedback(ctx, session, analysis) {
       const status = eval.correct ? '✅' : '❌';
       const statusText = eval.correct ? 'ПРАВИЛЬНО' : 'ТРЕБУЕТ ИСПРАВЛЕНИЯ';
       
-      const message = `${status} <b>${i + 1}. "${eval.word}"</b> - ${statusText}\n` +
-                     `💬 <i>"${userAnswer.sentence}"</i>\n\n` +
-                     `📝 <b>Анализ:</b> ${eval.analysis || 'Анализ не предоставлен.'}`;
+      // Создаем подробное сообщение с новой структурой
+      let message = `${status} <b>${i + 1}. Слово: "${eval.word}"</b> - ${statusText}\n\n` +
+                   `💬 <i>Ваше предложение:</i>\n"${userAnswer.sentence}"\n\n`;
       
-      console.log(`Sending message for word "${eval.word}": ${status}`);
+      // Добавляем блок анализа ошибки
+      if (eval.error_analysis) {
+        message += `📝 <b>Анализ ошибки:</b>\n${eval.error_analysis}\n\n`;
+      }
+      
+      // Добавляем исправленную версию (если есть)
+      if (eval.corrected_version && eval.corrected_version !== userAnswer.sentence) {
+        message += `✨ <b>Исправленная версия:</b>\n"${eval.corrected_version}"\n\n`;
+      }
+      
+      // Добавляем хитрый совет-трюк
+      if (eval.clever_trick) {
+        message += `🧠 <b>Хитрый совет-трюк:</b>\n${eval.clever_trick}\n\n`;
+      }
+      
+      // Добавляем объяснение правила
+      if (eval.rule_explanation) {
+        message += `📚 <b>Правило:</b>\n${eval.rule_explanation}\n\n`;
+      }
+      
+      // Добавляем примеры для практики
+      if (eval.practice_examples && eval.practice_examples.length > 0) {
+        message += `💡 <b>Примеры для практики:</b>\n`;
+        eval.practice_examples.forEach((example, idx) => {
+          message += `${idx + 1}. ${example}\n`;
+        });
+      }
+      
+      console.log(`Sending detailed message for word "${eval.word}": ${status}`);
       await ctx.reply(message, { parse_mode: 'HTML' });
       
-      // Небольшая пауза между сообщениями
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Небольшая пауза между сообщениями для лучшего восприятия
+      await new Promise(resolve => setTimeout(resolve, 2000));
     }
     
     // 3. Статистика
-    const correctCount = analysis.evaluations.filter(e => e.correct).length;
-    const totalCount = analysis.evaluations.length;
+    const correctCount = analysis.detailed_analysis.filter(e => e.correct).length;
+    const totalCount = analysis.detailed_analysis.length;
     const percentage = Math.round((correctCount / totalCount) * 100);
     
     await ctx.reply(
@@ -5054,28 +4934,8 @@ async function sendBeautifulFeedback(ctx, session, analysis) {
       { parse_mode: 'HTML' }
     );
     
-    // 4. Общий фидбек с конкретными шагами
-    if (analysis.overall_feedback) {
-      await ctx.reply(`🌟 <b>Общая оценка и план действий:</b>\n\n${analysis.overall_feedback}`, { parse_mode: 'HTML' });
-    }
-    
-    // 5. Конкретные грамматические правила
-    if (analysis.grammar_tips) {
-      await ctx.reply(`📚 <b>Грамматика - изучите эти правила:</b>\n\n${analysis.grammar_tips}`, { parse_mode: 'HTML' });
-    }
-    
-    // 6. Конкретные слова и фразы для изучения
-    if (analysis.vocabulary_suggestions) {
-      await ctx.reply(`💡 <b>Новые слова и фразы для изучения:</b>\n\n${analysis.vocabulary_suggestions}`, { parse_mode: 'HTML' });
-    }
-    
-    // 7. Мотивация с четкими целями
-    if (analysis.encouragement) {
-      await ctx.reply(`🎯 <b>Мотивация и следующие шаги:</b>\n\n${analysis.encouragement}`, { parse_mode: 'HTML' });
-    }
-    
   } catch (error) {
-    console.error('Error sending feedback:', error);
+    console.error('Error sending detailed feedback:', error);
     await ctx.reply('✅ Анализ завершен! Продолжаем изучение.');
   }
 }
@@ -5166,8 +5026,20 @@ async function startSmartRepeatStage4(ctx, session) {
       storyTaskWords: session.storyTaskWords?.length || 0
     });
     
-    session.step = 'main_menu';
-    await ctx.reply('Произошла ошибка при запуске этапа текста. Попробуйте позже.', { reply_markup: mainMenu });
+    // Вместо принудительного завершения, предлагаем варианты
+    await ctx.reply(
+      `⚠️ <b>Ошибка генерации текста</b>\n\n` +
+      `К сожалению, не удалось сгенерировать текст для этапа 4. Это может быть связано с временными проблемами API.\n\n` +
+      `🎉 <b>Но вы уже прошли 3 из 4 этапов умного повторения!</b>\n` +
+      `✅ Викторина\n` +
+      `✅ "Знаю/Не знаю"\n` +
+      `✅ Составить предложения\n\n` +
+      `Это отличный результат! Попробуйте этап с текстом позже.`,
+      { parse_mode: 'HTML' }
+    );
+    
+    // Завершаем умное повторение как успешно пройденное
+    await completeSmartRepeat(ctx, session);
   }
 }
 

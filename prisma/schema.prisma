@@ -41,3 +41,12 @@ model UserProfile {
   @@unique([telegramId, profileName])
   @@map("user_profiles")
 }
+
+model AudioCache {
+  id        Int      @id @default(autoincrement())
+  word      String   @unique
+  audioData Bytes
+  createdAt DateTime @default(now())
+
+  @@map("audio_cache")
+}
