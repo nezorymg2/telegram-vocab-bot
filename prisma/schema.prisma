@@ -17,6 +17,7 @@ model Word {
   translation String
   section     String?
   correct     Int      @default(0)
+  audioData   Bytes?   // Аудиоданные в формате MP3
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -30,9 +31,9 @@ model UserProfile {
   xp                    Int      @default(0)
   level                 Int      @default(1)
   loginStreak           Int      @default(0)
-  studyStreak           Int      @default(0)
+  studyStreak           Int      @default(0)      // Новое поле для streak изучения
+  lastStudyDate         String?                   // Последняя дата изучения
   lastBonusDate         String?
-  lastStudyDate         String?
   lastSmartRepeatDate   String?
   reminderTime          String?
   createdAt             DateTime @default(now())
@@ -40,13 +41,4 @@ model UserProfile {
 
   @@unique([telegramId, profileName])
   @@map("user_profiles")
-}
-
-model AudioCache {
-  id        Int      @id @default(autoincrement())
-  word      String   @unique
-  audioData Bytes
-  createdAt DateTime @default(now())
-
-  @@map("audio_cache")
 }

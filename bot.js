@@ -248,7 +248,7 @@ async function awardXP(session, wordCorrectLevel, ctx) {
   if (!session.xp) session.xp = 0;
   if (!session.level) session.level = 1;
   
-  const streak = session.streak || 0;
+  const streak = session.studyStreak || 0;
   const multiplier = getStreakMultiplier(streak);
   const xpGained = calculateXP(wordCorrectLevel, multiplier);
   
@@ -280,7 +280,7 @@ async function awardXP(session, wordCorrectLevel, ctx) {
 function getMainMenuMessage(session) {
   const currentXP = session.xp || 0;
   const currentLevel = getLevelByXP(currentXP);
-  const streak = session.streak || 0;
+  const streak = session.studyStreak || 0;
   const loginStreak = session.loginStreak || 0;
   
   let message = `${currentLevel.emoji} <b>Уровень ${currentLevel.level}: ${currentLevel.title}</b>\n`;
@@ -569,6 +569,8 @@ async function getOrCreateUserProfile(telegramId, profileName) {
           xp: 0,
           level: 1,
           loginStreak: 0,
+          studyStreak: 0,
+          lastStudyDate: null,
           lastBonusDate: null,
           lastSmartRepeatDate: null,
           reminderTime: null
@@ -606,6 +608,8 @@ async function saveUserSession(telegramId, profileName, session) {
         xp: session.xp || 0,
         level: session.level || 1,
         loginStreak: session.loginStreak || 0,
+        studyStreak: session.studyStreak || 0,
+        lastStudyDate: session.lastStudyDate,
         lastBonusDate: session.lastBonusDate,
         lastSmartRepeatDate: session.lastSmartRepeatDate,
         reminderTime: session.reminderTime
@@ -619,7 +623,7 @@ async function saveUserSession(telegramId, profileName, session) {
 }
 
 // --- Prisma-реализация функций ---
-async function addWord(profile, word, translation, section) {
+async function addWord(profile, word, translation, section, generateAudio = false) {
   await prisma.word.create({
     data: {
       profile,
@@ -628,6 +632,43 @@ async function addWord(profile, word, translation, section) {
       section: section || null,
     },
   });
+  
+  // Генерируем аудио если это требуется
+  if (generateAudio) {
+    try {
+      await generateAndCacheAudioInDB(word, profile);
+    } catch (error) {
+      console.error(`Failed to generate audio for new word "${word}":`, error);
+    }
+  }
+}
+
+// Функция для последовательного добавления слов с аудио
+async function addWordsSequentiallyWithAudio(ctx, profile, words, section) {
+  const processedWords = [];
+  
+  for (const w of words) {
+    const wordForm = section === 'IELTS' ? getFirstTwoWords(w.word) : getMainForm(w.word);
+    
+    // Добавляем слово в БД с генерацией аудио
+    await addWord(profile, wordForm, w.translation, section, true);
+    
+    processedWords.push({ ...w, processedWord: wordForm });
+    
+    // Небольшая задержка между генерацией аудио
+    await new Promise(resolve => setTimeout(resolve, 500));
+  }
+  
+  return processedWords;
+}
+
+// Функция для отправки аудио для списка слов
+async function sendAudioForWords(ctx, profile, processedWords) {
+  for (const w of processedWords) {
+    await sendWordAudioFromDB(ctx, w.processedWord, profile, { silent: true });
+    // Небольшая задержка между отправкой аудио
+    await new Promise(resolve => setTimeout(resolve, 800));
+  }
 }
 
 async function getWords(profile, filter = {}) {
@@ -645,6 +686,216 @@ async function updateWordCorrect(profile, word, translation, correct) {
     where: { profile, word, translation },
     data: { correct },
   });
+}
+
+// Вспомогательная функция для отправки аудио (автоматически получает профиль из сессии)
+async function sendWordAudio(ctx, word, options = {}) {
+  const userId = ctx.from.id;
+  const session = sessions[userId];
+  
+  if (!session || !session.profile) {
+    console.log(`⚠️ No session or profile found for sending audio for "${word}"`);
+    return false;
+  }
+  
+  return await sendWordAudioFromDB(ctx, word, session.profile, options);
+}
+
+// --- TTS (Text-to-Speech) функции для работы с базой данных ---
+
+// Функция для генерации аудио через OpenAI TTS и сохранения в БД
+async function generateAndStoreAudio(word, profile) {
+  try {
+    console.log(`🎵 Generating audio for word: "${word}"`);
+    
+    if (!process.env.OPENAI_API_KEY) {
+      console.error('❌ OpenAI API key not found');
+      return false;
+    }
+
+    const response = await axios.post('https://api.openai.com/v1/audio/speech', {
+      model: 'tts-1',
+      voice: 'nova',
+      speed: 0.9,
+      input: word
+    }, {
+      headers: {
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      responseType: 'arraybuffer'
+    });
+
+    // Сохраняем аудиоданные в базу данных
+    await prisma.word.updateMany({
+      where: { 
+        word: word,
+        profile: profile 
+      },
+      data: { 
+        audioData: Buffer.from(response.data) 
+      }
+    });
+    
+    console.log(`✅ Audio generated and stored in DB for: "${word}"`);
+    return true;
+  } catch (error) {
+    console.error(`❌ Failed to generate audio for "${word}":`, error.message);
+    return false;
+  }
+}
+
+// Функция для проверки существования аудио в БД
+async function hasAudioInDB(word, profile) {
+  try {
+    const wordWithAudio = await prisma.word.findFirst({
+      where: { 
+        word: word,
+        profile: profile,
+        audioData: { not: null }
+      },
+      select: { audioData: true }
+    });
+    
+    return wordWithAudio && wordWithAudio.audioData;
+  } catch (error) {
+    console.error(`❌ Error checking audio in DB for "${word}":`, error);
+    return false;
+  }
+}
+
+// Функция для генерации и сохранения аудио (если его нет)
+async function generateAndCacheAudioInDB(word, profile) {
+  try {
+    // Проверяем, есть ли уже аудио в БД
+    const hasAudio = await hasAudioInDB(word, profile);
+    if (hasAudio) {
+      console.log(`🎵 Audio already in DB for: "${word}"`);
+      return true;
+    }
+
+    // Генерируем новое аудио
+    return await generateAndStoreAudio(word, profile);
+  } catch (error) {
+    console.error(`❌ Error in generateAndCacheAudioInDB for "${word}":`, error);
+    return false;
+  }
+}
+
+// Функция для отправки аудио пользователю из БД
+async function sendWordAudioFromDB(ctx, word, profile, options = {}) {
+  try {
+    // Получаем аудиоданные из БД
+    const wordWithAudio = await prisma.word.findFirst({
+      where: { 
+        word: word,
+        profile: profile,
+        audioData: { not: null }
+      },
+      select: { audioData: true }
+    });
+    
+    if (!wordWithAudio || !wordWithAudio.audioData) {
+      console.log(`⚠️ No audio data in DB for "${word}", skipping audio send`);
+      return false;
+    }
+
+    // Создаем InputFile из Buffer
+    const audioBuffer = wordWithAudio.audioData;
+    const audioFile = new InputFile(audioBuffer, `${word}.mp3`);
+    
+    await ctx.replyWithVoice(audioFile, {
+      caption: options.caption || null,
+      ...options
+    });
+    
+    console.log(`🔊 Audio sent from DB for word: "${word}"`);
+    return true;
+  } catch (error) {
+    console.error(`❌ Failed to send audio from DB for "${word}":`, error.message);
+    return false;
+  }
+}
+
+// Функция для удаления аудиоданных слова из БД
+async function deleteWordAudioFromDB(word, profile) {
+  try {
+    await prisma.word.updateMany({
+      where: { 
+        word: word,
+        profile: profile 
+      },
+      data: { 
+        audioData: null 
+      }
+    });
+    
+    console.log(`🗑️ Deleted audio data from DB for: "${word}"`);
+    return true;
+  } catch (error) {
+    console.error(`❌ Failed to delete audio from DB for "${word}":`, error);
+    return false;
+  }
+}
+
+// Функция для очистки всех аудиоданных пользователя
+async function clearAllAudioFromDB(profile) {
+  try {
+    const result = await prisma.word.updateMany({
+      where: { profile: profile },
+      data: { audioData: null }
+    });
+    
+    console.log(`🗑️ Cleared audio data from DB for ${result.count} words of profile: ${profile}`);
+    return true;
+  } catch (error) {
+    console.error('❌ Failed to clear audio data from DB:', error);
+    return false;
+  }
+}
+
+// Функция для массовой генерации аудио для всех слов пользователя
+async function generateAudioForUserWordsInDB(profile) {
+  try {
+    const words = await prisma.word.findMany({
+      where: { profile: profile },
+      select: { word: true, audioData: true }
+    });
+    
+    console.log(`🎵 Starting mass audio generation for ${words.length} words of user: ${profile}`);
+    
+    let generated = 0;
+    let skipped = 0;
+    let failed = 0;
+    
+    for (const wordObj of words) {
+      try {
+        if (wordObj.audioData) {
+          skipped++;
+          continue;
+        }
+        
+        const success = await generateAndStoreAudio(wordObj.word, profile);
+        if (success) {
+          generated++;
+        } else {
+          failed++;
+        }
+        
+        // Небольшая задержка между запросами к API
+        await new Promise(resolve => setTimeout(resolve, 100));
+      } catch (error) {
+        console.error(`❌ Error generating audio for "${wordObj.word}":`, error);
+        failed++;
+      }
+    }
+    
+    console.log(`✅ Mass audio generation completed: ${generated} generated, ${skipped} skipped, ${failed} failed`);
+    return { generated, skipped, failed };
+  } catch (error) {
+    console.error('❌ Failed mass audio generation:', error);
+    return { generated: 0, skipped: 0, failed: 0 };
+  }
 }
 
 // /start — начало сеанса
@@ -838,6 +1089,58 @@ bot.command('clear', async (ctx) => {
   );
 });
 
+// --- Команда /clear_audio: очистить аудиоданные из БД ---
+bot.command('clear_audio', async (ctx) => {
+  const userId = ctx.from.id;
+  const session = sessions[userId];
+  
+  if (!session || !session.profile) {
+    return ctx.reply('Сначала выполните /start');
+  }
+  
+  try {
+    await ctx.reply('🗑️ Очищаю аудиоданные из базы данных...');
+    
+    const success = await clearAllAudioFromDB(session.profile);
+    
+    if (success) {
+      await ctx.reply('✅ Аудиоданные успешно очищены из базы данных! Все аудио будет заново создано при необходимости.');
+    } else {
+      await ctx.reply('❌ Ошибка при очистке аудиоданных');
+    }
+  } catch (error) {
+    console.error('Error in /clear_audio:', error);
+    await ctx.reply('❌ Ошибка при очистке аудиоданных');
+  }
+});
+
+// --- Скрытая команда для массовой генерации аудио ---
+bot.command('generate_all_audio', async (ctx) => {
+  const userId = ctx.from.id;
+  const session = sessions[userId];
+  
+  if (!session || !session.profile) {
+    return ctx.reply('Сначала выполните /start');
+  }
+  
+  try {
+    await ctx.reply('🎵 Запускаю массовую генерацию аудио для всех ваших слов...');
+    
+    const result = await generateAudioForUserWordsInDB(session.profile);
+    
+    const message = `✅ Массовая генерация аудио завершена!\n\n` +
+      `📊 Результаты:\n` +
+      `✅ Сгенерировано: ${result.generated}\n` +
+      `⏭️ Пропущено (уже есть): ${result.skipped}\n` +
+      `❌ Ошибок: ${result.failed}`;
+    
+    await ctx.reply(message);
+  } catch (error) {
+    console.error('Error in /generate_all_audio:', error);
+    await ctx.reply('❌ Ошибка при массовой генерации аудио');
+  }
+});
+
 // --- Команда /sections: показать все разделы ---
 bot.command('sections', async (ctx) => {
   const userId = ctx.from.id;
@@ -890,7 +1193,7 @@ function isToday(date) {
 // Ленивец дня хранится в сессии (можно расширить на базу)
 function setSlothOfTheDay(session) {
   session.slothOfTheDay = true;
-  session.streak = 0;
+  session.studyStreak = 0;
   session.lastSlothDate = new Date();
 }
 
@@ -1576,7 +1879,7 @@ bot.command('achievements', async (ctx) => {
     .filter(Boolean)
     .map(d => new Date(d).toDateString());
   const uniqueDays = Array.from(new Set(dates)).sort();
-  let studyStreak = session.streak || 0;
+  let studyStreak = session.studyStreak || 0;
   if (!session.slothOfTheDay) {
     // Считаем streak (дней подряд с активностью)
     if (uniqueDays.length) {
@@ -1593,10 +1896,15 @@ bot.command('achievements', async (ctx) => {
         }
       }
     }
-    session.streak = studyStreak;
+    session.studyStreak = studyStreak;
+    session.lastStudyDate = new Date().toISOString().split('T')[0];
+    // Сохраняем обновленный streak в базу данных
+    await saveUserSession(session, ctx.from.id);
   } else {
     studyStreak = 0;
-    session.streak = 0;
+    session.studyStreak = 0;
+    // Сохраняем обновленный streak в базу данных
+    await saveUserSession(session, ctx.from.id);
   }
   
   // --- Мультипликатор XP ---
@@ -1740,6 +2048,15 @@ bot.on('message:text', async (ctx) => {
         return ctx.reply('Сначала выполните /start');
       }
     }
+    
+    // Проверяем, не прошел ли уже умное повторение сегодня (для кнопки из напоминаний)
+    const today = new Date().toDateString();
+    const currentSession = sessions[userId];
+    if (currentSession && currentSession.lastSmartRepeatDate === today) {
+      return ctx.reply('✅ Вы уже прошли умное повторение сегодня! Приходите завтра за новыми заданиями.', {
+        reply_markup: mainMenu,
+      });
+    }
   }
 
   // Убедимся, что сессия инициализирована
@@ -1772,6 +2089,11 @@ bot.on('message:text', async (ctx) => {
 
   // Шаг 2: выбор профиля
   if (step === 'awaiting_profile') {
+    // Проверяем что это не текст кнопки
+    if (text.includes('⏭️') || text.includes('🔊') || text.includes('📊') || text.includes('🏠') || text.length > 50) {
+      return ctx.reply('Пожалуйста, введите корректное имя профиля (без эмодзи и кнопок):');
+    }
+    
     // Загружаем или создаем профиль пользователя
     const userProfile = await getOrCreateUserProfile(userId, text);
     
@@ -1780,6 +2102,8 @@ bot.on('message:text', async (ctx) => {
     session.xp = userProfile.xp;
     session.level = userProfile.level;
     session.loginStreak = userProfile.loginStreak;
+    session.studyStreak = userProfile.studyStreak || 0;
+    session.lastStudyDate = userProfile.lastStudyDate;
     session.lastBonusDate = userProfile.lastBonusDate;
     session.lastSmartRepeatDate = userProfile.lastSmartRepeatDate;
     session.reminderTime = userProfile.reminderTime;
@@ -1824,6 +2148,7 @@ bot.on('message:text', async (ctx) => {
     }
     
     // Обрабатываем ответ в викторине умного повторения
+    console.log(`DEBUG: Handling smart repeat quiz answer for user ${ctx.from.id}, text: "${text}"`);
     return await handleSmartRepeatQuizAnswer(ctx, session, text);
   }
 
@@ -1911,14 +2236,19 @@ bot.on('message:text', async (ctx) => {
   if (session.awaitingClearConfirmation) {
     if (normalized === 'да') {
       try {
+        // Получаем все слова перед удалением для очистки аудиокэша
+        const userWords = await getWords(session.profile);
+        
         const deletedWords = await prisma.word.deleteMany({
           where: { profile: session.profile }
         });
         
+        // Аудиоданные удаляются автоматически вместе со словами (они в той же записи)
+        
         session.awaitingClearConfirmation = false;
         session.step = 'main_menu';
         
-        await ctx.reply(`✅ Удалено ${deletedWords.count} слов`, {
+        await ctx.reply(`✅ Удалено ${deletedWords.count} слов и все связанные аудиоданные`, {
           reply_markup: mainMenu
         });
       } catch (error) {
@@ -1981,19 +2311,24 @@ bot.on('message:text', async (ctx) => {
         .filter(Boolean)
         .map(d => new Date(d).toDateString());
       const uniqueDays = Array.from(new Set(dates)).sort();
-      let studyStreak = session.streak || 0;
+      let studyStreak = session.studyStreak || 0;
       if (!session.slothOfTheDay) {
         if (uniqueDays.length > 0) {
           const today = new Date().toDateString();
           const isStudiedToday = uniqueDays.includes(today);
           if (isStudiedToday) {
             studyStreak = 1;
-            session.streak = 1;
+            session.studyStreak = 1;
+            session.lastStudyDate = new Date().toISOString().split('T')[0];
+            // Сохраняем обновленный streak в базу данных
+            await saveUserSession(session, ctx.from.id);
           }
         }
       } else {
         studyStreak = 0;
-        session.streak = 0;
+        session.studyStreak = 0;
+        // Сохраняем обновленный streak в базу данных
+        await saveUserSession(session, ctx.from.id);
       }
       
       // --- Мультипликатор XP ---
@@ -2107,6 +2442,14 @@ bot.on('message:text', async (ctx) => {
     console.log(`DEBUG: Received text in word_tasks_menu: "${text}"`);
     
     if (text === '🧠 Умное повторение') {
+      // Проверяем, не прошел ли уже умное повторение сегодня
+      const today = new Date().toDateString();
+      if (session.lastSmartRepeatDate === today) {
+        return ctx.reply('✅ Вы уже прошли умное повторение сегодня! Приходите завтра за новыми заданиями.', {
+          reply_markup: wordTasksMenu,
+        });
+      }
+      
       // Умное повторение с учетом времени последнего обновления
       const userWords = await getWords(session.profile);
       if (userWords.length === 0) {
@@ -2150,12 +2493,12 @@ bot.on('message:text', async (ctx) => {
       session.smartRepeatWords = wordsToRepeat;
       
       // ЭТАП 1: Запускаем викторину "Угадай перевод" с этими словами
-      // Берем первые 10 слов для викторины
-      const quizWords = wordsToRepeat.slice(0, 10);
-      if (quizWords.length < 10) {
-        // Если слов меньше 10, дополняем случайными
+      // Берем первые 20 слов для викторины
+      const quizWords = wordsToRepeat.slice(0, 20);
+      if (quizWords.length < 20) {
+        // Если слов меньше 20, дополняем случайными
         const remainingWords = userWords.filter(w => !quizWords.includes(w));
-        while (quizWords.length < 10 && remainingWords.length > 0) {
+        while (quizWords.length < 20 && remainingWords.length > 0) {
           const randomIndex = Math.floor(Math.random() * remainingWords.length);
           quizWords.push(remainingWords.splice(randomIndex, 1)[0]);
         }
@@ -2178,17 +2521,34 @@ bot.on('message:text', async (ctx) => {
       
       // Генерируем первый вопрос
       const firstQuestion = await generateQuizQuestion(currentQuizSession.words, 0, userWords);
+      console.log(`DEBUG: Generated first question for smart repeat:`, firstQuestion);
       
-      return ctx.reply(
+      await ctx.reply(
         `🧠 <b>Умное повторение - Этап 1/4</b>\n` +
         `🎯 <b>Викторина "Угадай перевод"</b>\n\n` +
         `Выбраны ${wordsToRepeat.length} приоритетных слов для повторения.\n\n` +
-        `<b>Вопрос 1/10:</b>\n${firstQuestion.question}`,
+        `<b>Вопрос 1/20:</b>\n${firstQuestion.question}`,
         { 
           reply_markup: firstQuestion.keyboard,
           parse_mode: 'HTML' 
         }
       );
+      console.log(`DEBUG: Smart repeat quiz message sent successfully`);
+      
+      // Отправляем аудио для первого слова
+      const currentWord = currentQuizSession.words[0];
+      if (currentWord && currentWord.word) {
+        try {
+          console.log(`DEBUG: Attempting to send audio for word: "${currentWord.word}"`);
+          await sendWordAudioFromDB(ctx, currentWord.word, session.profile, { silent: true });
+          console.log(`DEBUG: Audio sent successfully for word: "${currentWord.word}"`);
+        } catch (error) {
+          console.error('Error sending audio for first word in smart repeat:', error);
+          // Не прерываем выполнение, если аудио не отправилось
+        }
+      }
+      console.log(`DEBUG: Smart repeat initialization completed for user ${ctx.from.id}`);
+      return; // ВАЖНО: останавливаем выполнение после инициализации умного повторения
     }
     
     if (text === '🎯 Угадай перевод' || text === 'Угадай перевод' || text === '� Угадай перевод') {
@@ -2293,12 +2653,13 @@ bot.on('message:text', async (ctx) => {
           throw new Error('AI не вернул массив слов.');
         }
         
-        await Promise.all(words.map(w => addWord(session.profile, getFirstTwoWords(w.word), w.translation, 'IELTS')));
+        // Добавляем слова последовательно с аудио
+        const processedWords = await addWordsSequentiallyWithAudio(ctx, session.profile, words, 'IELTS');
         session.step = 'main_menu';
         
         let msgParts = [];
-        for (let i = 0; i < words.length; i += 5) {
-          const chunk = words.slice(i, i + 5);
+        for (let i = 0; i < processedWords.length; i += 5) {
+          const chunk = processedWords.slice(i, i + 5);
           let msg = 'Добавлены IELTS-слова с объяснением и примерами:\n';
           msg += chunk.map(w => `\n<b>${w.word}</b> — ${w.translation}\n${w.explanation}\nПример: ${w.example}\nПеревод: ${w.example_translation}`).join('\n');
           msgParts.push(msg);
@@ -2306,6 +2667,9 @@ bot.on('message:text', async (ctx) => {
         for (const part of msgParts) {
           await ctx.reply(part, { reply_markup: mainMenu, parse_mode: 'HTML' });
         }
+        
+        // Отправляем аудио после текстовых сообщений
+        await sendAudioForWords(ctx, session.profile, processedWords);
       } catch (e) {
         session.step = 'main_menu';
         let errorMsg = 'Ошибка при получении объяснений через AI. Попробуйте позже.';
@@ -2560,6 +2924,9 @@ bot.on('message:text', async (ctx) => {
       const wordCorrectLevel = (all[idx]?.correct || 0);
       const xpGained = await awardXP(session, wordCorrectLevel, ctx);
       
+      // Сохраняем обновленный уровень и XP в базу данных
+      await saveUserSession(session, ctx.from.id);
+      
       if (idx !== -1) await updateWordCorrect(session.profile, wordObj.word, wordObj.translation, (all[idx].correct || 0) + 1);
       
       // Показываем полученный XP
@@ -2589,7 +2956,13 @@ bot.on('message:text', async (ctx) => {
       const question = next.direction === 'en-ru'
         ? `Как переводится слово: "${next.word}"?`
         : `Как по-английски: "${next.translation}"?`;
-      return ctx.reply(question);
+      
+      await ctx.reply(question);
+      
+      // Отправляем аудио для слова (только если направление en-ru)
+      if (next.direction === 'en-ru') {
+        await sendWordAudioFromDB(ctx, next.word, session.profile);
+      }
     } else if (session.mistakes.length > 0) {
       // Переходим к работе над ошибками
       session.step = 'work_on_mistakes';
@@ -2600,7 +2973,12 @@ bot.on('message:text', async (ctx) => {
         ? `Как переводится слово: "${firstMistake.word}"?`
         : `Как по-английски: "${firstMistake.translation}"?`;
       await ctx.reply('Работа над ошибками! Сейчас повторим слова, в которых были ошибки. Правильные ответы не будут учтены в базе.');
-      return ctx.reply(question);
+      await ctx.reply(question);
+      
+      // Отправляем аудио для слова (только если направление en-ru)
+      if (firstMistake.direction === 'en-ru') {
+        await sendWordAudioFromDB(ctx, firstMistake.word, session.profile);
+      }
     } else {
       // --- Изменение: если повторение по разделу или IELTS, то только перевод, без sentence_task ---
       if (session.repeatMode === 'oxford_section' || session.repeatMode === 'ielts') {
@@ -2722,7 +3100,13 @@ bot.on('message:text', async (ctx) => {
       const question = next.direction === 'en-ru'
         ? `Как переводится слово: "${next.word}"?`
         : `Как по-английски: "${next.translation}"?`;
-      return ctx.reply(question);
+      
+      await ctx.reply(question);
+      
+      // Отправляем аудио для слова (только если направление en-ru)
+      if (next.direction === 'en-ru') {
+        await sendWordAudioFromDB(ctx, next.word, session.profile);
+      }
     } else if (session.mistakeIndex >= mistakes.length) {
       // --- Изменение: если повторение по разделу или IELTS, то только перевод, без sentence_task ---
       if (session.repeatMode === 'oxford_section' || session.repeatMode === 'ielts') {
@@ -2865,16 +3249,22 @@ bot.on('message:text', async (ctx) => {
         throw new Error('AI не вернул массив слов.');
       }
       // Сохраняем только word, translation, correct, section
-      await Promise.all(words.map(w => addWord(session.profile, getMainForm(w.word), w.translation, section)));
+      const processedWords = await addWordsSequentiallyWithAudio(ctx, session.profile, words, section);
       session.step = 'main_menu';
       // Формируем сообщения для пользователя по 5 слов в каждом
       let msgParts = [];
-      for (let i = 0; i < words.length; i += 5) {
-        const chunk = words.slice(i, i + 5);
+      for (let i = 0; i < processedWords.length; i += 5) {
+        const chunk = processedWords.slice(i, i + 5);
         let msg = 'Добавлены слова с объяснением и примерами:\n';
         msg += chunk.map(w => `\n<b>${w.word}</b> — ${w.translation}\n${w.explanation}\nПример: ${w.example}\nПеревод: ${w.example_translation}`).join('\n');
         msgParts.push(msg);
       }
+      for (const part of msgParts) {
+        await ctx.reply(part, { reply_markup: mainMenu, parse_mode: 'HTML' });
+      }
+      
+      // Отправляем аудио после текстовых сообщений
+      await sendAudioForWords(ctx, session.profile, processedWords);
       for (const part of msgParts) {
         await ctx.reply(part, { reply_markup: mainMenu, parse_mode: 'HTML' });
       }
@@ -2940,7 +3330,13 @@ bot.on('message:text', async (ctx) => {
     const question = first.direction === 'en-ru'
       ? `Как переводится слово: "${first.word}"?`
       : `Как по-английски: "${first.translation}"?`;
-    return ctx.reply(question);
+    
+    await ctx.reply(question);
+    
+    // Отправляем аудио для слова (только если направление en-ru)
+    if (first.direction === 'en-ru') {
+      await sendWordAudio(ctx, first.word);
+    }
   }
 
   // --- Выбор способа создания предложений ---
@@ -3288,6 +3684,7 @@ bot.api.setMyCommands([
   { command: 'reminder', description: 'Настроить ежедневные напоминания' },
   { command: 'delete', description: 'Удалить слово' },
   { command: 'clear', description: 'Удалить все слова' },
+  { command: 'clear_audio', description: '🔊 Очистить аудиоданные из БД' },
   { command: 'backup', description: '📦 Создать и скачать бэкап' },
   { command: 'backups', description: '📂 Список всех бэкапов' },
   { command: 'checkdb', description: '🔍 Проверить базу данных' },
@@ -3320,6 +3717,9 @@ async function safeDeleteWord(profile, word, translation) {
       
       console.log(`📝 Word deletion logged: ${word} -> ${deleteLogFile}`);
     }
+    
+    // Удаляем аудиоданные для слова из БД
+    await deleteWordAudioFromDB(word, profile);
     
     return await prisma.word.deleteMany({
       where: { profile, word, translation }
@@ -3363,10 +3763,19 @@ async function createBackup() {
     });
     console.log(`📊 Found ${allWords.length} words in database`);
     
+    // Получаем все профили пользователей из базы
+    console.log('👤 Fetching user profiles from database...');
+    const allProfiles = await prisma.userProfile.findMany({
+      orderBy: { createdAt: 'asc' }
+    });
+    console.log(`👤 Found ${allProfiles.length} user profiles in database`);
+    
     const backupData = {
       timestamp: new Date().toISOString(),
       totalWords: allWords.length,
-      words: allWords
+      totalProfiles: allProfiles.length,
+      words: allWords,
+      userProfiles: allProfiles
     };
     
     // Сохраняем локально в папку backups
@@ -3426,7 +3835,11 @@ async function restoreFromBackup(backupFilePath) {
     const backupData = JSON.parse(fs.readFileSync(backupFilePath, 'utf8'));
     
     console.log(`🔄 Restoring from backup: ${backupData.totalWords} words`);
+    if (backupData.userProfiles) {
+      console.log(`🔄 Also restoring: ${backupData.totalProfiles || backupData.userProfiles.length} user profiles`);
+    }
     
+    // Восстанавливаем слова
     for (const word of backupData.words) {
       // Проверяем, есть ли уже такое слово
       const existing = await prisma.word.findFirst({
@@ -3438,6 +3851,20 @@ async function restoreFromBackup(backupFilePath) {
       });
       
       if (!existing) {
+        // Обрабатываем аудиоданные
+        let audioData = null;
+        if (word.audioData) {
+          // Если audioData - это объект Buffer из JSON, конвертируем его в Buffer
+          if (word.audioData.type === 'Buffer' && Array.isArray(word.audioData.data)) {
+            audioData = Buffer.from(word.audioData.data);
+          } else if (typeof word.audioData === 'string') {
+            // Если это base64 строка
+            audioData = Buffer.from(word.audioData, 'base64');
+          } else {
+            audioData = word.audioData;
+          }
+        }
+        
         await prisma.word.create({
           data: {
             profile: word.profile,
@@ -3445,10 +3872,59 @@ async function restoreFromBackup(backupFilePath) {
             translation: word.translation,
             section: word.section,
             correct: word.correct,
+            audioData: audioData,
             createdAt: word.createdAt,
             updatedAt: word.updatedAt
           }
         });
+      }
+    }
+    
+    // Восстанавливаем профили пользователей (если есть в бэкапе)
+    if (backupData.userProfiles && Array.isArray(backupData.userProfiles)) {
+      for (const profile of backupData.userProfiles) {
+        // Проверяем, есть ли уже такой профиль
+        const existing = await prisma.userProfile.findFirst({
+          where: {
+            telegramId: profile.telegramId,
+            profileName: profile.profileName
+          }
+        });
+        
+        if (existing) {
+          // Обновляем существующий профиль, сохраняя максимальные значения
+          await prisma.userProfile.update({
+            where: { id: existing.id },
+            data: {
+              xp: Math.max(existing.xp || 0, profile.xp || 0),
+              level: Math.max(existing.level || 1, profile.level || 1),
+              loginStreak: Math.max(existing.loginStreak || 0, profile.loginStreak || 0),
+              studyStreak: Math.max(existing.studyStreak || 0, profile.studyStreak || 0),
+              lastStudyDate: profile.lastStudyDate || existing.lastStudyDate,
+              lastBonusDate: profile.lastBonusDate || existing.lastBonusDate,
+              lastSmartRepeatDate: profile.lastSmartRepeatDate || existing.lastSmartRepeatDate,
+              reminderTime: profile.reminderTime || existing.reminderTime
+            }
+          });
+        } else {
+          // Создаем новый профиль
+          await prisma.userProfile.create({
+            data: {
+              telegramId: profile.telegramId,
+              profileName: profile.profileName,
+              xp: profile.xp || 0,
+              level: profile.level || 1,
+              loginStreak: profile.loginStreak || 0,
+              studyStreak: profile.studyStreak || 0,
+              lastStudyDate: profile.lastStudyDate,
+              lastBonusDate: profile.lastBonusDate,
+              lastSmartRepeatDate: profile.lastSmartRepeatDate,
+              reminderTime: profile.reminderTime,
+              createdAt: profile.createdAt,
+              updatedAt: profile.updatedAt
+            }
+          });
+        }
       }
     }
     
@@ -3512,14 +3988,8 @@ async function sendRemindersToUsers(reminderType) {
       }
       
       try {
-        // Отправляем напоминание с кнопкой для быстрого доступа
-        const quickMenu = new Keyboard()
-          .text('🧠 Умное повторение')
-          .row();
-          
-        await bot.api.sendMessage(telegramId, reminderText, {
-          reply_markup: quickMenu
-        });
+        // Отправляем напоминание БЕЗ кнопки - это просто уведомление
+        await bot.api.sendMessage(telegramId, reminderText);
         
         console.log(`Reminder sent to user ${telegramId}: ${reminderType}`);
       } catch (error) {
@@ -3659,10 +4129,13 @@ async function startQuizGame(ctx, session) {
       `🤔 Выберите правильный перевод:`;
     console.log('📤 Sending quiz message to user...');
     
-    return ctx.reply(message, { 
+    await ctx.reply(message, { 
       reply_markup: quizKeyboard,
       parse_mode: 'HTML'
     });
+    
+    // Отправляем аудио с произношением слова
+    await sendWordAudioFromDB(ctx, targetWord.word, session.profile, { silent: true });
     
   } catch (error) {
     console.error('❌ Quiz game error:', error);
@@ -3983,8 +4456,15 @@ async function finishQuizSession(ctx, session) {
 
 // Функция обработки ответа в викторине умного повторения
 async function handleSmartRepeatQuizAnswer(ctx, session, answerText) {
+  console.log(`DEBUG: handleSmartRepeatQuizAnswer called for user ${ctx.from.id}, answer: "${answerText}"`);
+  
   const quizSession = session.currentQuizSession;
-  if (!quizSession || !quizSession.isSmartRepeat) return false;
+  if (!quizSession || !quizSession.isSmartRepeat) {
+    console.log(`DEBUG: No quiz session or not smart repeat. quizSession: ${!!quizSession}, isSmartRepeat: ${quizSession?.isSmartRepeat}`);
+    return false;
+  }
+  
+  console.log(`DEBUG: Quiz session found, currentQuestionIndex: ${quizSession.currentQuestionIndex}, words length: ${quizSession.words.length}`);
   
   const currentQuestionIndex = quizSession.currentQuestionIndex;
   const word = quizSession.words[currentQuestionIndex];
@@ -3992,10 +4472,14 @@ async function handleSmartRepeatQuizAnswer(ctx, session, answerText) {
   // Генерируем вопрос для текущего слова чтобы получить правильный ответ
   const allWords = await getWords(session.profile);
   const questionData = await generateQuizQuestion(quizSession.words, currentQuestionIndex, allWords);
-  
-  // Определяем, какой вариант выбрал пользователь
+    
+    // Определяем, какой вариант выбрал пользователь
   const answerMatch = answerText.match(/^([1-4])️⃣\s(.+)$/);
-  if (!answerMatch) return false;
+  console.log(`DEBUG: Answer text: "${answerText}", match result:`, answerMatch);
+  if (!answerMatch) {
+    console.log(`DEBUG: Answer text doesn't match expected format. Returning false.`);
+    return false;
+  }
   
   const selectedAnswer = answerMatch[2];
   const isCorrect = selectedAnswer === questionData.correctAnswer;
@@ -4058,12 +4542,23 @@ async function handleSmartRepeatQuizAnswer(ctx, session, answerText) {
     const nextQuestion = await generateQuizQuestion(quizSession.words, quizSession.currentQuestionIndex, allWords);
     
     responseMessage += `\n\n📊 <b>Прогресс:</b> ${quizSession.currentQuestionIndex + 1}/${quizSession.words.length}` +
-      `\n\n<b>Вопрос ${quizSession.currentQuestionIndex + 1}/10:</b>\n${nextQuestion.question}`;
+      `\n\n<b>Вопрос ${quizSession.currentQuestionIndex + 1}/20:</b>\n${nextQuestion.question}`;
     
-    return ctx.reply(responseMessage, {
+    await ctx.reply(responseMessage, {
       reply_markup: nextQuestion.keyboard,
       parse_mode: 'HTML'
     });
+    
+    // Отправляем аудио для следующего слова
+    const nextWord = quizSession.words[quizSession.currentQuestionIndex];
+    if (nextWord && nextWord.word) {
+      try {
+        await sendWordAudioFromDB(ctx, nextWord.word, session.profile, { silent: true });
+      } catch (error) {
+        console.error('Error sending audio for next word in smart repeat quiz:', error);
+        // Не прерываем выполнение, если аудио не отправилось
+      }
+    }
   }
 }
 
@@ -4073,6 +4568,15 @@ async function startSmartRepeatStage2(ctx, session) {
   const wordsToRepeat = session.smartRepeatWords || [];
   
   if (wordsToRepeat.length === 0) {
+    // Отмечаем что умное повторение пройдено сегодня
+    const todayString = new Date().toDateString();
+    session.lastSmartRepeatDate = todayString;
+    
+    // Сохраняем изменения в базу данных
+    if (session.profile) {
+      await saveUserSession(ctx.from.id, session.profile, session);
+    }
+    
     session.step = 'word_tasks_menu';
     return ctx.reply('🧠 Умное повторение завершено!', {
       reply_markup: wordTasksMenu,
@@ -4112,7 +4616,7 @@ async function startSmartRepeatStage2(ctx, session) {
     .oneTime()
     .resized();
 
-  return ctx.reply(
+  await ctx.reply(
     `🧠 <b>Умное повторение - Этап 2/4</b>\n` +
     `🎯 <b>"Знаю/Не знаю"</b>\n\n${question}`,
     { 
@@ -4120,6 +4624,16 @@ async function startSmartRepeatStage2(ctx, session) {
       reply_markup: skipKeyboard
     }
   );
+  
+  // Отправляем аудио для слова (только если направление en-ru)
+  if (first.direction === 'en-ru' && first.word) {
+    try {
+      await sendWordAudioFromDB(ctx, first.word, session.profile, { silent: true });
+    } catch (error) {
+      console.error('Error sending audio in smart repeat stage 2:', error);
+      // Не прерываем выполнение, если аудио не отправилось
+    }
+  }
 }
 
 // Обработка ответов в этапе 2 умного повторения
@@ -4152,6 +4666,10 @@ async function handleSmartRepeatStage2Answer(ctx, session, answerText) {
       // Начисляем XP за правильный ответ
       const wordCorrectLevel = wordObj.correct || 0;
       const xpGained = await awardXP(session, wordCorrectLevel, ctx);
+      
+      // Сохраняем обновленный уровень и XP в базу данных
+      await saveUserSession(session, ctx.from.id);
+      
       await ctx.reply(`💫 +${xpGained} XP`);
       
       // Увеличиваем счетчик правильных ответов
@@ -4197,7 +4715,17 @@ async function moveToNextStage2Word(ctx, session) {
       .oneTime()
       .resized();
       
-    return ctx.reply(question, { reply_markup: skipKeyboard });
+    await ctx.reply(question, { reply_markup: skipKeyboard });
+    
+    // Отправляем аудио для слова (только если направление en-ru)
+    if (next.direction === 'en-ru' && next.word) {
+      try {
+        await sendWordAudioFromDB(ctx, next.word, session.profile, { silent: true });
+      } catch (error) {
+        console.error('Error sending audio in moveToNextStage2Word:', error);
+        // Не прерываем выполнение, если аудио не отправилось
+      }
+    }
   } else {
     // Этап 2 завершен - переходим к этапу 3
     await startSmartRepeatStage3(ctx, session);
@@ -5091,6 +5619,19 @@ initializeDatabase().then(() => {
 // Функция завершения умного повторения
 async function finishSmartRepeat(ctx, session) {
   console.log(`DEBUG: Finishing smart repeat for user ${ctx.from.id}`);
+  
+  // Отмечаем что умное повторение пройдено сегодня
+  const todayString = new Date().toDateString();
+  session.lastSmartRepeatDate = todayString;
+  
+  console.log(`DEBUG SMART REPEAT: User ${ctx.from.id} completed smart repeat (finishSmartRepeat)`);
+  console.log(`  - Setting lastSmartRepeatDate to: "${todayString}"`);
+  
+  // Сохраняем изменения в базу данных
+  if (session.profile) {
+    await saveUserSession(ctx.from.id, session.profile, session);
+    console.log(`  - Saved to database for profile: ${session.profile}`);
+  }
   
   // Очищаем все состояния умного повторения
   delete session.currentQuizSession;
