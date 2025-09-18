@@ -1959,18 +1959,6 @@ bot.command('daily', async (ctx) => {
     console.log('=== DAILY COMMAND: Starting writing stage directly ===');
     console.log('User ID:', userId, 'Profile:', session.profile);
     
-    // Очищаем текущую сессию умного повторения если есть
-    delete session.currentQuizSession;
-    delete session.wordsToRepeat;
-    delete session.currentIndex;
-    delete session.repeatMode;
-    delete session.sentenceTaskWords;
-    delete session.sentenceTaskIndex;
-    delete session.stage3Sentences;
-    delete session.stage3Context;
-    delete session.writingTopic;
-    delete session.writingAnalysis;
-    
     await ctx.reply('📝 <b>Ежедневное письмо</b>\n\nЗапускаю этап письменного задания...', { parse_mode: 'HTML' });
     
     // Запускаем этап письма напрямую
