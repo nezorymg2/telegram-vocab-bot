@@ -1,0 +1,1176 @@
+{
+  "timestamp": "2025-07-23T23:00:00.032Z",
+  "totalWords": 117,
+  "words": [
+    {
+      "id": 1,
+      "profile": "Нурболат",
+      "word": "sert",
+      "translation": "хее",
+      "section": null,
+      "correct": 1,
+      "createdAt": "2025-07-23T19:54:31.445Z",
+      "updatedAt": "2025-07-23T21:43:27.968Z"
+    },
+    {
+      "id": 2,
+      "profile": "Нурболат",
+      "word": "doubtful",
+      "translation": "сомнительный",
+      "section": "IELTS",
+      "correct": 0,
+      "createdAt": "2025-07-23T20:59:17.151Z",
+      "updatedAt": "2025-07-23T21:43:34.992Z"
+    },
+    {
+      "id": 11,
+      "profile": "Нурболат",
+      "word": "perhaps",
+      "translation": "возможно",
+      "section": "IELTS",
+      "correct": 0,
+      "createdAt": "2025-07-23T20:59:17.151Z",
+      "updatedAt": "2025-07-23T21:30:29.211Z"
+    },
+    {
+      "id": 12,
+      "profile": "Нурболат",
+      "word": "despite",
+      "translation": "несмотря на",
+      "section": "IELTS",
+      "correct": 0,
+      "createdAt": "2025-07-23T20:59:17.151Z",
+      "updatedAt": "2025-07-23T21:30:30.272Z"
+    },
+    {
+      "id": 13,
+      "profile": "Нурболат",
+      "word": "enormous",
+      "translation": "огромный",
+      "section": "IELTS",
+      "correct": 0,
+      "createdAt": "2025-07-23T20:59:17.151Z",
+      "updatedAt": "2025-07-23T21:30:31.444Z"
+    },
+    {
+      "id": 14,
+      "profile": "Нурболат",
+      "word": "household",
+      "translation": "домашнее хозяйство",
+      "section": "IELTS",
+      "correct": 0,
+      "createdAt": "2025-07-23T20:59:17.151Z",
+      "updatedAt": "2025-07-23T21:30:32.525Z"
+    },
+    {
+      "id": 15,
+      "profile": "Нурболат",
+      "word": "pleasant",
+      "translation": "приятный",
+      "section": "IELTS",
+      "correct": 0,
+      "createdAt": "2025-07-23T20:59:17.151Z",
+      "updatedAt": "2025-07-23T21:30:33.888Z"
+    },
+    {
+      "id": 16,
+      "profile": "Нурболат",
+      "word": "Prior to",
+      "translation": "перед",
+      "section": "IELTS",
+      "correct": 0,
+      "createdAt": "2025-07-23T20:59:17.151Z",
+      "updatedAt": "2025-07-23T21:30:35.126Z"
+    },
+    {
+      "id": 17,
+      "profile": "Нурболат",
+      "word": "excessive",
+      "translation": "чрезмерный",
+      "section": "IELTS",
+      "correct": 0,
+      "createdAt": "2025-07-23T20:59:17.151Z",
+      "updatedAt": "2025-07-23T21:30:36.419Z"
+    },
+    {
+      "id": 18,
+      "profile": "Нурболат",
+      "word": "literacy rate",
+      "translation": "уровень грамотности",
+      "section": "IELTS",
+      "correct": 0,
+      "createdAt": "2025-07-23T20:59:17.151Z",
+      "updatedAt": "2025-07-23T21:30:37.726Z"
+    },
+    {
+      "id": 19,
+      "profile": "Нурболат",
+      "word": "Seldom",
+      "translation": "редко",
+      "section": "IELTS",
+      "correct": 0,
+      "createdAt": "2025-07-23T20:59:17.151Z",
+      "updatedAt": "2025-07-23T21:30:39.213Z"
+    },
+    {
+      "id": 20,
+      "profile": "Нурболат",
+      "word": "interpret",
+      "translation": "интерпретировать",
+      "section": "IELTS",
+      "correct": 0,
+      "createdAt": "2025-07-23T20:59:17.151Z",
+      "updatedAt": "2025-07-23T21:30:40.546Z"
+    },
+    {
+      "id": 21,
+      "profile": "Нурболат",
+      "word": "distinction",
+      "translation": "различие",
+      "section": "IELTS",
+      "correct": 0,
+      "createdAt": "2025-07-23T20:59:17.151Z",
+      "updatedAt": "2025-07-23T20:59:17.151Z"
+    },
+    {
+      "id": 3,
+      "profile": "Нурболат",
+      "word": "Accuse of",
+      "translation": "обвинять в",
+      "section": "IELTS",
+      "correct": 0,
+      "createdAt": "2025-07-23T20:59:17.155Z",
+      "updatedAt": "2025-07-23T21:43:40.025Z"
+    },
+    {
+      "id": 4,
+      "profile": "Нурболат",
+      "word": "obtain",
+      "translation": "получить",
+      "section": "IELTS",
+      "correct": 0,
+      "createdAt": "2025-07-23T20:59:17.160Z",
+      "updatedAt": "2025-07-23T21:43:43.445Z"
+    },
+    {
+      "id": 5,
+      "profile": "Нурболат",
+      "word": "precipitation",
+      "translation": "осадки",
+      "section": "IELTS",
+      "correct": 0,
+      "createdAt": "2025-07-23T20:59:17.164Z",
+      "updatedAt": "2025-07-23T21:30:20.876Z"
+    },
+    {
+      "id": 6,
+      "profile": "Нурболат",
+      "word": "elevate",
+      "translation": "поднять",
+      "section": "IELTS",
+      "correct": 0,
+      "createdAt": "2025-07-23T20:59:17.168Z",
+      "updatedAt": "2025-07-23T21:30:21.925Z"
+    },
+    {
+      "id": 7,
+      "profile": "Нурболат",
+      "word": "convince",
+      "translation": "убедить",
+      "section": "IELTS",
+      "correct": 0,
+      "createdAt": "2025-07-23T20:59:17.171Z",
+      "updatedAt": "2025-07-23T21:30:24.554Z"
+    },
+    {
+      "id": 8,
+      "profile": "Нурболат",
+      "word": "lack of",
+      "translation": "отсутствие",
+      "section": "IELTS",
+      "correct": 0,
+      "createdAt": "2025-07-23T20:59:17.174Z",
+      "updatedAt": "2025-07-23T21:30:25.757Z"
+    },
+    {
+      "id": 9,
+      "profile": "Нурболат",
+      "word": "outstanding",
+      "translation": "выдающийся",
+      "section": "IELTS",
+      "correct": 0,
+      "createdAt": "2025-07-23T20:59:17.177Z",
+      "updatedAt": "2025-07-23T21:30:26.848Z"
+    },
+    {
+      "id": 10,
+      "profile": "Нурболат",
+      "word": "contradict",
+      "translation": "противоречить",
+      "section": "IELTS",
+      "correct": 0,
+      "createdAt": "2025-07-23T20:59:17.180Z",
+      "updatedAt": "2025-07-23T21:30:27.972Z"
+    },
+    {
+      "id": 22,
+      "profile": "Нурболат",
+      "word": "contact",
+      "translation": "контакт",
+      "section": "Общение",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:07:34.252Z",
+      "updatedAt": "2025-07-23T21:07:34.252Z"
+    },
+    {
+      "id": 31,
+      "profile": "Нурболат",
+      "word": "welcome",
+      "translation": "приветствие",
+      "section": "Общение",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:07:34.252Z",
+      "updatedAt": "2025-07-23T21:07:34.252Z"
+    },
+    {
+      "id": 32,
+      "profile": "Нурболат",
+      "word": "smile",
+      "translation": "улыбка",
+      "section": "Общение",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:07:34.252Z",
+      "updatedAt": "2025-07-23T21:07:34.252Z"
+    },
+    {
+      "id": 33,
+      "profile": "Нурболат",
+      "word": "proceed",
+      "translation": "продолжать",
+      "section": "Общение",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:07:34.252Z",
+      "updatedAt": "2025-07-23T21:07:34.252Z"
+    },
+    {
+      "id": 34,
+      "profile": "Нурболат",
+      "word": "report",
+      "translation": "отчет",
+      "section": "Общение",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:07:34.252Z",
+      "updatedAt": "2025-07-23T21:07:34.252Z"
+    },
+    {
+      "id": 35,
+      "profile": "Нурболат",
+      "word": "scream",
+      "translation": "кричать",
+      "section": "Общение",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:07:34.252Z",
+      "updatedAt": "2025-07-23T21:07:34.252Z"
+    },
+    {
+      "id": 36,
+      "profile": "Нурболат",
+      "word": "offer",
+      "translation": "предложение",
+      "section": "Общение",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:07:34.252Z",
+      "updatedAt": "2025-07-23T21:07:34.252Z"
+    },
+    {
+      "id": 37,
+      "profile": "Нурболат",
+      "word": "whisper",
+      "translation": "шепот",
+      "section": "Общение",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:07:34.252Z",
+      "updatedAt": "2025-07-23T21:07:34.252Z"
+    },
+    {
+      "id": 38,
+      "profile": "Нурболат",
+      "word": "matter",
+      "translation": "дело",
+      "section": "Общение",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:07:34.252Z",
+      "updatedAt": "2025-07-23T21:07:34.252Z"
+    },
+    {
+      "id": 39,
+      "profile": "Нурболат",
+      "word": "talk",
+      "translation": "разговор",
+      "section": "Общение",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:07:34.252Z",
+      "updatedAt": "2025-07-23T21:07:34.252Z"
+    },
+    {
+      "id": 40,
+      "profile": "Нурболат",
+      "word": "resolve",
+      "translation": "решить",
+      "section": "Общение",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:07:34.252Z",
+      "updatedAt": "2025-07-23T21:07:34.252Z"
+    },
+    {
+      "id": 41,
+      "profile": "Нурболат",
+      "word": "approve",
+      "translation": "одобрить",
+      "section": "Общение",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:07:34.252Z",
+      "updatedAt": "2025-07-23T21:07:34.252Z"
+    },
+    {
+      "id": 23,
+      "profile": "Нурболат",
+      "word": "inform",
+      "translation": "сообщить",
+      "section": "Общение",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:07:34.269Z",
+      "updatedAt": "2025-07-23T21:07:34.269Z"
+    },
+    {
+      "id": 24,
+      "profile": "Нурболат",
+      "word": "cry",
+      "translation": "плакать",
+      "section": "Общение",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:07:34.275Z",
+      "updatedAt": "2025-07-23T21:07:34.275Z"
+    },
+    {
+      "id": 25,
+      "profile": "Нурболат",
+      "word": "suggest",
+      "translation": "предложить",
+      "section": "Общение",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:07:34.279Z",
+      "updatedAt": "2025-07-23T21:07:34.279Z"
+    },
+    {
+      "id": 26,
+      "profile": "Нурболат",
+      "word": "disagree",
+      "translation": "не соглашаться",
+      "section": "Общение",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:07:34.283Z",
+      "updatedAt": "2025-07-23T21:07:34.283Z"
+    },
+    {
+      "id": 27,
+      "profile": "Нурболат",
+      "word": "dominate",
+      "translation": "доминировать",
+      "section": "Общение",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:07:34.286Z",
+      "updatedAt": "2025-07-23T21:07:34.286Z"
+    },
+    {
+      "id": 28,
+      "profile": "Нурболат",
+      "word": "admit",
+      "translation": "признать",
+      "section": "Общение",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:07:34.290Z",
+      "updatedAt": "2025-07-23T21:07:34.290Z"
+    },
+    {
+      "id": 29,
+      "profile": "Нурболат",
+      "word": "invite",
+      "translation": "пригласить",
+      "section": "Общение",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:07:34.293Z",
+      "updatedAt": "2025-07-23T21:07:34.293Z"
+    },
+    {
+      "id": 30,
+      "profile": "Нурболат",
+      "word": "translate",
+      "translation": "перевести",
+      "section": "Общение",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:07:34.296Z",
+      "updatedAt": "2025-07-23T21:07:34.296Z"
+    },
+    {
+      "id": 42,
+      "profile": "Нурболат",
+      "word": "end",
+      "translation": "конец",
+      "section": "Этапы действия, часть и целое",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:10:12.974Z",
+      "updatedAt": "2025-07-23T21:10:12.974Z"
+    },
+    {
+      "id": 51,
+      "profile": "Нурболат",
+      "word": "include",
+      "translation": "включить",
+      "section": "Этапы действия, часть и целое",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:10:12.974Z",
+      "updatedAt": "2025-07-23T21:10:12.974Z"
+    },
+    {
+      "id": 52,
+      "profile": "Нурболат",
+      "word": "last",
+      "translation": "последний",
+      "section": "Этапы действия, часть и целое",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:10:12.974Z",
+      "updatedAt": "2025-07-23T21:10:12.974Z"
+    },
+    {
+      "id": 53,
+      "profile": "Нурболат",
+      "word": "start",
+      "translation": "начать",
+      "section": "Этапы действия, часть и целое",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:10:12.974Z",
+      "updatedAt": "2025-07-23T21:10:12.974Z"
+    },
+    {
+      "id": 54,
+      "profile": "Нурболат",
+      "word": "divide",
+      "translation": "разделить",
+      "section": "Этапы действия, часть и целое",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:10:12.974Z",
+      "updatedAt": "2025-07-23T21:10:12.974Z"
+    },
+    {
+      "id": 55,
+      "profile": "Нурболат",
+      "word": "separate",
+      "translation": "разделять",
+      "section": "Этапы действия, часть и целое",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:10:12.974Z",
+      "updatedAt": "2025-07-23T21:10:12.974Z"
+    },
+    {
+      "id": 56,
+      "profile": "Нурболат",
+      "word": "consist",
+      "translation": "состоять",
+      "section": "Этапы действия, часть и целое",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:10:12.974Z",
+      "updatedAt": "2025-07-23T21:10:12.974Z"
+    },
+    {
+      "id": 57,
+      "profile": "Нурболат",
+      "word": "finish",
+      "translation": "закончить",
+      "section": "Этапы действия, часть и целое",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:10:12.974Z",
+      "updatedAt": "2025-07-23T21:10:12.974Z"
+    },
+    {
+      "id": 58,
+      "profile": "Нурболат",
+      "word": "exclude",
+      "translation": "исключить",
+      "section": "Этапы действия, часть и целое",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:10:12.974Z",
+      "updatedAt": "2025-07-23T21:10:12.974Z"
+    },
+    {
+      "id": 59,
+      "profile": "Нурболат",
+      "word": "continue",
+      "translation": "продолжать",
+      "section": "Этапы действия, часть и целое",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:10:12.974Z",
+      "updatedAt": "2025-07-23T21:10:12.974Z"
+    },
+    {
+      "id": 60,
+      "profile": "Нурболат",
+      "word": "prepare",
+      "translation": "подготовить",
+      "section": "Этапы действия, часть и целое",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:10:12.974Z",
+      "updatedAt": "2025-07-23T21:10:12.974Z"
+    },
+    {
+      "id": 61,
+      "profile": "Нурболат",
+      "word": "accomplish",
+      "translation": "достичь",
+      "section": "Этапы действия, часть и целое",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:10:12.974Z",
+      "updatedAt": "2025-07-23T21:10:12.974Z"
+    },
+    {
+      "id": 43,
+      "profile": "Нурболат",
+      "word": "begin",
+      "translation": "начать",
+      "section": "Этапы действия, часть и целое",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:10:12.987Z",
+      "updatedAt": "2025-07-23T21:10:12.987Z"
+    },
+    {
+      "id": 44,
+      "profile": "Нурболат",
+      "word": "assemble",
+      "translation": "собрать",
+      "section": "Этапы действия, часть и целое",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:10:12.991Z",
+      "updatedAt": "2025-07-23T21:10:12.991Z"
+    },
+    {
+      "id": 45,
+      "profile": "Нурболат",
+      "word": "contain",
+      "translation": "содержать",
+      "section": "Этапы действия, часть и целое",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:10:12.994Z",
+      "updatedAt": "2025-07-23T21:10:12.994Z"
+    },
+    {
+      "id": 46,
+      "profile": "Нурболат",
+      "word": "become",
+      "translation": "стать",
+      "section": "Этапы действия, часть и целое",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:10:12.998Z",
+      "updatedAt": "2025-07-23T21:10:12.998Z"
+    },
+    {
+      "id": 47,
+      "profile": "Нурболат",
+      "word": "postpone",
+      "translation": "отложить",
+      "section": "Этапы действия, часть и целое",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:10:13.022Z",
+      "updatedAt": "2025-07-23T21:10:13.022Z"
+    },
+    {
+      "id": 48,
+      "profile": "Нурболат",
+      "word": "go",
+      "translation": "идти",
+      "section": "Этапы действия, часть и целое",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:10:13.028Z",
+      "updatedAt": "2025-07-23T21:10:13.028Z"
+    },
+    {
+      "id": 49,
+      "profile": "Нурболат",
+      "word": "put",
+      "translation": "положить",
+      "section": "Этапы действия, часть и целое",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:10:13.032Z",
+      "updatedAt": "2025-07-23T21:10:13.032Z"
+    },
+    {
+      "id": 50,
+      "profile": "Нурболат",
+      "word": "stop",
+      "translation": "остановиться",
+      "section": "Этапы действия, часть и целое",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:10:13.036Z",
+      "updatedAt": "2025-07-23T21:10:13.036Z"
+    },
+    {
+      "id": 62,
+      "profile": "Нурболат",
+      "word": "gather",
+      "translation": "собирать",
+      "section": "IELTS",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:11:22.797Z",
+      "updatedAt": "2025-07-23T21:11:22.797Z"
+    },
+    {
+      "id": 71,
+      "profile": "Нурболат",
+      "word": "redundant",
+      "translation": "избыточный",
+      "section": "IELTS",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:11:22.797Z",
+      "updatedAt": "2025-07-23T21:11:22.797Z"
+    },
+    {
+      "id": 73,
+      "profile": "Нурболат",
+      "word": "lucrative",
+      "translation": "прибыльный",
+      "section": "IELTS",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:11:22.797Z",
+      "updatedAt": "2025-07-23T21:11:22.797Z"
+    },
+    {
+      "id": 74,
+      "profile": "Нурболат",
+      "word": "Longevity",
+      "translation": "долговечность",
+      "section": "IELTS",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:11:22.797Z",
+      "updatedAt": "2025-07-23T21:11:22.797Z"
+    },
+    {
+      "id": 75,
+      "profile": "Нурболат",
+      "word": "experience",
+      "translation": "опыт",
+      "section": "IELTS",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:11:22.797Z",
+      "updatedAt": "2025-07-23T21:11:22.797Z"
+    },
+    {
+      "id": 76,
+      "profile": "Нурболат",
+      "word": "vanish",
+      "translation": "исчезать",
+      "section": "IELTS",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:11:22.797Z",
+      "updatedAt": "2025-07-23T21:11:22.797Z"
+    },
+    {
+      "id": 78,
+      "profile": "Нурболат",
+      "word": "autonomous",
+      "translation": "автономный",
+      "section": "IELTS",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:11:22.797Z",
+      "updatedAt": "2025-07-23T21:11:22.797Z"
+    },
+    {
+      "id": 79,
+      "profile": "Нурболат",
+      "word": "murderer",
+      "translation": "убийца",
+      "section": "IELTS",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:11:22.797Z",
+      "updatedAt": "2025-07-23T21:11:22.797Z"
+    },
+    {
+      "id": 80,
+      "profile": "Нурболат",
+      "word": "research",
+      "translation": "исследование",
+      "section": "IELTS",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:11:22.797Z",
+      "updatedAt": "2025-07-23T21:11:22.797Z"
+    },
+    {
+      "id": 81,
+      "profile": "Нурболат",
+      "word": "underrate",
+      "translation": "недооценивать",
+      "section": "IELTS",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:11:22.797Z",
+      "updatedAt": "2025-07-23T21:11:22.797Z"
+    },
+    {
+      "id": 72,
+      "profile": "Нурболат",
+      "word": "Inhabitant",
+      "translation": "житель",
+      "section": "IELTS",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:11:22.798Z",
+      "updatedAt": "2025-07-23T21:11:22.798Z"
+    },
+    {
+      "id": 77,
+      "profile": "Нурболат",
+      "word": "GDP",
+      "translation": "ВВП",
+      "section": "IELTS",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:11:22.798Z",
+      "updatedAt": "2025-07-23T21:11:22.798Z"
+    },
+    {
+      "id": 63,
+      "profile": "Нурболат",
+      "word": "Undergraduate",
+      "translation": "студент",
+      "section": "IELTS",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:11:22.802Z",
+      "updatedAt": "2025-07-23T21:11:22.802Z"
+    },
+    {
+      "id": 64,
+      "profile": "Нурболат",
+      "word": "depth",
+      "translation": "глубина",
+      "section": "IELTS",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:11:22.805Z",
+      "updatedAt": "2025-07-23T21:11:22.805Z"
+    },
+    {
+      "id": 65,
+      "profile": "Нурболат",
+      "word": "apply",
+      "translation": "применять",
+      "section": "IELTS",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:11:22.808Z",
+      "updatedAt": "2025-07-23T21:11:22.808Z"
+    },
+    {
+      "id": 66,
+      "profile": "Нурболат",
+      "word": "Deliberate",
+      "translation": "обдумывать",
+      "section": "IELTS",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:11:22.811Z",
+      "updatedAt": "2025-07-23T21:11:22.811Z"
+    },
+    {
+      "id": 67,
+      "profile": "Нурболат",
+      "word": "Look forward",
+      "translation": "ожидать с нетерпением",
+      "section": "IELTS",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:11:22.814Z",
+      "updatedAt": "2025-07-23T21:11:22.814Z"
+    },
+    {
+      "id": 68,
+      "profile": "Нурболат",
+      "word": "peer",
+      "translation": "равный",
+      "section": "IELTS",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:11:22.817Z",
+      "updatedAt": "2025-07-23T21:11:22.817Z"
+    },
+    {
+      "id": 69,
+      "profile": "Нурболат",
+      "word": "spread",
+      "translation": "распространять",
+      "section": "IELTS",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:11:22.820Z",
+      "updatedAt": "2025-07-23T21:11:22.820Z"
+    },
+    {
+      "id": 70,
+      "profile": "Нурболат",
+      "word": "exploit",
+      "translation": "использовать",
+      "section": "IELTS",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:11:22.824Z",
+      "updatedAt": "2025-07-23T21:11:22.824Z"
+    },
+    {
+      "id": 82,
+      "profile": "Нурболат",
+      "word": "arrange",
+      "translation": "организовывать",
+      "section": "Работа, сотрудничество",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:19:43.487Z",
+      "updatedAt": "2025-07-23T21:19:43.487Z"
+    },
+    {
+      "id": 83,
+      "profile": "Нурболат",
+      "word": "launch",
+      "translation": "запускать",
+      "section": "Работа, сотрудничество",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:19:43.487Z",
+      "updatedAt": "2025-07-23T21:19:43.487Z"
+    },
+    {
+      "id": 84,
+      "profile": "Нурболат",
+      "word": "schedule",
+      "translation": "расписание",
+      "section": "Работа, сотрудничество",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:19:43.487Z",
+      "updatedAt": "2025-07-23T21:19:43.487Z"
+    },
+    {
+      "id": 85,
+      "profile": "Нурболат",
+      "word": "try",
+      "translation": "пытаться",
+      "section": "Работа, сотрудничество",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:19:43.487Z",
+      "updatedAt": "2025-07-23T21:19:43.487Z"
+    },
+    {
+      "id": 86,
+      "profile": "Нурболат",
+      "word": "direct",
+      "translation": "направлять",
+      "section": "Работа, сотрудничество",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:19:43.487Z",
+      "updatedAt": "2025-07-23T21:19:43.487Z"
+    },
+    {
+      "id": 87,
+      "profile": "Нурболат",
+      "word": "enhance",
+      "translation": "усилить",
+      "section": "Работа, сотрудничество",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:19:43.487Z",
+      "updatedAt": "2025-07-23T21:19:43.487Z"
+    },
+    {
+      "id": 88,
+      "profile": "Нурболат",
+      "word": "cause",
+      "translation": "вызывать",
+      "section": "Работа, сотрудничество",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:19:43.487Z",
+      "updatedAt": "2025-07-23T21:19:43.487Z"
+    },
+    {
+      "id": 89,
+      "profile": "Нурболат",
+      "word": "set",
+      "translation": "установить",
+      "section": "Работа, сотрудничество",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:19:43.487Z",
+      "updatedAt": "2025-07-23T21:19:43.487Z"
+    },
+    {
+      "id": 90,
+      "profile": "Нурболат",
+      "word": "happen",
+      "translation": "происходить",
+      "section": "Работа, сотрудничество",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:19:43.487Z",
+      "updatedAt": "2025-07-23T21:19:43.487Z"
+    },
+    {
+      "id": 91,
+      "profile": "Нурболат",
+      "word": "paint",
+      "translation": "красить",
+      "section": "Работа, сотрудничество",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:19:43.487Z",
+      "updatedAt": "2025-07-23T21:19:43.487Z"
+    },
+    {
+      "id": 94,
+      "profile": "Нурболат",
+      "word": "sign",
+      "translation": "подпись",
+      "section": "Работа, сотрудничество",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:20:04.895Z",
+      "updatedAt": "2025-07-23T21:20:04.895Z"
+    },
+    {
+      "id": 95,
+      "profile": "Нурболат",
+      "word": "face",
+      "translation": "сталкиваться",
+      "section": "Работа, сотрудничество",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:20:04.895Z",
+      "updatedAt": "2025-07-23T21:20:04.895Z"
+    },
+    {
+      "id": 97,
+      "profile": "Нурболат",
+      "word": "monitor",
+      "translation": "отслеживать",
+      "section": "Работа, сотрудничество",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:20:04.895Z",
+      "updatedAt": "2025-07-23T21:20:04.895Z"
+    },
+    {
+      "id": 98,
+      "profile": "Нурболат",
+      "word": "check",
+      "translation": "проверять",
+      "section": "Работа, сотрудничество",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:20:04.895Z",
+      "updatedAt": "2025-07-23T21:20:04.895Z"
+    },
+    {
+      "id": 92,
+      "profile": "Нурболат",
+      "word": "attempt",
+      "translation": "попытка",
+      "section": "Работа, сотрудничество",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:20:04.896Z",
+      "updatedAt": "2025-07-23T21:20:04.896Z"
+    },
+    {
+      "id": 93,
+      "profile": "Нурболат",
+      "word": "record",
+      "translation": "запись",
+      "section": "Работа, сотрудничество",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:20:04.896Z",
+      "updatedAt": "2025-07-23T21:20:04.896Z"
+    },
+    {
+      "id": 96,
+      "profile": "Нурболат",
+      "word": "improve",
+      "translation": "улучшать",
+      "section": "Работа, сотрудничество",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:20:04.896Z",
+      "updatedAt": "2025-07-23T21:20:04.896Z"
+    },
+    {
+      "id": 99,
+      "profile": "Нурболат",
+      "word": "figures",
+      "translation": "цифры",
+      "section": "IELTS",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:20:38.694Z",
+      "updatedAt": "2025-07-23T21:20:38.694Z"
+    },
+    {
+      "id": 103,
+      "profile": "Нурболат",
+      "word": "lead to",
+      "translation": "привести к",
+      "section": "IELTS",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:20:38.694Z",
+      "updatedAt": "2025-07-23T21:20:38.694Z"
+    },
+    {
+      "id": 104,
+      "profile": "Нурболат",
+      "word": "adjust",
+      "translation": "подстроить",
+      "section": "IELTS",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:20:38.694Z",
+      "updatedAt": "2025-07-23T21:20:38.694Z"
+    },
+    {
+      "id": 105,
+      "profile": "Нурболат",
+      "word": "wealth",
+      "translation": "богатство",
+      "section": "IELTS",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:20:38.694Z",
+      "updatedAt": "2025-07-23T21:20:38.694Z"
+    },
+    {
+      "id": 106,
+      "profile": "Нурболат",
+      "word": "bribe",
+      "translation": "взятка",
+      "section": "IELTS",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:20:38.694Z",
+      "updatedAt": "2025-07-23T21:20:38.694Z"
+    },
+    {
+      "id": 107,
+      "profile": "Нурболат",
+      "word": "for instance",
+      "translation": "например",
+      "section": "IELTS",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:20:38.694Z",
+      "updatedAt": "2025-07-23T21:20:38.694Z"
+    },
+    {
+      "id": 108,
+      "profile": "Нурболат",
+      "word": "staff",
+      "translation": "персонал",
+      "section": "IELTS",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:20:38.694Z",
+      "updatedAt": "2025-07-23T21:20:38.694Z"
+    },
+    {
+      "id": 109,
+      "profile": "Нурболат",
+      "word": "gap year",
+      "translation": "перерыв в учебе",
+      "section": "IELTS",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:20:38.694Z",
+      "updatedAt": "2025-07-23T21:20:38.694Z"
+    },
+    {
+      "id": 110,
+      "profile": "Нурболат",
+      "word": "empathy",
+      "translation": "эмпатия",
+      "section": "IELTS",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:20:38.694Z",
+      "updatedAt": "2025-07-23T21:20:38.694Z"
+    },
+    {
+      "id": 111,
+      "profile": "Нурболат",
+      "word": "obey",
+      "translation": "подчиняться",
+      "section": "IELTS",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:20:38.694Z",
+      "updatedAt": "2025-07-23T21:20:38.694Z"
+    },
+    {
+      "id": 112,
+      "profile": "Нурболат",
+      "word": "desirable",
+      "translation": "желательный",
+      "section": "IELTS",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:20:38.694Z",
+      "updatedAt": "2025-07-23T21:20:38.694Z"
+    },
+    {
+      "id": 113,
+      "profile": "Нурболат",
+      "word": "establish",
+      "translation": "установить",
+      "section": "IELTS",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:20:38.694Z",
+      "updatedAt": "2025-07-23T21:21:25.420Z"
+    },
+    {
+      "id": 100,
+      "profile": "Нурболат",
+      "word": "meanwhile",
+      "translation": "тем временем",
+      "section": "IELTS",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:20:38.698Z",
+      "updatedAt": "2025-07-23T21:20:38.698Z"
+    },
+    {
+      "id": 101,
+      "profile": "Нурболат",
+      "word": "absent",
+      "translation": "отсутствующий",
+      "section": "IELTS",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:20:38.700Z",
+      "updatedAt": "2025-07-23T21:20:38.700Z"
+    },
+    {
+      "id": 102,
+      "profile": "Нурболат",
+      "word": "sacrifice",
+      "translation": "жертва",
+      "section": "IELTS",
+      "correct": 0,
+      "createdAt": "2025-07-23T21:20:38.703Z",
+      "updatedAt": "2025-07-23T21:20:38.703Z"
+    },
+    {
+      "id": 114,
+      "profile": "Нурболат",
+      "word": "Large",
+      "translation": "большой",
+      "section": null,
+      "correct": 0,
+      "createdAt": "2025-07-23T21:56:16.261Z",
+      "updatedAt": "2025-07-23T21:56:16.261Z"
+    },
+    {
+      "id": 115,
+      "profile": "Нурболат",
+      "word": "ывыв",
+      "translation": "ыфв",
+      "section": null,
+      "correct": 0,
+      "createdAt": "2025-07-23T22:10:37.521Z",
+      "updatedAt": "2025-07-23T22:10:37.521Z"
+    },
+    {
+      "id": 116,
+      "profile": "Нурболат",
+      "word": "уцйу",
+      "translation": "йцу",
+      "section": null,
+      "correct": 0,
+      "createdAt": "2025-07-23T22:13:04.354Z",
+      "updatedAt": "2025-07-23T22:13:04.354Z"
+    },
+    {
+      "id": 117,
+      "profile": "Нурболат",
+      "word": "🏠 Главное меню",
+      "translation": "йцу",
+      "section": null,
+      "correct": 0,
+      "createdAt": "2025-07-23T22:13:18.762Z",
+      "updatedAt": "2025-07-23T22:13:18.762Z"
+    }
+  ]
+}

@@ -1,0 +1,1469 @@
+{
+  "timestamp": "2025-07-29T21:00:02.561Z",
+  "totalWords": 143,
+  "totalProfiles": 2,
+  "words": [
+    {
+      "id": 8,
+      "profile": "Амина",
+      "word": "check",
+      "translation": "проверять",
+      "section": "Работа, сотрудничество",
+      "correct": 4,
+      "createdAt": "2025-07-24T14:18:26.398Z",
+      "updatedAt": "2025-07-26T15:26:19.187Z"
+    },
+    {
+      "id": 16,
+      "profile": "Амина",
+      "word": "create",
+      "translation": "создавать",
+      "section": "Работа, сотрудничество",
+      "correct": 1,
+      "createdAt": "2025-07-24T14:18:26.398Z",
+      "updatedAt": "2025-07-26T15:30:22.508Z"
+    },
+    {
+      "id": 20,
+      "profile": "Амина",
+      "word": "improve",
+      "translation": "улучшать",
+      "section": "Работа, сотрудничество",
+      "correct": 2,
+      "createdAt": "2025-07-24T14:18:26.398Z",
+      "updatedAt": "2025-07-25T18:30:12.543Z"
+    },
+    {
+      "id": 22,
+      "profile": "Амина",
+      "word": "provide",
+      "translation": "предоставлять",
+      "section": "Работа, сотрудничество",
+      "correct": 3,
+      "createdAt": "2025-07-24T14:18:26.398Z",
+      "updatedAt": "2025-07-26T15:25:58.699Z"
+    },
+    {
+      "id": 18,
+      "profile": "Амина",
+      "word": "locate",
+      "translation": "находить",
+      "section": "Работа, сотрудничество",
+      "correct": 4,
+      "createdAt": "2025-07-24T14:18:26.399Z",
+      "updatedAt": "2025-07-26T15:25:37.723Z"
+    },
+    {
+      "id": 19,
+      "profile": "Амина",
+      "word": "conduct",
+      "translation": "проводить",
+      "section": "Работа, сотрудничество",
+      "correct": 3,
+      "createdAt": "2025-07-24T14:18:26.399Z",
+      "updatedAt": "2025-07-24T14:44:07.753Z"
+    },
+    {
+      "id": 21,
+      "profile": "Амина",
+      "word": "pay",
+      "translation": "платить",
+      "section": "Работа, сотрудничество",
+      "correct": 4,
+      "createdAt": "2025-07-24T14:18:26.399Z",
+      "updatedAt": "2025-07-26T15:25:42.921Z"
+    },
+    {
+      "id": 15,
+      "profile": "Амина",
+      "word": "help",
+      "translation": "помогать",
+      "section": "Работа, сотрудничество",
+      "correct": 0,
+      "createdAt": "2025-07-24T14:18:26.399Z",
+      "updatedAt": "2025-07-26T15:28:26.035Z"
+    },
+    {
+      "id": 17,
+      "profile": "Амина",
+      "word": "claim",
+      "translation": "утверждать",
+      "section": "Работа, сотрудничество",
+      "correct": 2,
+      "createdAt": "2025-07-24T14:18:26.399Z",
+      "updatedAt": "2025-07-25T18:52:30.063Z"
+    },
+    {
+      "id": 11,
+      "profile": "Амина",
+      "word": "engage",
+      "translation": "вовлекать",
+      "section": "Работа, сотрудничество",
+      "correct": 1,
+      "createdAt": "2025-07-24T14:18:26.400Z",
+      "updatedAt": "2025-07-26T15:30:00.152Z"
+    },
+    {
+      "id": 10,
+      "profile": "Амина",
+      "word": "perform",
+      "translation": "выполнять",
+      "section": "Работа, сотрудничество",
+      "correct": 0,
+      "createdAt": "2025-07-24T14:18:26.400Z",
+      "updatedAt": "2025-07-26T15:27:40.956Z"
+    },
+    {
+      "id": 12,
+      "profile": "Амина",
+      "word": "work",
+      "translation": "работать",
+      "section": "Работа, сотрудничество",
+      "correct": 1,
+      "createdAt": "2025-07-24T14:18:26.400Z",
+      "updatedAt": "2025-07-26T15:27:48.518Z"
+    },
+    {
+      "id": 9,
+      "profile": "Амина",
+      "word": "train",
+      "translation": "обучать",
+      "section": "Работа, сотрудничество",
+      "correct": 3,
+      "createdAt": "2025-07-24T14:18:26.400Z",
+      "updatedAt": "2025-07-26T15:29:42.197Z"
+    },
+    {
+      "id": 13,
+      "profile": "Амина",
+      "word": "achieve",
+      "translation": "достигать",
+      "section": "Работа, сотрудничество",
+      "correct": 2,
+      "createdAt": "2025-07-24T14:18:26.476Z",
+      "updatedAt": "2025-07-25T18:49:43.557Z"
+    },
+    {
+      "id": 14,
+      "profile": "Амина",
+      "word": "maintain",
+      "translation": "поддерживать",
+      "section": "Работа, сотрудничество",
+      "correct": 1,
+      "createdAt": "2025-07-24T14:18:26.477Z",
+      "updatedAt": "2025-07-26T15:27:53.576Z"
+    },
+    {
+      "id": 41,
+      "profile": "Нурболат",
+      "word": "paint",
+      "translation": "красить",
+      "section": "Работа, сотрудничество",
+      "correct": 4,
+      "createdAt": "2025-07-24T14:30:30.286Z",
+      "updatedAt": "2025-07-24T23:21:36.929Z"
+    },
+    {
+      "id": 35,
+      "profile": "Нурболат",
+      "word": "publish",
+      "translation": "публиковать",
+      "section": "Работа, сотрудничество",
+      "correct": 5,
+      "createdAt": "2025-07-24T14:30:30.286Z",
+      "updatedAt": "2025-07-25T21:37:35.893Z"
+    },
+    {
+      "id": 36,
+      "profile": "Нурболат",
+      "word": "connect",
+      "translation": "соединять",
+      "section": "Работа, сотрудничество",
+      "correct": 5,
+      "createdAt": "2025-07-24T14:30:30.286Z",
+      "updatedAt": "2025-07-25T21:37:41.681Z"
+    },
+    {
+      "id": 37,
+      "profile": "Нурболат",
+      "word": "improve",
+      "translation": "улучшать",
+      "section": "Работа, сотрудничество",
+      "correct": 5,
+      "createdAt": "2025-07-24T14:30:30.286Z",
+      "updatedAt": "2025-07-25T21:37:45.426Z"
+    },
+    {
+      "id": 39,
+      "profile": "Нурболат",
+      "word": "implement",
+      "translation": "внедрять",
+      "section": "Работа, сотрудничество",
+      "correct": 5,
+      "createdAt": "2025-07-24T14:30:30.286Z",
+      "updatedAt": "2025-07-25T21:37:52.345Z"
+    },
+    {
+      "id": 38,
+      "profile": "Нурболат",
+      "word": "operate",
+      "translation": "управлять",
+      "section": "Работа, сотрудничество",
+      "correct": 4,
+      "createdAt": "2025-07-24T14:30:30.286Z",
+      "updatedAt": "2025-07-25T21:47:41.371Z"
+    },
+    {
+      "id": 33,
+      "profile": "Нурболат",
+      "word": "handle",
+      "translation": "управлять",
+      "section": "Работа, сотрудничество",
+      "correct": 5,
+      "createdAt": "2025-07-24T14:30:30.286Z",
+      "updatedAt": "2025-07-25T18:22:15.178Z"
+    },
+    {
+      "id": 34,
+      "profile": "Нурболат",
+      "word": "attend",
+      "translation": "посещать",
+      "section": "Работа, сотрудничество",
+      "correct": 5,
+      "createdAt": "2025-07-24T14:30:30.286Z",
+      "updatedAt": "2025-07-25T18:22:21.017Z"
+    },
+    {
+      "id": 42,
+      "profile": "Нурболат",
+      "word": "fail",
+      "translation": "провалиться",
+      "section": "Работа, сотрудничество",
+      "correct": 4,
+      "createdAt": "2025-07-24T14:30:30.286Z",
+      "updatedAt": "2025-07-24T23:21:41.028Z"
+    },
+    {
+      "id": 40,
+      "profile": "Нурболат",
+      "word": "test",
+      "translation": "тестировать",
+      "section": "Работа, сотрудничество",
+      "correct": 4,
+      "createdAt": "2025-07-24T14:30:30.287Z",
+      "updatedAt": "2025-07-24T23:21:32.370Z"
+    },
+    {
+      "id": 50,
+      "profile": "Нурболат",
+      "word": "distinction",
+      "translation": "различие",
+      "section": "IELTS",
+      "correct": 3,
+      "createdAt": "2025-07-24T22:48:18.527Z",
+      "updatedAt": "2025-07-25T21:36:27.854Z"
+    },
+    {
+      "id": 48,
+      "profile": "Нурболат",
+      "word": "pollination",
+      "translation": "опыление",
+      "section": "IELTS",
+      "correct": 3,
+      "createdAt": "2025-07-24T22:48:18.527Z",
+      "updatedAt": "2025-07-25T21:36:22.715Z"
+    },
+    {
+      "id": 47,
+      "profile": "Нурболат",
+      "word": "approach",
+      "translation": "подход",
+      "section": "IELTS",
+      "correct": 4,
+      "createdAt": "2025-07-24T22:48:18.527Z",
+      "updatedAt": "2025-07-25T00:46:02.018Z"
+    },
+    {
+      "id": 46,
+      "profile": "Нурболат",
+      "word": "authentic",
+      "translation": "подлинный",
+      "section": "IELTS",
+      "correct": 4,
+      "createdAt": "2025-07-24T22:48:18.527Z",
+      "updatedAt": "2025-07-25T00:28:08.383Z"
+    },
+    {
+      "id": 44,
+      "profile": "Нурболат",
+      "word": "pleasant",
+      "translation": "приятный",
+      "section": "IELTS",
+      "correct": 4,
+      "createdAt": "2025-07-24T22:48:18.527Z",
+      "updatedAt": "2025-07-25T00:28:08.150Z"
+    },
+    {
+      "id": 52,
+      "profile": "Нурболат",
+      "word": "bring about",
+      "translation": "вызывать, приводить к",
+      "section": "IELTS",
+      "correct": 4,
+      "createdAt": "2025-07-24T22:48:18.527Z",
+      "updatedAt": "2025-07-25T18:21:13.987Z"
+    },
+    {
+      "id": 43,
+      "profile": "Нурболат",
+      "word": "incurable",
+      "translation": "неизлечимый",
+      "section": "IELTS",
+      "correct": 2,
+      "createdAt": "2025-07-24T22:48:18.527Z",
+      "updatedAt": "2025-07-25T21:37:19.996Z"
+    },
+    {
+      "id": 49,
+      "profile": "Нурболат",
+      "word": "appreciate",
+      "translation": "ценить",
+      "section": "IELTS",
+      "correct": 4,
+      "createdAt": "2025-07-24T22:48:18.527Z",
+      "updatedAt": "2025-07-25T21:37:29.568Z"
+    },
+    {
+      "id": 45,
+      "profile": "Нурболат",
+      "word": "urge",
+      "translation": "побуждать",
+      "section": "IELTS",
+      "correct": 1,
+      "createdAt": "2025-07-24T22:48:18.527Z",
+      "updatedAt": "2025-07-29T18:04:52.041Z"
+    },
+    {
+      "id": 51,
+      "profile": "Нурболат",
+      "word": "undertake",
+      "translation": "предпринимать",
+      "section": "IELTS",
+      "correct": 4,
+      "createdAt": "2025-07-24T22:48:18.528Z",
+      "updatedAt": "2025-07-25T18:18:23.565Z"
+    },
+    {
+      "id": 53,
+      "profile": "Амина",
+      "word": "Filthy",
+      "translation": "грязный",
+      "section": "IELTS",
+      "correct": 2,
+      "createdAt": "2025-07-25T12:56:28.760Z",
+      "updatedAt": "2025-07-25T18:52:59.686Z"
+    },
+    {
+      "id": 62,
+      "profile": "Амина",
+      "word": "bizarre",
+      "translation": "странный",
+      "section": "IELTS",
+      "correct": 1,
+      "createdAt": "2025-07-25T12:56:28.761Z",
+      "updatedAt": "2025-07-26T15:28:14.766Z"
+    },
+    {
+      "id": 61,
+      "profile": "Амина",
+      "word": "comprise",
+      "translation": "включать",
+      "section": "IELTS",
+      "correct": 0,
+      "createdAt": "2025-07-25T12:56:28.762Z",
+      "updatedAt": "2025-07-26T15:28:47.311Z"
+    },
+    {
+      "id": 57,
+      "profile": "Амина",
+      "word": "purpose",
+      "translation": "цель",
+      "section": "IELTS",
+      "correct": 1,
+      "createdAt": "2025-07-25T12:56:28.763Z",
+      "updatedAt": "2025-07-26T15:28:04.523Z"
+    },
+    {
+      "id": 58,
+      "profile": "Амина",
+      "word": "creature",
+      "translation": "существо",
+      "section": "IELTS",
+      "correct": 3,
+      "createdAt": "2025-07-25T12:56:28.763Z",
+      "updatedAt": "2025-07-26T15:26:11.194Z"
+    },
+    {
+      "id": 55,
+      "profile": "Амина",
+      "word": "conclusion",
+      "translation": "заключение",
+      "section": "IELTS",
+      "correct": 3,
+      "createdAt": "2025-07-25T12:56:28.763Z",
+      "updatedAt": "2025-07-26T15:25:29.441Z"
+    },
+    {
+      "id": 56,
+      "profile": "Амина",
+      "word": "skill",
+      "translation": "навык",
+      "section": "IELTS",
+      "correct": 3,
+      "createdAt": "2025-07-25T12:56:28.763Z",
+      "updatedAt": "2025-07-26T15:26:14.620Z"
+    },
+    {
+      "id": 60,
+      "profile": "Амина",
+      "word": "keep in",
+      "translation": "сохранять",
+      "section": "IELTS",
+      "correct": 2,
+      "createdAt": "2025-07-25T12:56:28.763Z",
+      "updatedAt": "2025-07-25T18:53:50.644Z"
+    },
+    {
+      "id": 59,
+      "profile": "Амина",
+      "word": "autonomy",
+      "translation": "автономия",
+      "section": "IELTS",
+      "correct": 1,
+      "createdAt": "2025-07-25T12:56:28.763Z",
+      "updatedAt": "2025-07-26T15:28:09.602Z"
+    },
+    {
+      "id": 54,
+      "profile": "Амина",
+      "word": "scope",
+      "translation": "объем",
+      "section": "IELTS",
+      "correct": 2,
+      "createdAt": "2025-07-25T12:56:28.763Z",
+      "updatedAt": "2025-07-26T15:28:36.167Z"
+    },
+    {
+      "id": 63,
+      "profile": "Нурболат",
+      "word": "make",
+      "translation": "делать",
+      "section": "Экономика, бизнес",
+      "correct": 3,
+      "createdAt": "2025-07-25T18:03:11.599Z",
+      "updatedAt": "2025-07-25T21:36:35.376Z"
+    },
+    {
+      "id": 70,
+      "profile": "Нурболат",
+      "word": "evaluate",
+      "translation": "оценивать",
+      "section": "Экономика, бизнес",
+      "correct": 1,
+      "createdAt": "2025-07-25T18:03:11.601Z",
+      "updatedAt": "2025-07-29T18:04:51.800Z"
+    },
+    {
+      "id": 66,
+      "profile": "Нурболат",
+      "word": "afford",
+      "translation": "позволить себе",
+      "section": "Экономика, бизнес",
+      "correct": 3,
+      "createdAt": "2025-07-25T18:03:11.602Z",
+      "updatedAt": "2025-07-25T21:36:53.948Z"
+    },
+    {
+      "id": 71,
+      "profile": "Нурболат",
+      "word": "earn",
+      "translation": "зарабатывать",
+      "section": "Экономика, бизнес",
+      "correct": 3,
+      "createdAt": "2025-07-25T18:03:11.602Z",
+      "updatedAt": "2025-07-25T21:47:41.303Z"
+    },
+    {
+      "id": 65,
+      "profile": "Нурболат",
+      "word": "spend",
+      "translation": "тратить",
+      "section": "Экономика, бизнес",
+      "correct": 3,
+      "createdAt": "2025-07-25T18:03:11.602Z",
+      "updatedAt": "2025-07-25T21:36:46.779Z"
+    },
+    {
+      "id": 68,
+      "profile": "Нурболат",
+      "word": "assess",
+      "translation": "оценивать",
+      "section": "Экономика, бизнес",
+      "correct": 1,
+      "createdAt": "2025-07-25T18:03:11.602Z",
+      "updatedAt": "2025-07-29T18:04:52.280Z"
+    },
+    {
+      "id": 69,
+      "profile": "Нурболат",
+      "word": "produce",
+      "translation": "производить",
+      "section": "Экономика, бизнес",
+      "correct": 2,
+      "createdAt": "2025-07-25T18:03:11.603Z",
+      "updatedAt": "2025-07-25T21:47:41.293Z"
+    },
+    {
+      "id": 67,
+      "profile": "Нурболат",
+      "word": "withdraw",
+      "translation": "снимать",
+      "section": "Экономика, бизнес",
+      "correct": 0,
+      "createdAt": "2025-07-25T18:03:11.603Z",
+      "updatedAt": "2025-07-29T20:21:03.133Z"
+    },
+    {
+      "id": 72,
+      "profile": "Нурболат",
+      "word": "promote",
+      "translation": "продвигать",
+      "section": "Экономика, бизнес",
+      "correct": 1,
+      "createdAt": "2025-07-25T18:03:11.603Z",
+      "updatedAt": "2025-07-29T18:04:51.562Z"
+    },
+    {
+      "id": 64,
+      "profile": "Нурболат",
+      "word": "distribute",
+      "translation": "распределять",
+      "section": "Экономика, бизнес",
+      "correct": 0,
+      "createdAt": "2025-07-25T18:03:11.604Z",
+      "updatedAt": "2025-07-29T20:21:02.419Z"
+    },
+    {
+      "id": 73,
+      "profile": "Нурболат",
+      "word": "awareness",
+      "translation": "осведомленность",
+      "section": null,
+      "correct": 3,
+      "createdAt": "2025-07-25T21:58:28.999Z",
+      "updatedAt": "2025-07-29T18:04:52.518Z"
+    },
+    {
+      "id": 74,
+      "profile": "Нурболат",
+      "word": "acclaim",
+      "translation": "признание",
+      "section": null,
+      "correct": 1,
+      "createdAt": "2025-07-25T21:59:45.611Z",
+      "updatedAt": "2025-07-29T18:04:52.756Z"
+    },
+    {
+      "id": 75,
+      "profile": "Амина",
+      "word": "wear",
+      "translation": "носить",
+      "section": "Движение",
+      "correct": 1,
+      "createdAt": "2025-07-26T14:53:54.034Z",
+      "updatedAt": "2025-07-26T15:28:19.006Z"
+    },
+    {
+      "id": 77,
+      "profile": "Амина",
+      "word": "jump",
+      "translation": "прыгать",
+      "section": "Движение",
+      "correct": 2,
+      "createdAt": "2025-07-26T14:53:54.036Z",
+      "updatedAt": "2025-07-26T15:28:58.137Z"
+    },
+    {
+      "id": 81,
+      "profile": "Амина",
+      "word": "disappear",
+      "translation": "исчезать",
+      "section": "Движение",
+      "correct": 0,
+      "createdAt": "2025-07-26T14:53:54.036Z",
+      "updatedAt": "2025-07-26T15:29:32.133Z"
+    },
+    {
+      "id": 79,
+      "profile": "Амина",
+      "word": "sink",
+      "translation": "тонуть",
+      "section": "Движение",
+      "correct": 2,
+      "createdAt": "2025-07-26T14:53:54.036Z",
+      "updatedAt": "2025-07-26T15:29:14.966Z"
+    },
+    {
+      "id": 76,
+      "profile": "Амина",
+      "word": "toss",
+      "translation": "бросать",
+      "section": "Движение",
+      "correct": 2,
+      "createdAt": "2025-07-26T14:53:54.036Z",
+      "updatedAt": "2025-07-26T15:28:53.296Z"
+    },
+    {
+      "id": 78,
+      "profile": "Амина",
+      "word": "slide",
+      "translation": "скользить",
+      "section": "Движение",
+      "correct": 0,
+      "createdAt": "2025-07-26T14:53:54.037Z",
+      "updatedAt": "2025-07-26T15:29:07.939Z"
+    },
+    {
+      "id": 80,
+      "profile": "Амина",
+      "word": "go",
+      "translation": "идти",
+      "section": "Движение",
+      "correct": 2,
+      "createdAt": "2025-07-26T14:53:54.037Z",
+      "updatedAt": "2025-07-26T15:29:19.516Z"
+    },
+    {
+      "id": 86,
+      "profile": "Нурболат",
+      "word": "experience",
+      "translation": "опыт",
+      "section": "IELTS",
+      "correct": 2,
+      "createdAt": "2025-07-26T14:54:15.540Z",
+      "updatedAt": "2025-07-29T17:54:26.440Z"
+    },
+    {
+      "id": 83,
+      "profile": "Нурболат",
+      "word": "skill",
+      "translation": "навык",
+      "section": "IELTS",
+      "correct": 2,
+      "createdAt": "2025-07-26T14:54:15.540Z",
+      "updatedAt": "2025-07-29T17:54:17.829Z"
+    },
+    {
+      "id": 88,
+      "profile": "Нурболат",
+      "word": "nourish",
+      "translation": "питать",
+      "section": "IELTS",
+      "correct": 0,
+      "createdAt": "2025-07-26T14:54:15.541Z",
+      "updatedAt": "2025-07-29T20:21:02.656Z"
+    },
+    {
+      "id": 96,
+      "profile": "Нурболат",
+      "word": "decent",
+      "translation": "приличный",
+      "section": "IELTS",
+      "correct": 0,
+      "createdAt": "2025-07-26T14:54:15.541Z",
+      "updatedAt": "2025-07-29T20:21:03.369Z"
+    },
+    {
+      "id": 90,
+      "profile": "Нурболат",
+      "word": "accurate",
+      "translation": "точный",
+      "section": "IELTS",
+      "correct": 2,
+      "createdAt": "2025-07-26T14:54:15.541Z",
+      "updatedAt": "2025-07-27T18:03:27.643Z"
+    },
+    {
+      "id": 84,
+      "profile": "Нурболат",
+      "word": "aggravate",
+      "translation": "ухудшать",
+      "section": "IELTS",
+      "correct": 2,
+      "createdAt": "2025-07-26T14:54:15.541Z",
+      "updatedAt": "2025-07-29T17:54:22.542Z"
+    },
+    {
+      "id": 92,
+      "profile": "Нурболат",
+      "word": "debris",
+      "translation": "мусор",
+      "section": "IELTS",
+      "correct": 1,
+      "createdAt": "2025-07-26T14:54:15.541Z",
+      "updatedAt": "2025-07-29T20:21:01.745Z"
+    },
+    {
+      "id": 87,
+      "profile": "Нурболат",
+      "word": "exacerbate",
+      "translation": "обострять",
+      "section": "IELTS",
+      "correct": 2,
+      "createdAt": "2025-07-26T14:54:15.541Z",
+      "updatedAt": "2025-07-28T17:08:23.971Z"
+    },
+    {
+      "id": 91,
+      "profile": "Нурболат",
+      "word": "deliberate",
+      "translation": "обдуманный",
+      "section": "IELTS",
+      "correct": 1,
+      "createdAt": "2025-07-26T14:54:15.541Z",
+      "updatedAt": "2025-07-27T18:03:27.611Z"
+    },
+    {
+      "id": 95,
+      "profile": "Нурболат",
+      "word": "gloomy",
+      "translation": "мрачный",
+      "section": "IELTS",
+      "correct": 1,
+      "createdAt": "2025-07-26T14:54:15.541Z",
+      "updatedAt": "2025-07-27T17:52:26.725Z"
+    },
+    {
+      "id": 94,
+      "profile": "Нурболат",
+      "word": "expect",
+      "translation": "ожидать",
+      "section": "IELTS",
+      "correct": 2,
+      "createdAt": "2025-07-26T14:54:15.541Z",
+      "updatedAt": "2025-07-29T17:54:35.535Z"
+    },
+    {
+      "id": 82,
+      "profile": "Нурболат",
+      "word": "preference",
+      "translation": "предпочтение",
+      "section": "IELTS",
+      "correct": 2,
+      "createdAt": "2025-07-26T14:54:15.541Z",
+      "updatedAt": "2025-07-29T17:54:13.124Z"
+    },
+    {
+      "id": 85,
+      "profile": "Нурболат",
+      "word": "eloquent",
+      "translation": "красноречивый",
+      "section": "IELTS",
+      "correct": 2,
+      "createdAt": "2025-07-26T14:54:15.541Z",
+      "updatedAt": "2025-07-27T18:03:27.624Z"
+    },
+    {
+      "id": 89,
+      "profile": "Нурболат",
+      "word": "agriculture",
+      "translation": "сельское хозяйство",
+      "section": "IELTS",
+      "correct": 2,
+      "createdAt": "2025-07-26T14:54:15.541Z",
+      "updatedAt": "2025-07-27T18:03:27.637Z"
+    },
+    {
+      "id": 93,
+      "profile": "Нурболат",
+      "word": "mention",
+      "translation": "упоминать",
+      "section": "IELTS",
+      "correct": 1,
+      "createdAt": "2025-07-26T14:54:15.541Z",
+      "updatedAt": "2025-07-27T17:52:22.329Z"
+    },
+    {
+      "id": 97,
+      "profile": "Нурболат",
+      "word": "forecast",
+      "translation": "Прогноз",
+      "section": null,
+      "correct": 2,
+      "createdAt": "2025-07-26T14:59:44.985Z",
+      "updatedAt": "2025-07-28T17:08:23.983Z"
+    },
+    {
+      "id": 98,
+      "profile": "⏭️ Пропустить слово",
+      "word": "know",
+      "translation": "знать",
+      "section": "Чувства, мышление, восприятие",
+      "correct": 5,
+      "createdAt": "2025-07-27T13:42:59.544Z",
+      "updatedAt": "2025-07-29T13:55:51.574Z"
+    },
+    {
+      "id": 99,
+      "profile": "⏭️ Пропустить слово",
+      "word": "remind",
+      "translation": "напомнить",
+      "section": "Чувства, мышление, восприятие",
+      "correct": 0,
+      "createdAt": "2025-07-27T13:42:59.545Z",
+      "updatedAt": "2025-07-29T13:54:29.645Z"
+    },
+    {
+      "id": 104,
+      "profile": "⏭️ Пропустить слово",
+      "word": "believe",
+      "translation": "верить",
+      "section": "Чувства, мышление, восприятие",
+      "correct": 6,
+      "createdAt": "2025-07-27T13:42:59.545Z",
+      "updatedAt": "2025-07-29T13:56:15.868Z"
+    },
+    {
+      "id": 100,
+      "profile": "⏭️ Пропустить слово",
+      "word": "note",
+      "translation": "заметить",
+      "section": "Чувства, мышление, восприятие",
+      "correct": 3,
+      "createdAt": "2025-07-27T13:42:59.545Z",
+      "updatedAt": "2025-07-29T13:55:01.130Z"
+    },
+    {
+      "id": 103,
+      "profile": "⏭️ Пропустить слово",
+      "word": "tend",
+      "translation": "склоняться",
+      "section": "Чувства, мышление, восприятие",
+      "correct": 0,
+      "createdAt": "2025-07-27T13:42:59.545Z",
+      "updatedAt": "2025-07-29T13:54:43.427Z"
+    },
+    {
+      "id": 101,
+      "profile": "⏭️ Пропустить слово",
+      "word": "hear",
+      "translation": "слышать",
+      "section": "Чувства, мышление, восприятие",
+      "correct": 5,
+      "createdAt": "2025-07-27T13:42:59.545Z",
+      "updatedAt": "2025-07-29T13:55:58.907Z"
+    },
+    {
+      "id": 102,
+      "profile": "⏭️ Пропустить слово",
+      "word": "plan",
+      "translation": "планировать",
+      "section": "Чувства, мышление, восприятие",
+      "correct": 5,
+      "createdAt": "2025-07-27T13:42:59.545Z",
+      "updatedAt": "2025-07-29T13:56:04.072Z"
+    },
+    {
+      "id": 105,
+      "profile": "Нурболат",
+      "word": "persuade",
+      "translation": "убеждать",
+      "section": "IELTS",
+      "correct": 1,
+      "createdAt": "2025-07-27T17:44:31.251Z",
+      "updatedAt": "2025-07-27T17:52:32.472Z"
+    },
+    {
+      "id": 114,
+      "profile": "Нурболат",
+      "word": "resistance",
+      "translation": "сопротивление",
+      "section": "IELTS",
+      "correct": 1,
+      "createdAt": "2025-07-27T17:44:31.259Z",
+      "updatedAt": "2025-07-27T17:56:24.601Z"
+    },
+    {
+      "id": 110,
+      "profile": "Нурболат",
+      "word": "infinite",
+      "translation": "бесконечный",
+      "section": "IELTS",
+      "correct": 0,
+      "createdAt": "2025-07-27T17:44:31.259Z",
+      "updatedAt": "2025-07-29T20:21:02.894Z"
+    },
+    {
+      "id": 108,
+      "profile": "Нурболат",
+      "word": "No longer",
+      "translation": "больше не",
+      "section": "IELTS",
+      "correct": 1,
+      "createdAt": "2025-07-27T17:44:31.259Z",
+      "updatedAt": "2025-07-28T17:08:23.991Z"
+    },
+    {
+      "id": 112,
+      "profile": "Нурболат",
+      "word": "narrow",
+      "translation": "узкий",
+      "section": "IELTS",
+      "correct": 1,
+      "createdAt": "2025-07-27T17:44:31.260Z",
+      "updatedAt": "2025-07-27T17:56:05.028Z"
+    },
+    {
+      "id": 113,
+      "profile": "Нурболат",
+      "word": "eradicate",
+      "translation": "искоренить",
+      "section": "IELTS",
+      "correct": 2,
+      "createdAt": "2025-07-27T17:44:31.260Z",
+      "updatedAt": "2025-07-28T17:08:24.007Z"
+    },
+    {
+      "id": 109,
+      "profile": "Нурболат",
+      "word": "cease",
+      "translation": "прекращать",
+      "section": "IELTS",
+      "correct": 2,
+      "createdAt": "2025-07-27T17:44:31.260Z",
+      "updatedAt": "2025-07-28T17:08:23.997Z"
+    },
+    {
+      "id": 107,
+      "profile": "Нурболат",
+      "word": "subordinate",
+      "translation": "подчиненный",
+      "section": "IELTS",
+      "correct": 1,
+      "createdAt": "2025-07-27T17:44:31.260Z",
+      "updatedAt": "2025-07-27T17:52:58.030Z"
+    },
+    {
+      "id": 111,
+      "profile": "Нурболат",
+      "word": "stomach",
+      "translation": "желудок",
+      "section": "IELTS",
+      "correct": 1,
+      "createdAt": "2025-07-27T17:44:31.261Z",
+      "updatedAt": "2025-07-27T17:56:00.675Z"
+    },
+    {
+      "id": 106,
+      "profile": "Нурболат",
+      "word": "reckon",
+      "translation": "считать",
+      "section": "IELTS",
+      "correct": 1,
+      "createdAt": "2025-07-27T17:44:31.261Z",
+      "updatedAt": "2025-07-27T17:52:45.064Z"
+    },
+    {
+      "id": 115,
+      "profile": "Нурболат",
+      "word": "Poverty",
+      "translation": "Бедность",
+      "section": null,
+      "correct": 1,
+      "createdAt": "2025-07-27T17:46:29.150Z",
+      "updatedAt": "2025-07-27T17:56:30.444Z"
+    },
+    {
+      "id": 116,
+      "profile": "⏭️ Пропустить слово",
+      "word": "Deep",
+      "translation": "Глубокий",
+      "section": null,
+      "correct": 5,
+      "createdAt": "2025-07-27T18:00:58.186Z",
+      "updatedAt": "2025-07-29T13:56:09.952Z"
+    },
+    {
+      "id": 117,
+      "profile": "⏭️ Пропустить слово",
+      "word": "Deer",
+      "translation": "олень",
+      "section": null,
+      "correct": 4,
+      "createdAt": "2025-07-27T18:01:23.592Z",
+      "updatedAt": "2025-07-29T13:55:11.302Z"
+    },
+    {
+      "id": 118,
+      "profile": "⏭️ Пропустить слово",
+      "word": "journey",
+      "translation": "путешествие",
+      "section": null,
+      "correct": 3,
+      "createdAt": "2025-07-27T18:02:09.794Z",
+      "updatedAt": "2025-07-27T18:08:20.870Z"
+    },
+    {
+      "id": 119,
+      "profile": "⏭️ Пропустить слово",
+      "word": "Opportunity",
+      "translation": "Возможность",
+      "section": null,
+      "correct": 2,
+      "createdAt": "2025-07-27T18:02:48.171Z",
+      "updatedAt": "2025-07-29T13:55:46.202Z"
+    },
+    {
+      "id": 120,
+      "profile": "Нурболат",
+      "word": "bottleneck",
+      "translation": "узкое место",
+      "section": "IELTS",
+      "correct": 1,
+      "createdAt": "2025-07-28T16:49:23.926Z",
+      "updatedAt": "2025-07-28T16:55:25.369Z"
+    },
+    {
+      "id": 123,
+      "profile": "Нурболат",
+      "word": "remain",
+      "translation": "оставаться",
+      "section": "IELTS",
+      "correct": 1,
+      "createdAt": "2025-07-28T16:49:23.927Z",
+      "updatedAt": "2025-07-29T17:55:18.547Z"
+    },
+    {
+      "id": 127,
+      "profile": "Нурболат",
+      "word": "capable of",
+      "translation": "способный к",
+      "section": "IELTS",
+      "correct": 1,
+      "createdAt": "2025-07-28T16:49:23.927Z",
+      "updatedAt": "2025-07-29T17:55:45.759Z"
+    },
+    {
+      "id": 126,
+      "profile": "Нурболат",
+      "word": "advancement",
+      "translation": "продвижение",
+      "section": "IELTS",
+      "correct": 1,
+      "createdAt": "2025-07-28T16:49:23.927Z",
+      "updatedAt": "2025-07-28T16:56:32.877Z"
+    },
+    {
+      "id": 125,
+      "profile": "Нурболат",
+      "word": "account",
+      "translation": "учет",
+      "section": "IELTS",
+      "correct": 1,
+      "createdAt": "2025-07-28T16:49:23.928Z",
+      "updatedAt": "2025-07-29T20:06:10.944Z"
+    },
+    {
+      "id": 122,
+      "profile": "Нурболат",
+      "word": "time-consuming",
+      "translation": "затратный на время",
+      "section": "IELTS",
+      "correct": 1,
+      "createdAt": "2025-07-28T16:49:23.928Z",
+      "updatedAt": "2025-07-29T17:55:12.034Z"
+    },
+    {
+      "id": 124,
+      "profile": "Нурболат",
+      "word": "development",
+      "translation": "развитие",
+      "section": "IELTS",
+      "correct": 1,
+      "createdAt": "2025-07-28T16:49:23.928Z",
+      "updatedAt": "2025-07-28T16:56:09.157Z"
+    },
+    {
+      "id": 129,
+      "profile": "Нурболат",
+      "word": "reject",
+      "translation": "отклонять",
+      "section": "IELTS",
+      "correct": 1,
+      "createdAt": "2025-07-28T16:49:23.929Z",
+      "updatedAt": "2025-07-29T17:55:51.419Z"
+    },
+    {
+      "id": 128,
+      "profile": "Нурболат",
+      "word": "erratic",
+      "translation": "неустойчивый",
+      "section": "IELTS",
+      "correct": 0,
+      "createdAt": "2025-07-28T16:49:23.929Z",
+      "updatedAt": "2025-07-29T20:21:02.061Z"
+    },
+    {
+      "id": 121,
+      "profile": "Нурболат",
+      "word": "downfall",
+      "translation": "падение",
+      "section": "IELTS",
+      "correct": 1,
+      "createdAt": "2025-07-28T16:49:23.929Z",
+      "updatedAt": "2025-07-28T16:55:32.583Z"
+    },
+    {
+      "id": 130,
+      "profile": "Нурболат",
+      "word": "behavior",
+      "translation": "поведение",
+      "section": null,
+      "correct": 1,
+      "createdAt": "2025-07-28T16:51:46.997Z",
+      "updatedAt": "2025-07-28T16:57:19.464Z"
+    },
+    {
+      "id": 131,
+      "profile": "Нурболат",
+      "word": "Excessive",
+      "translation": "Чрезмерно",
+      "section": null,
+      "correct": 1,
+      "createdAt": "2025-07-28T16:52:28.002Z",
+      "updatedAt": "2025-07-28T16:57:40.572Z"
+    },
+    {
+      "id": 132,
+      "profile": "⏭️ Пропустить слово",
+      "word": "prepare",
+      "translation": "готовить",
+      "section": "Этапы действия, часть и целое",
+      "correct": 0,
+      "createdAt": "2025-07-29T13:51:11.334Z",
+      "updatedAt": "2025-07-29T14:00:59.517Z"
+    },
+    {
+      "id": 135,
+      "profile": "⏭️ Пропустить слово",
+      "word": "start",
+      "translation": "начинать",
+      "section": "Этапы действия, часть и целое",
+      "correct": 0,
+      "createdAt": "2025-07-29T13:51:11.335Z",
+      "updatedAt": "2025-07-29T14:00:59.528Z"
+    },
+    {
+      "id": 133,
+      "profile": "⏭️ Пропустить слово",
+      "word": "stop",
+      "translation": "останавливаться",
+      "section": "Этапы действия, часть и целое",
+      "correct": 0,
+      "createdAt": "2025-07-29T13:51:11.336Z",
+      "updatedAt": "2025-07-29T14:00:59.523Z"
+    },
+    {
+      "id": 137,
+      "profile": "⏭️ Пропустить слово",
+      "word": "exclude",
+      "translation": "исключать",
+      "section": "Этапы действия, часть и целое",
+      "correct": 0,
+      "createdAt": "2025-07-29T13:51:11.336Z",
+      "updatedAt": "2025-07-29T14:00:59.537Z"
+    },
+    {
+      "id": 138,
+      "profile": "⏭️ Пропустить слово",
+      "word": "go",
+      "translation": "идти",
+      "section": "Этапы действия, часть и целое",
+      "correct": 2,
+      "createdAt": "2025-07-29T13:51:11.336Z",
+      "updatedAt": "2025-07-29T14:00:59.544Z"
+    },
+    {
+      "id": 134,
+      "profile": "⏭️ Пропустить слово",
+      "word": "contain",
+      "translation": "содержать",
+      "section": "Этапы действия, часть и целое",
+      "correct": 1,
+      "createdAt": "2025-07-29T13:51:11.336Z",
+      "updatedAt": "2025-07-29T13:53:42.964Z"
+    },
+    {
+      "id": 136,
+      "profile": "⏭️ Пропустить слово",
+      "word": "finish",
+      "translation": "заканчивать",
+      "section": "Этапы действия, часть и целое",
+      "correct": 1,
+      "createdAt": "2025-07-29T13:51:11.337Z",
+      "updatedAt": "2025-07-29T13:54:05.568Z"
+    },
+    {
+      "id": 139,
+      "profile": "Нурболат",
+      "word": "gender",
+      "translation": "пол",
+      "section": "IELTS",
+      "correct": 1,
+      "createdAt": "2025-07-29T15:04:26.111Z",
+      "updatedAt": "2025-07-29T20:06:15.374Z"
+    },
+    {
+      "id": 151,
+      "profile": "Нурболат",
+      "word": "demolish",
+      "translation": "разрушать",
+      "section": "IELTS",
+      "correct": 0,
+      "createdAt": "2025-07-29T15:04:26.113Z",
+      "updatedAt": "2025-07-29T15:04:26.113Z"
+    },
+    {
+      "id": 147,
+      "profile": "Нурболат",
+      "word": "furthermore",
+      "translation": "более того",
+      "section": "IELTS",
+      "correct": 1,
+      "createdAt": "2025-07-29T15:04:26.113Z",
+      "updatedAt": "2025-07-29T20:02:05.700Z"
+    },
+    {
+      "id": 148,
+      "profile": "Нурболат",
+      "word": "Stem from",
+      "translation": "происходить от",
+      "section": "IELTS",
+      "correct": 0,
+      "createdAt": "2025-07-29T15:04:26.113Z",
+      "updatedAt": "2025-07-29T20:09:40.616Z"
+    },
+    {
+      "id": 146,
+      "profile": "Нурболат",
+      "word": "According to",
+      "translation": "согласно",
+      "section": "IELTS",
+      "correct": 0,
+      "createdAt": "2025-07-29T15:04:26.114Z",
+      "updatedAt": "2025-07-29T20:08:33.593Z"
+    },
+    {
+      "id": 153,
+      "profile": "Нурболат",
+      "word": "perform",
+      "translation": "выполнять",
+      "section": "IELTS",
+      "correct": 0,
+      "createdAt": "2025-07-29T15:04:26.114Z",
+      "updatedAt": "2025-07-29T15:04:26.114Z"
+    },
+    {
+      "id": 150,
+      "profile": "Нурболат",
+      "word": "assume",
+      "translation": "предполагать",
+      "section": "IELTS",
+      "correct": 1,
+      "createdAt": "2025-07-29T15:04:26.114Z",
+      "updatedAt": "2025-07-29T20:02:33.759Z"
+    },
+    {
+      "id": 152,
+      "profile": "Нурболат",
+      "word": "population",
+      "translation": "население",
+      "section": "IELTS",
+      "correct": 0,
+      "createdAt": "2025-07-29T15:04:26.184Z",
+      "updatedAt": "2025-07-29T15:04:26.184Z"
+    },
+    {
+      "id": 149,
+      "profile": "Нурболат",
+      "word": "variety",
+      "translation": "разнообразие",
+      "section": "IELTS",
+      "correct": 0,
+      "createdAt": "2025-07-29T15:04:26.185Z",
+      "updatedAt": "2025-07-29T20:09:54.009Z"
+    },
+    {
+      "id": 144,
+      "profile": "Нурболат",
+      "word": "disparity",
+      "translation": "неравенство",
+      "section": "IELTS",
+      "correct": 1,
+      "createdAt": "2025-07-29T15:04:26.186Z",
+      "updatedAt": "2025-07-29T20:07:31.139Z"
+    },
+    {
+      "id": 142,
+      "profile": "Нурболат",
+      "word": "exhausted",
+      "translation": "изнуренный",
+      "section": "IELTS",
+      "correct": 0,
+      "createdAt": "2025-07-29T15:04:26.186Z",
+      "updatedAt": "2025-07-29T20:06:32.647Z"
+    },
+    {
+      "id": 141,
+      "profile": "Нурболат",
+      "word": "witness",
+      "translation": "свидетель",
+      "section": "IELTS",
+      "correct": 1,
+      "createdAt": "2025-07-29T15:04:26.186Z",
+      "updatedAt": "2025-07-29T20:06:28.136Z"
+    },
+    {
+      "id": 140,
+      "profile": "Нурболат",
+      "word": "refer to",
+      "translation": "относиться к",
+      "section": "IELTS",
+      "correct": 1,
+      "createdAt": "2025-07-29T15:04:26.186Z",
+      "updatedAt": "2025-07-29T20:06:22.528Z"
+    },
+    {
+      "id": 143,
+      "profile": "Нурболат",
+      "word": "create",
+      "translation": "создавать",
+      "section": "IELTS",
+      "correct": 1,
+      "createdAt": "2025-07-29T15:04:26.186Z",
+      "updatedAt": "2025-07-29T20:07:18.729Z"
+    },
+    {
+      "id": 145,
+      "profile": "Нурболат",
+      "word": "favour",
+      "translation": "польза",
+      "section": "IELTS",
+      "correct": 1,
+      "createdAt": "2025-07-29T15:04:26.186Z",
+      "updatedAt": "2025-07-29T20:07:47.460Z"
+    },
+    {
+      "id": 154,
+      "profile": "Нурболат",
+      "word": "hiking",
+      "translation": "поход",
+      "section": null,
+      "correct": 0,
+      "createdAt": "2025-07-29T15:12:58.035Z",
+      "updatedAt": "2025-07-29T15:12:58.035Z"
+    },
+    {
+      "id": 155,
+      "profile": "Нурболат",
+      "word": "interrogate",
+      "translation": "допрашивать",
+      "section": "Закон",
+      "correct": 0,
+      "createdAt": "2025-07-29T16:21:50.513Z",
+      "updatedAt": "2025-07-29T16:21:50.513Z"
+    },
+    {
+      "id": 156,
+      "profile": "Нурболат",
+      "word": "sue",
+      "translation": "подавать в суд",
+      "section": "Закон",
+      "correct": 0,
+      "createdAt": "2025-07-29T16:21:50.514Z",
+      "updatedAt": "2025-07-29T16:21:50.514Z"
+    },
+    {
+      "id": 157,
+      "profile": "Нурболат",
+      "word": "offend",
+      "translation": "обижать",
+      "section": "Закон",
+      "correct": 0,
+      "createdAt": "2025-07-29T16:21:50.514Z",
+      "updatedAt": "2025-07-29T16:21:50.514Z"
+    },
+    {
+      "id": 175,
+      "profile": "Нурболат",
+      "word": "accompany",
+      "translation": "сопровождать",
+      "section": "Движение",
+      "correct": 0,
+      "createdAt": "2025-07-29T16:49:24.809Z",
+      "updatedAt": "2025-07-29T16:49:24.809Z"
+    },
+    {
+      "id": 172,
+      "profile": "Нурболат",
+      "word": "bear",
+      "translation": "носить, терпеть",
+      "section": "Движение",
+      "correct": 0,
+      "createdAt": "2025-07-29T16:49:24.809Z",
+      "updatedAt": "2025-07-29T16:49:24.809Z"
+    },
+    {
+      "id": 173,
+      "profile": "Нурболат",
+      "word": "roll",
+      "translation": "катиться",
+      "section": "Движение",
+      "correct": 0,
+      "createdAt": "2025-07-29T16:49:24.810Z",
+      "updatedAt": "2025-07-29T16:49:24.810Z"
+    }
+  ],
+  "userProfiles": [
+    {
+      "id": 1,
+      "telegramId": "930858056",
+      "profileName": "Нурболат",
+      "xp": 1035,
+      "level": 3,
+      "loginStreak": 5,
+      "studyStreak": 5,
+      "lastBonusDate": "Tue Jul 29 2025",
+      "lastStudyDate": "Tue Jul 29 2025",
+      "lastSmartRepeatDate": "Wed Jul 30 2025",
+      "reminderTime": null,
+      "createdAt": "2025-07-24T01:01:06.959Z",
+      "updatedAt": "2025-07-29T20:35:53.515Z"
+    },
+    {
+      "id": 2,
+      "telegramId": "1131806675",
+      "profileName": "Амина",
+      "xp": 421,
+      "level": 2,
+      "loginStreak": 4,
+      "studyStreak": 4,
+      "lastBonusDate": "Mon Jul 28 2025",
+      "lastStudyDate": "Mon Jul 28 2025",
+      "lastSmartRepeatDate": "Sat Jul 26 2025",
+      "reminderTime": null,
+      "createdAt": "2025-07-24T01:30:18.080Z",
+      "updatedAt": "2025-07-29T18:58:32.013Z"
+    }
+  ]
+}
