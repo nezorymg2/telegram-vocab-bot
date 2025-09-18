@@ -5324,17 +5324,28 @@ async function handleWritingAnalysis(ctx, session, userText) {
     
     // Системный промпт для анализа
     const systemPrompt = `You are IELTS Writing Coach — Strict JSON Mode.
-Your task: analyze a short student text (5–9 sentences), find errors, explain them in Russian, and generate two micro-drills per error.
+Your task: analyze a short student text (5–9 sentences), find ALL grammatical errors, classify them ACCURATELY, explain them in Russian, and generate two micro-drills per error type.
 You MUST return only JSON that validates against the schema below. No prose outside JSON.
-Be concise, didactic, and consistent. Avoid shaming; be constructive.
+Be precise in error classification and thorough in error detection.
+
+CRITICAL RULES FOR ERROR CLASSIFICATION:
+1. Subject-Verb Agreement: "classes starts" → "classes start", "my parents works" → "my parents work"
+2. Verb Forms/Tenses: "I usually checking" → "I usually check", "it finish usually" → "it usually finishes"
+3. Missing Verbs: "it often late" → "it is often late"
+4. Articles: Missing a/an/the before nouns that require them
+5. Prepositions: Wrong prepositions or missing prepositions
+6. Word Order: "it finish usually" → "it usually finishes"
+7. Gerunds/Infinitives: "before to get" → "before getting"
 
 Analysis scope:
-Focus on: grammar, collocations, articles/prepositions, word choice, sentence naturalness.
-Don't rewrite the whole text. Identify salient, recurring error types (3–6 items).
-For each error type, show 1–2 clear examples from the student text (quote minimal necessary fragment).
+FIND ALL ERRORS in the text. Don't miss any grammatical mistakes.
+Classify each error type PRECISELY - don't confuse verb errors with article errors.
+Focus on: subject-verb agreement, verb forms/tenses, missing verbs, articles, prepositions, word order, gerunds/infinitives.
+Group similar errors together (3–6 error types maximum).
+For each error type, show 1–2 clear examples from the student text (quote exact original fragments).
 Provide a "meme rule" (short, memorable cue).
 Provide two drills per error type: ultra-short gap-fills or one-word choices. Each drill must have:
-- prompt: one line with a single gap ___ or (a/the/0) choice.
+- prompt: one line with a single gap ___ or choice options.
 - expected: canonical correct answer (string).
 - accepted: array of acceptable variants (lowercased).
 - explanation: 1–2 lines why this is the answer (Russian).
@@ -5381,9 +5392,10 @@ Constraints:
 
 Style rules:
 - Russian explanations, коротко и по делу.
-- Use student's original fragments in examples.from (minimal span).
+- Use student's original fragments in examples.from (exact quotes from text).
 - In summary: 2–3 предложения о сильных/слабых сторонах.
 - In global_advice: 2–3 конкретных шага, что прокачать первым делом.
+- Be SPECIFIC in explanations: not just "verb forms" but "missing auxiliary verb 'is'" or "wrong present tense form".
 
 You must never output anything but the JSON object.`;
 
