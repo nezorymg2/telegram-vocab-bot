@@ -5409,13 +5409,13 @@ CONSTRAINTS:
 `;
 
     const gptRes = await axios.post('https://api.openai.com/v1/chat/completions', {
-      model: 'gpt-5',
+      model: 'gpt-4o',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: `LANG=ru\nTEXT=\n${userText}` }
       ],
       temperature: 0.2,
-      max_tokens: 3000
+      max_completion_tokens: 3000
     }, {
       headers: {
         'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
