@@ -2140,15 +2140,6 @@ bot.on('message:text', async (ctx) => {
         return ctx.reply('Сначала выполните /start');
       }
     }
-    
-    // Проверяем, не прошел ли уже умное повторение сегодня (для кнопки из напоминаний)
-    const today = new Date().toDateString();
-    const currentSession = sessions[userId];
-    if (currentSession && currentSession.lastSmartRepeatDate === today) {
-      return ctx.reply('✅ Вы уже прошли умное повторение сегодня! Приходите завтра за новыми заданиями.', {
-        reply_markup: mainMenu,
-      });
-    }
   }
 
   // Убедимся, что сессия инициализирована
@@ -2534,14 +2525,6 @@ bot.on('message:text', async (ctx) => {
     console.log(`DEBUG: Received text in word_tasks_menu: "${text}"`);
     
     if (text === '🧠 Умное повторение') {
-      // Проверяем, не прошел ли уже умное повторение сегодня
-      const today = new Date().toDateString();
-      if (session.lastSmartRepeatDate === today) {
-        return ctx.reply('✅ Вы уже прошли умное повторение сегодня! Приходите завтра за новыми заданиями.', {
-          reply_markup: wordTasksMenu,
-        });
-      }
-      
       // Умное повторение с учетом времени последнего обновления
       const userWords = await getWords(session.profile);
       if (userWords.length === 0) {
