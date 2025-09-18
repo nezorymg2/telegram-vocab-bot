@@ -1954,48 +1954,33 @@ bot.command('daily', async (ctx) => {
     return ctx.reply('❌ Сначала выполните /start');
   }
   
-  // Проверяем и начисляем ежедневный бонус
-  await checkDailyBonus(session, ctx);
-  
-  // Показываем статистику
-  const today = new Date().toDateString();
-  const streak = session.loginStreak || 0;
-  const nextBonus = getNextBonusInfo(streak);
-  
-  let message = `📅 <b>Ежедневная статистика</b>\n\n`;
-  message += `🔥 Текущая серия: ${streak} ${streak === 1 ? 'день' : streak < 5 ? 'дня' : 'дней'}\n`;
-  message += `⭐ Общий XP: ${session.xp || 0}\n`;
-  message += `🏆 Уровень: ${session.level || 1}\n\n`;
-  
-  if (session.lastBonusDate === today) {
-    message += `✅ Сегодняшний бонус уже получен!\n`;
-  } else {
-    message += `❌ Сегодняшний бонус еще не получен\n`;
+  try {
+    // Сразу запускаем этап письма (этап 2)
+    console.log('=== DAILY COMMAND: Starting writing stage directly ===');
+    console.log('User ID:', userId, 'Profile:', session.profile);
+    
+    // Очищаем текущую сессию умного повторения если есть
+    delete session.currentQuizSession;
+    delete session.wordsToRepeat;
+    delete session.currentIndex;
+    delete session.repeatMode;
+    delete session.sentenceTaskWords;
+    delete session.sentenceTaskIndex;
+    delete session.stage3Sentences;
+    delete session.stage3Context;
+    delete session.writingTopic;
+    delete session.writingAnalysis;
+    
+    await ctx.reply('📝 <b>Ежедневное письмо</b>\n\nЗапускаю этап письменного задания...', { parse_mode: 'HTML' });
+    
+    // Запускаем этап письма напрямую
+    await startSmartRepeatStageWriting(ctx, session);
+    
+  } catch (error) {
+    console.error('Error in daily command:', error);
+    await ctx.reply('❌ Произошла ошибка при запуске письменного задания.');
   }
-  
-  message += `\n🎯 <b>Следующая награда:</b>\n${nextBonus}`;
-  
-  await ctx.reply(message, { parse_mode: 'HTML' });
 });
-
-// Функция получения информации о следующем бонусе
-function getNextBonusInfo(currentStreak) {
-  const milestones = [
-    { streak: 7, bonus: 100, title: "Постоянный ученик" },
-    { streak: 14, bonus: 200, title: "Железная воля" },
-    { streak: 30, bonus: 500, title: "Мастер дисциплины" },
-    { streak: 50, bonus: 1000, title: "Легенда постоянства" }
-  ];
-  
-  for (const milestone of milestones) {
-    if (currentStreak < milestone.streak) {
-      const daysLeft = milestone.streak - currentStreak;
-      return `${milestone.streak} дней - ${milestone.bonus} XP + титул "${milestone.title}"\n📍 Осталось: ${daysLeft} ${daysLeft === 1 ? 'день' : daysLeft < 5 ? 'дня' : 'дней'}`;
-    }
-  }
-  
-  return `🌟 Все основные награды получены! Продолжайте заходить ежедневно для бонусов.`;
-}
 
 bot.command('achievements', async (ctx) => {
   const userId = ctx.from.id;
