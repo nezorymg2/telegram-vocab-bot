@@ -3505,10 +3505,21 @@ bot.on('message:text', async (ctx) => {
         reply_markup: Keyboard.from(nextQ.options.map(opt => [opt]), { one_time_keyboard: true, resize_keyboard: true })
       });
     } else {
+      // Показываем дополнительные слова перед завершением
+      if (session.additionalVocabulary && session.additionalVocabulary.length > 0) {
+        let vocabMessage = '📚 <b>Дополнительная лексика из текста:</b>\n\n';
+        session.additionalVocabulary.forEach((item, index) => {
+          vocabMessage += `${index + 1}. <b>${item.word}</b> - ${item.translation}\n`;
+        });
+        
+        await ctx.reply(vocabMessage, { parse_mode: 'HTML' });
+      }
+      
       delete session.storyText;
       delete session.storyQuestions;
       delete session.storyQuestionIndex;
       delete session.storyTaskWords;
+      delete session.additionalVocabulary; // Удаляем дополнительные слова
       
       if (session.smartRepeatStage === 4) {
         // Этап 4 умного повторения завершен - завершаем всё умное повторение
@@ -3581,14 +3592,16 @@ async function generateStoryTaskContent(session, ctx) {
 
 Текст должен быть логичным, естественным и подходящим для уровня intermediate (B1–B2).
 
-После текста создай 5 вопросов по нему, соблюдая следующее правило:
-- 1 вопрос на общее понимание текста (General understanding)
-- 1 вопрос на проверку конкретных деталей из текста (Specific details)
-- 1 вопрос на проверку понимания слов в контексте (Vocabulary in context)
-- 1 вопрос на логическое умозаключение (Inference question)
-- 1 вопрос на выявление причинно-следственной связи (Cause and effect)
+После текста создай 10 интересных вопросов по нему, соблюдая следующее правило:
+- 2 вопроса на общее понимание текста (General understanding)
+- 2 вопроса на проверку конкретных деталей из текста (Specific details)
+- 2 вопроса на проверку понимания слов в контексте (Vocabulary in context)
+- 2 вопроса на логическое умозаключение (Inference question)
+- 2 вопроса на выявление причинно-следственной связи (Cause and effect)
 
 К каждому вопросу обязательно дай ровно 5 вариантов ответов (1 правильный и 4 дистрактора, порядок случайный).
+
+Также выбери 7 интересных и сложных слов из текста (НЕ из списка изучаемых слов: [${storyWords.join(', ')}]), которые могут быть полезны для изучения, и дай их перевод на русский.
 
 Ответ должен быть строго в формате JSON без дополнительного текста и комментариев:
 {
@@ -3600,6 +3613,12 @@ async function generateStoryTaskContent(session, ctx) {
       "options": ["вариант1", ...],
       "correct_option": "правильный вариант"
     }, ...
+  ],
+  "additional_vocabulary": [
+    {
+      "word": "слово",
+      "translation": "перевод"
+    }, ...
   ]
 }`;
 
@@ -3607,7 +3626,7 @@ async function generateStoryTaskContent(session, ctx) {
       model: 'gpt-3.5-turbo',
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.8,  // Увеличиваем для большего разнообразия
-      max_tokens: 2000
+      max_tokens: 3500  // Увеличиваем для 10 вопросов и дополнительных слов
     }, {
       headers: {
         'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
@@ -3623,6 +3642,7 @@ async function generateStoryTaskContent(session, ctx) {
     session.storyText = storyData.text;
     session.storyQuestions = storyData.questions;
     session.storyQuestionIndex = 0;
+    session.additionalVocabulary = storyData.additional_vocabulary || []; // Сохраняем дополнительные слова
     
     // --- Удаляем все **звёздочки** из текста ---
     let storyText = storyData.text.replace(/\*\*(.*?)\*\*/g, '$1');
@@ -3654,7 +3674,7 @@ async function generateStoryTaskContent(session, ctx) {
     }
     
     session.step = 'story_quiz';
-    await ctx.reply(`Вопрос 1/5: ${q.question}`, {
+    await ctx.reply(`Вопрос 1/10: ${q.question}`, {
       reply_markup: Keyboard.from(q.options.map(opt => [opt]), { one_time_keyboard: true, resize_keyboard: true })
     });
     
