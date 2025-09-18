@@ -1661,16 +1661,24 @@ bot.command('skip', async (ctx) => {
   
   // Определяем, на каком этапе находится пользователь и пропускаем его
   if (session.step === 'smart_repeat_quiz' && session.smartRepeatStage === 1) {
-    // Пропускаем викторину, переходим к этапу 2
-    session.step = 'smart_repeat_stage_2';
+    // Пропускаем викторину, переходим к этапу 2 (письмо)
     session.smartRepeatStage = 2;
     delete session.currentQuizSession;
     
-    await ctx.reply('⏭️ Этап 1 (викторина) пропущен!\n\n🧠 <b>Умное повторение - Этап 3/5</b>\n<b>Знаю/Не знаю</b>\n\nПереходим к быстрой оценке слов...');
-    return await startSmartRepeatStage2(ctx, session);
+    await ctx.reply('⏭️ Этап 1 (викторина) пропущен!\n\n🧠 <b>Умное повторение - Этап 2/5</b>\n<b>Напиши текст</b>\n\nПереходим к письменному заданию...');
+    return await startSmartRepeatStageWriting(ctx, session);
+    
+  } else if (session.step === 'writing_task' && session.smartRepeatStage === 2) {
+    // Пропускаем этап письма, переходим к этапу 3 (знаю/не знаю)
+    session.smartRepeatStage = 3;
+    delete session.writingTopic;
+    delete session.writingAnalysis;
+    
+    await ctx.reply('⏭️ Этап 2 (письмо) пропущен!\n\n🧠 <b>Умное повторение - Этап 3/5</b>\n<b>Знаю/Не знаю</b>\n\nПереходим к быстрой оценке слов...');
+    return await startSmartRepeatStage2(ctx, session); // Это старая функция "Знаю/Не знаю", которая стала этапом 3
     
   } else if (session.step === 'waiting_answer' && session.smartRepeatStage === 3) {
-    // Пропускаем этап 2, переходим к этапу 3
+    // Пропускаем этап 3 (знаю/не знаю), переходим к этапу 4 (предложения)
     session.step = 'smart_repeat_stage_3';
     session.smartRepeatStage = 3;
     delete session.currentIndex;
@@ -1681,9 +1689,9 @@ bot.command('skip', async (ctx) => {
     return await startSmartRepeatStage3(ctx, session);
     
   } else if (session.step === 'sentence_task' && session.smartRepeatStage === 4) {
-    // Пропускаем этап 3, переходим к этапу 4
+    // Пропускаем этап 4 (предложения), переходим к этапу 5 (чтение)
     session.step = 'smart_repeat_stage_4';
-    session.smartRepeatStage = 4;
+    session.smartRepeatStage = 5;
     delete session.sentenceTaskWords;
     delete session.sentenceTaskIndex;
     delete session.stage3Sentences;
@@ -1694,7 +1702,7 @@ bot.command('skip', async (ctx) => {
     
   } else if (session.step === 'story_task' && session.smartRepeatStage === 5) {
     // Завершаем умное повторение
-    await ctx.reply('⏭️ Этап 4 (чтение) пропущен!\n\n✅ <b>Умное повторение завершено!</b>');
+    await ctx.reply('⏭️ Этап 5 (чтение) пропущен!\n\n✅ <b>Умное повторение завершено!</b>');
     return await finishSmartRepeat(ctx, session);
     
   } else if (session.step === 'quiz_game') {
@@ -1938,6 +1946,56 @@ bot.on('message:document', async (ctx) => {
     }
   }
 });
+
+bot.command('daily', async (ctx) => {
+  const userId = ctx.from.id;
+  const session = sessions[userId];
+  if (!session || !session.profile) {
+    return ctx.reply('❌ Сначала выполните /start');
+  }
+  
+  // Проверяем и начисляем ежедневный бонус
+  await checkDailyBonus(session, ctx);
+  
+  // Показываем статистику
+  const today = new Date().toDateString();
+  const streak = session.loginStreak || 0;
+  const nextBonus = getNextBonusInfo(streak);
+  
+  let message = `📅 <b>Ежедневная статистика</b>\n\n`;
+  message += `🔥 Текущая серия: ${streak} ${streak === 1 ? 'день' : streak < 5 ? 'дня' : 'дней'}\n`;
+  message += `⭐ Общий XP: ${session.xp || 0}\n`;
+  message += `🏆 Уровень: ${session.level || 1}\n\n`;
+  
+  if (session.lastBonusDate === today) {
+    message += `✅ Сегодняшний бонус уже получен!\n`;
+  } else {
+    message += `❌ Сегодняшний бонус еще не получен\n`;
+  }
+  
+  message += `\n🎯 <b>Следующая награда:</b>\n${nextBonus}`;
+  
+  await ctx.reply(message, { parse_mode: 'HTML' });
+});
+
+// Функция получения информации о следующем бонусе
+function getNextBonusInfo(currentStreak) {
+  const milestones = [
+    { streak: 7, bonus: 100, title: "Постоянный ученик" },
+    { streak: 14, bonus: 200, title: "Железная воля" },
+    { streak: 30, bonus: 500, title: "Мастер дисциплины" },
+    { streak: 50, bonus: 1000, title: "Легенда постоянства" }
+  ];
+  
+  for (const milestone of milestones) {
+    if (currentStreak < milestone.streak) {
+      const daysLeft = milestone.streak - currentStreak;
+      return `${milestone.streak} дней - ${milestone.bonus} XP + титул "${milestone.title}"\n📍 Осталось: ${daysLeft} ${daysLeft === 1 ? 'день' : daysLeft < 5 ? 'дня' : 'дней'}`;
+    }
+  }
+  
+  return `🌟 Все основные награды получены! Продолжайте заходить ежедневно для бонусов.`;
+}
 
 bot.command('achievements', async (ctx) => {
   const userId = ctx.from.id;
