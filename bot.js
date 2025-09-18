@@ -207,6 +207,79 @@ const RELAX_TIPS = [
   "🌐 Пообщайся на английском в международных чатах"
 ];
 
+// Массив тем для письменного задания (50 тем, уровень A2-B2)
+const WRITING_TOPICS = [
+  // Повседневные ситуации
+  "My typical day: Describe your usual daily routine from morning to evening",
+  "A visit to the supermarket: Write about your last shopping experience", 
+  "Cooking at home: Describe how you prepare your favorite meal",
+  "Using public transport: Share your experience of traveling by bus or metro",
+  "A day at work/university: Tell about what you do during a typical day",
+  
+  // Личные темы  
+  "My favorite hobby: Explain why you enjoy this activity",
+  "Weekend plans: What do you usually do on weekends?",
+  "My best friend: Describe someone close to you",
+  "Learning languages: Why do you study English?",
+  "My goals for this year: What do you want to achieve?",
+  
+  // Описательные
+  "My hometown: Describe the place where you live",
+  "My favorite place in the city: Where do you like to spend time?",
+  "My room/apartment: Describe your living space", 
+  "A beautiful place I visited: Write about somewhere special you've been",
+  "My favorite season: Describe the time of year you like most",
+  
+  // Мнения
+  "Online learning vs traditional classes: What do you prefer and why?",
+  "The importance of exercise: How does sport help people?",
+  "Social media in our lives: Is it good or bad?",
+  "Healthy food vs fast food: What are the differences?",
+  "Books or movies: Which do you prefer for entertainment?",
+  
+  // Повседневные ситуации
+  "A typical morning routine: How do you start your day?",
+  "Going to a restaurant: Describe your dining experience",
+  "Shopping for clothes: How do you choose what to buy?",
+  "A walk in the park: What do you see and feel?",
+  "Using technology daily: How do gadgets help you?",
+  
+  // Личные темы
+  "My family traditions: What special customs do you have?",
+  "A skill I want to learn: What would you like to be able to do?",
+  "My dream vacation: Where would you like to travel?",
+  "The best gift I received: Tell about something special someone gave you",
+  "My childhood memories: Share a happy moment from when you were young",
+  
+  // Описательные  
+  "My ideal house: What kind of home would you like to have?",
+  "A person I admire: Describe someone you respect",
+  "My neighborhood: What is it like where you live?",
+  "A festival or celebration: Describe a special event you enjoy",
+  "The weather today: How does the weather affect your mood?",
+  
+  // Мнения
+  "Working from home: What are the advantages and disadvantages?",
+  "The role of music in life: Why is music important?",
+  "Traveling alone vs with friends: Which is better?",
+  "Early morning vs late night: When are you most productive?",
+  "City life vs country life: Where would you prefer to live?",
+  
+  // Повседневные ситуации
+  "A problem I solved recently: How did you handle a difficult situation?",
+  "Preparing for an important event: How do you get ready?",
+  "A conversation with a stranger: Tell about meeting someone new",
+  "Using a new app or website: Describe your experience with technology",
+  "A small act of kindness: Write about helping someone or being helped",
+  
+  // Личные темы
+  "My biggest achievement: What are you most proud of?",
+  "A habit I want to change: What would you like to improve about yourself?",
+  "My favorite time of day: When do you feel most comfortable?",
+  "Something that makes me laugh: What brings joy to your life?",
+  "A lesson I learned: Share something important you discovered"
+];
+
 // Функция для получения случайного совета для отдыха
 function getRandomRelaxTip() {
   return RELAX_TIPS[Math.floor(Math.random() * RELAX_TIPS.length)];
@@ -578,7 +651,8 @@ async function getOrCreateUserProfile(telegramId, profileName) {
           lastStudyDate: null,
           lastBonusDate: null,
           lastSmartRepeatDate: null,
-          reminderTime: null
+          reminderTime: null,
+          writingTopicIndex: 0
         }
       });
     }
@@ -1592,10 +1666,10 @@ bot.command('skip', async (ctx) => {
     session.smartRepeatStage = 2;
     delete session.currentQuizSession;
     
-    await ctx.reply('⏭️ Этап 1 (викторина) пропущен!\n\n🧠 <b>Умное повторение - Этап 2/4</b>\n<b>Знаю/Не знаю</b>\n\nПереходим к быстрой оценке слов...');
+    await ctx.reply('⏭️ Этап 1 (викторина) пропущен!\n\n🧠 <b>Умное повторение - Этап 3/5</b>\n<b>Знаю/Не знаю</b>\n\nПереходим к быстрой оценке слов...');
     return await startSmartRepeatStage2(ctx, session);
     
-  } else if (session.step === 'waiting_answer' && session.smartRepeatStage === 2) {
+  } else if (session.step === 'waiting_answer' && session.smartRepeatStage === 3) {
     // Пропускаем этап 2, переходим к этапу 3
     session.step = 'smart_repeat_stage_3';
     session.smartRepeatStage = 3;
@@ -1603,10 +1677,10 @@ bot.command('skip', async (ctx) => {
     delete session.wordsToRepeat;
     delete session.repeatMode;
     
-    await ctx.reply('⏭️ Этап 2 (знаю/не знаю) пропущен!\n\n🧠 <b>Умное повторение - Этап 3/4</b>\n<b>Составление предложений</b>\n\nПереходим к практике...');
+    await ctx.reply('⏭️ Этап 3 (знаю/не знаю) пропущен!\n\n🧠 <b>Умное повторение - Этап 4/5</b>\n<b>Составление предложений</b>\n\nПереходим к практике...');
     return await startSmartRepeatStage3(ctx, session);
     
-  } else if (session.step === 'sentence_task' && session.smartRepeatStage === 3) {
+  } else if (session.step === 'sentence_task' && session.smartRepeatStage === 4) {
     // Пропускаем этап 3, переходим к этапу 4
     session.step = 'smart_repeat_stage_4';
     session.smartRepeatStage = 4;
@@ -1615,10 +1689,10 @@ bot.command('skip', async (ctx) => {
     delete session.stage3Sentences;
     delete session.stage3Context;
     
-    await ctx.reply('⏭️ Этап 3 (предложения) пропущен!\n\n🧠 <b>Умное повторение - Этап 4/4</b>\n<b>Чтение текста</b>\n\nПереходим к финальному этапу...');
-    return await startSmartRepeatStage4(ctx, session);
+    await ctx.reply('⏭️ Этап 4 (предложения) пропущен!\n\n🧠 <b>Умное повторение - Этап 5/5</b>\n<b>Чтение текста</b>\n\nПереходим к финальному этапу...');
+    return await startSmartRepeatStage5(ctx, session);
     
-  } else if (session.step === 'story_task' && session.smartRepeatStage === 4) {
+  } else if (session.step === 'story_task' && session.smartRepeatStage === 5) {
     // Завершаем умное повторение
     await ctx.reply('⏭️ Этап 4 (чтение) пропущен!\n\n✅ <b>Умное повторение завершено!</b>');
     return await finishSmartRepeat(ctx, session);
@@ -2542,7 +2616,7 @@ bot.on('message:text', async (ctx) => {
       console.log(`DEBUG: Generated first question for smart repeat:`, firstQuestion);
       
       await ctx.reply(
-        `🧠 <b>Умное повторение - Этап 1/4</b>\n` +
+        `🧠 <b>Умное повторение - Этап 1/5</b>\n` +
         `🎯 <b>Викторина "Угадай перевод"</b>\n\n` +
         `Выбраны ${wordsToRepeat.length} приоритетных слов для повторения.\n\n` +
         `<b>Вопрос 1/20:</b>\n${firstQuestion.question}`,
@@ -2905,9 +2979,9 @@ bot.on('message:text', async (ctx) => {
 
   // Обработка ответов на повторение слов
   if (step === 'waiting_answer') {
-    // Специальная обработка для этапа 2 умного повторения
-    if (session.smartRepeatStage === 2) {
-      return await handleSmartRepeatStage2Answer(ctx, session, text);
+    // Специальная обработка для этапа 3 умного повторения
+    if (session.smartRepeatStage === 3) {
+      return await handleSmartRepeatStage3Answer(ctx, session, text);
     }
     
     // Проверяем наличие массива и индекса
@@ -3008,9 +3082,9 @@ bot.on('message:text', async (ctx) => {
       // --- Умное повторение переходит к sentence_task ---
       if (session.repeatMode === 'smart') {
         // Проверяем, какой этап умного повторения
-        if (session.smartRepeatStage === 2) {
-          // Этап 2 завершен - переходим к этапу 3 (предложения)
-          await startSmartRepeatStage3(ctx, session);
+        if (session.smartRepeatStage === 3) {
+          // Этап 3 завершен - переходим к этапу 4 (предложения)
+          await startSmartRepeatStage4(ctx, session);
           return;
         } else {
           // Обычное умное повторение (не многоэтапное) или этап 3 завершен
@@ -3370,6 +3444,62 @@ bot.on('message:text', async (ctx) => {
     }
   }
 
+  // --- Этап письменного задания ---
+  if (step === 'writing_task') {
+    if (text === '⏭️ Пропустить этап') {
+      // Пропускаем этап письма и переходим к этапу 3
+      session.smartRepeatStage = 3;
+      delete session.writingTopic;
+      
+      await ctx.reply('⏭️ Этап 2 (письмо) пропущен!\n\n🧠 <b>Умное повторение - Этап 3/5</b>\n<b>Знаю/Не знаю</b>\n\nПереходим к быстрой оценке слов...');
+      return await startSmartRepeatStage2(ctx, session); // Это старая функция "Знаю/Не знаю", которая стала этапом 3
+      
+    } else {
+      // Пользователь отправил текст для анализа
+      await handleWritingAnalysis(ctx, session, text);
+      return;
+    }
+  }
+
+  // --- Результат анализа письма ---
+  if (step === 'writing_analysis_result') {
+    if (text === '📝 Выполнить упражнения') {
+      await startWritingDrills(ctx, session);
+      return;
+    } else if (text === '➡️ Продолжить к следующему этапу') {
+      // Переходим к этапу 3 (Знаю/Не знаю)
+      session.smartRepeatStage = 3;
+      delete session.writingTopic;
+      delete session.writingAnalysis;
+      
+      await ctx.reply('🧠 <b>Умное повторение - Этап 3/5</b>\n<b>Знаю/Не знаю</b>\n\nПереходим к быстрой оценке слов...');
+      return await startSmartRepeatStage2(ctx, session); // Это старая функция "Знаю/Не знаю", которая стала этапом 3
+    }
+  }
+
+  // --- Упражнения по письму ---
+  if (step === 'writing_drill') {
+    if (text === '➡️ Следующее упражнение') {
+      // Эта кнопка обрабатывается автоматически в handleWritingDrillAnswer, просто показываем следующее
+      await showCurrentWritingDrill(ctx, session);
+      return;
+    } else if (text === '➡️ Продолжить к следующему этапу') {
+      // Завершаем упражнения и переходим к этапу 3
+      delete session.writingDrills;
+      delete session.currentDrillIndex;
+      delete session.drillResults;
+      delete session.writingAnalysis;
+      
+      session.smartRepeatStage = 3;
+      
+      await ctx.reply('🧠 <b>Умное повторение - Этап 3/5</b>\n<b>Знаю/Не знаю</b>\n\nПереходим к быстрой оценке слов...', { parse_mode: 'HTML' });
+      return await startSmartRepeatStage2(ctx, session); // Это старая функция "Знаю/Не знаю", которая стала этапом 3
+    } else {
+      await handleWritingDrillAnswer(ctx, session, text);
+      return;
+    }
+  }
+
   // --- Задание: предложения с новыми словами ---
   if (step === 'sentence_task') {
     // Проверяем команды автогенерации
@@ -3460,8 +3590,8 @@ bot.on('message:text', async (ctx) => {
       delete session.storyQuestionIndex;
       delete session.storyTaskWords;
       
-      if (session.smartRepeatStage === 4) {
-        // Этап 4 умного повторения завершен - завершаем всё умное повторение
+      if (session.smartRepeatStage === 5) {
+        // Этап 5 умного повторения завершен - завершаем всё умное повторение
         await completeSmartRepeat(ctx, session);
       } else {
         // Обычное текстовое задание - показываем поздравление
@@ -3521,8 +3651,8 @@ bot.on('message:text', async (ctx) => {
       delete session.storyTaskWords;
       delete session.additionalVocabulary; // Удаляем дополнительные слова
       
-      if (session.smartRepeatStage === 4) {
-        // Этап 4 умного повторения завершен - завершаем всё умное повторение
+      if (session.smartRepeatStage === 5) {
+        // Этап 5 умного повторения завершен - завершаем всё умное повторение
         await completeSmartRepeat(ctx, session);
       } else {
         // Обычное текстовое задание - показываем поздравление
@@ -3601,7 +3731,7 @@ async function generateStoryTaskContent(session, ctx) {
 
 К каждому вопросу обязательно дай ровно 5 вариантов ответов (1 правильный и 4 дистрактора, порядок случайный).
 
-Также выбери 7 интересных и сложных слов из текста (НЕ из списка изучаемых слов: [${storyWords.join(', ')}]), которые могут быть полезны для изучения, и дай их перевод на русский.
+Также выбери 15 интересных и сложных слов из текста (НЕ из списка изучаемых слов: [${storyWords.join(', ')}]), которые могут быть полезны для изучения, и дай их перевод на русский.
 
 Ответ должен быть строго в формате JSON без дополнительного текста и комментариев:
 {
@@ -3626,7 +3756,7 @@ async function generateStoryTaskContent(session, ctx) {
       model: 'gpt-3.5-turbo',
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.8,  // Увеличиваем для большего разнообразия
-      max_tokens: 3500  // Увеличиваем для 10 вопросов и дополнительных слов
+      max_tokens: 4000  // Увеличиваем для 10 вопросов и 15 дополнительных слов
     }, {
       headers: {
         'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
@@ -4564,13 +4694,13 @@ async function handleSmartRepeatQuizAnswer(ctx, session, answerText) {
     
     responseMessage += `\n\n🏆 <b>Этап 1 завершен!</b>\n` +
       `📊 Результат: ${correctCount}/${totalQuestions} (${percentage}%)\n\n` +
-      `➡️ Переходим к этапу 2/4: "Знаю/Не знаю"`;
+      `➡️ Переходим к этапу 2/5: "Напиши текст"`;
     
     // Сначала отправляем итоги викторины
     await ctx.reply(responseMessage, { parse_mode: 'HTML' });
     
-    // Потом переходим к этапу 2
-    await startSmartRepeatStage2(ctx, session);
+    // Потом переходим к этапу 2 (письмо)
+    await startSmartRepeatStageWriting(ctx, session);
     
     return;
   } else {
@@ -4639,7 +4769,7 @@ async function startSmartRepeatStage2(ctx, session) {
     .resized();
 
   await ctx.reply(
-    `🧠 <b>Умное повторение - Этап 2/4</b>\n` +
+    `🧠 <b>Умное повторение - Этап 3/5</b>\n` +
     `🎯 <b>"Знаю/Не знаю"</b>\n\n${question}`,
     { 
       parse_mode: 'HTML',
@@ -5077,6 +5207,477 @@ async function generateSentencesWithAI(words) {
   }
 }
 
+// Функция получения следующей темы для письма по порядку
+async function getNextWritingTopic(ctx, session) {
+  try {
+    // Получаем профиль пользователя
+    const userId = ctx.from.id;
+    const profileName = session.selectedProfile || 'Основной';
+    
+    const userProfile = await getOrCreateUserProfile(userId, profileName);
+    
+    // Получаем тему по текущему индексу
+    const topic = WRITING_TOPICS[userProfile.writingTopicIndex];
+    
+    // Увеличиваем индекс для следующего раза (с циклическим возвратом к 0)
+    const nextIndex = (userProfile.writingTopicIndex + 1) % WRITING_TOPICS.length;
+    
+    // Обновляем индекс в базе данных
+    await prisma.userProfile.updateMany({
+      where: {
+        telegramId: userId.toString(),
+        profileName: profileName
+      },
+      data: {
+        writingTopicIndex: nextIndex
+      }
+    });
+    
+    console.log(`Writing topic selected: #${userProfile.writingTopicIndex + 1} - "${topic}"`);
+    console.log(`Next topic index updated to: ${nextIndex}`);
+    
+    return topic;
+  } catch (error) {
+    console.error('Error in getNextWritingTopic:', error);
+    // Возвращаем случайную тему в случае ошибки
+    return WRITING_TOPICS[Math.floor(Math.random() * WRITING_TOPICS.length)];
+  }
+}
+
+// Функция запуска нового этапа 2 умного повторения (письменное задание)
+async function startSmartRepeatStageWriting(ctx, session) {
+  try {
+    console.log('=== SMART REPEAT STAGE 2 (WRITING) START ===');
+    console.log('User ID:', ctx.from.id);
+    
+    // Получаем следующую тему по порядку
+    const topic = await getNextWritingTopic(ctx, session);
+    
+    session.smartRepeatStage = 2;
+    session.step = 'writing_task';
+    session.writingTopic = topic;
+    
+    await ctx.reply(
+      `🧠 <b>Умное повторение - Этап 2/5</b>\n` +
+      `✍️ <b>Напиши текст</b>\n\n` +
+      `📝 <b>Тема:</b> ${topic}\n\n` +
+      `Напишите короткий текст из 5-9 предложений на эту тему. ` +
+      `Постарайтесь писать естественно и не беспокойтесь об ошибках - ` +
+      `я помогу вам их проанализировать и исправить! 📚`,
+      { 
+        parse_mode: 'HTML',
+        reply_markup: new Keyboard()
+          .text('⏭️ Пропустить этап')
+          .row()
+          .oneTime()
+          .resized()
+      }
+    );
+    
+  } catch (error) {
+    console.error('Error in startSmartRepeatStageWriting:', error);
+    session.step = 'main_menu';
+    await ctx.reply('❌ Произошла ошибка. Возвращаемся в главное меню.', { reply_markup: mainMenu });
+  }
+}
+
+// Функция анализа письменного текста через OpenAI  
+async function handleWritingAnalysis(ctx, session, userText) {
+  try {
+    console.log('=== WRITING ANALYSIS START ===');
+    console.log('User text length:', userText.length);
+    
+    // Проверяем длину текста
+    if (userText.length < 50) {
+      await ctx.reply('📝 Текст слишком короткий. Напишите хотя бы 5-6 предложений, чтобы я мог провести качественный анализ.');
+      return;
+    }
+    
+    if (userText.length > 2000) {
+      await ctx.reply('📝 Текст слишком длинный. Пожалуйста, напишите 5-9 предложений.');
+      return;
+    }
+    
+    // Проверяем API ключ
+    if (!process.env.OPENAI_API_KEY) {
+      console.error('ERROR: OPENAI_API_KEY not found');
+      session.step = 'main_menu';
+      await ctx.reply('❌ Ошибка конфигурации API. Обратитесь к администратору.', { reply_markup: mainMenu });
+      return;
+    }
+    
+    await ctx.reply('🔍 Анализирую ваш текст... Это займет несколько секунд.');
+    
+    // Системный промпт для анализа
+    const systemPrompt = `You are IELTS Writing Coach — Strict JSON Mode.
+Your task: analyze a short student text (5–9 sentences), find errors, explain them in Russian, and generate two micro-drills per error.
+You MUST return only JSON that validates against the schema below. No prose outside JSON.
+Be concise, didactic, and consistent. Avoid shaming; be constructive.
+
+Analysis scope:
+Focus on: grammar, collocations, articles/prepositions, word choice, sentence naturalness.
+Don't rewrite the whole text. Identify salient, recurring error types (3–6 items).
+For each error type, show 1–2 clear examples from the student text (quote minimal necessary fragment).
+Provide a "meme rule" (short, memorable cue).
+Provide two drills per error type: ultra-short gap-fills or one-word choices. Each drill must have:
+- prompt: one line with a single gap ___ or (a/the/0) choice.
+- expected: canonical correct answer (string).
+- accepted: array of acceptable variants (lowercased).
+- explanation: 1–2 lines why this is the answer (Russian).
+
+Band estimate:
+Give a rough IELTS Writing band (one decimal or half band). Base on accuracy and naturalness (not task response length).
+
+Normalization:
+When matching user's future answers, consumers will use trim + toLowerCase.
+Keep all expected lowercased.
+
+Output JSON schema:
+Return only this object:
+{
+  "band_estimate": "string", 
+  "summary": "string",
+  "global_advice": "string",
+  "errors": [
+    {
+      "title": "string",
+      "rule": "string", 
+      "meme": "string",
+      "examples": [
+        { "from": "string", "to": "string", "why": "string" }
+      ],
+      "drills": [
+        {
+          "prompt": "string",
+          "expected": "string",
+          "accepted": ["string", "string"],
+          "explanation": "string"
+        }
+      ]
+    }
+  ]
+}
+
+Constraints:
+- errors.length in [3..6].
+- Each errors[i].examples.length in [1..2].
+- Each errors[i].drills.length = 2.
+- band_estimate example: "5.5", "6.0", "6.5", "7.0".
+- All strings must be UTF-8 safe, no markdown formatting inside JSON.
+
+Style rules:
+- Russian explanations, коротко и по делу.
+- Use student's original fragments in examples.from (minimal span).
+- In summary: 2–3 предложения о сильных/слабых сторонах.
+- In global_advice: 2–3 конкретных шага, что прокачать первым делом.
+
+You must never output anything but the JSON object.`;
+
+    const gptRes = await axios.post('https://api.openai.com/v1/chat/completions', {
+      model: 'gpt-3.5-turbo',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: `LANG=ru\nTEXT=\n${userText}` }
+      ],
+      temperature: 0.2,
+      max_tokens: 3000
+    }, {
+      headers: {
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    let analysisResponse = gptRes.data.choices[0].message.content.trim();
+    
+    // Пытаемся извлечь JSON
+    const jsonMatch = analysisResponse.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      console.error('No JSON found in response:', analysisResponse);
+      throw new Error('AI не вернул валидный JSON');
+    }
+    
+    const analysisData = JSON.parse(jsonMatch[0]);
+    
+    // Проверяем обязательные поля
+    if (!analysisData.band_estimate || !analysisData.summary || !analysisData.global_advice || !Array.isArray(analysisData.errors)) {
+      throw new Error('Неполные данные анализа');
+    }
+    
+    // Сохраняем анализ в сессии
+    session.writingAnalysis = analysisData;
+    session.step = 'writing_analysis_result';
+    
+    // Показываем результат анализа
+    await showWritingAnalysisResult(ctx, session);
+    
+  } catch (error) {
+    console.error('Error in handleWritingAnalysis:', error);
+    
+    let errorMsg = 'Произошла ошибка при анализе текста. ';
+    
+    if (error.response && error.response.data && error.response.data.error) {
+      const apiError = error.response.data.error;
+      console.error('OpenAI API Error:', apiError);
+      
+      if (apiError.code === 'insufficient_quota') {
+        errorMsg = 'Лимит API исчерпан. Обратитесь к администратору.';
+      } else if (apiError.code === 'rate_limit_exceeded') {
+        errorMsg = 'Слишком много запросов. Попробуйте через минуту.';
+      }
+    }
+    
+    session.step = 'main_menu';
+    await ctx.reply(`❌ ${errorMsg}`, { reply_markup: mainMenu });
+  }
+}
+
+// Функция отображения результатов анализа письма
+async function showWritingAnalysisResult(ctx, session) {
+  const analysis = session.writingAnalysis;
+  
+  let message = `📊 <b>Анализ вашего текста:</b>\n\n`;
+  message += `🎯 <b>Оценка:</b> ${analysis.band_estimate}/9 (IELTS Writing)\n\n`;
+  message += `📝 <b>Общий отзыв:</b>\n${analysis.summary}\n\n`;
+  message += `💡 <b>Рекомендации:</b>\n${analysis.global_advice}`;
+  
+  if (analysis.errors && analysis.errors.length > 0) {
+    message += `\n\n🔍 <b>Найдено ошибок:</b> ${analysis.errors.length}`;
+    
+    analysis.errors.forEach((error, index) => {
+      message += `\n\n<b>${index + 1}. ${error.title}</b>`;
+      message += `\n💡 ${error.rule}`;
+      message += `\n🧠 <i>${error.meme}</i>`;
+      
+      if (error.examples && error.examples.length > 0) {
+        error.examples.forEach(example => {
+          message += `\n❌ "${example.from}" → ✅ "${example.to}"`;
+        });
+      }
+    });
+    
+    await ctx.reply(message, { 
+      parse_mode: 'HTML',
+      reply_markup: new Keyboard()
+        .text('📝 Выполнить упражнения')
+        .row()
+        .text('➡️ Продолжить к следующему этапу')
+        .row()
+        .oneTime()
+        .resized()
+    });
+  } else {
+    message += `\n\n✅ <b>Отличная работа!</b> Серьезных ошибок не найдено.`;
+    
+    await ctx.reply(message, { 
+      parse_mode: 'HTML',
+      reply_markup: new Keyboard()
+        .text('➡️ Продолжить к следующему этапу')
+        .row()
+        .oneTime()
+        .resized()
+    });
+  }
+}
+
+// Функция запуска мини-упражнений по письму
+async function startWritingDrills(ctx, session) {
+  const analysis = session.writingAnalysis;
+  
+  if (!analysis || !analysis.errors || analysis.errors.length === 0) {
+    await ctx.reply('❌ Нет упражнений для выполнения.');
+    return;
+  }
+  
+  // Собираем все упражнения из всех ошибок
+  const allDrills = [];
+  analysis.errors.forEach((error, errorIndex) => {
+    if (error.drills && error.drills.length > 0) {
+      error.drills.forEach((drill, drillIndex) => {
+        allDrills.push({
+          errorTitle: error.title,
+          errorRule: error.rule,
+          drill: drill,
+          errorIndex: errorIndex,
+          drillIndex: drillIndex
+        });
+      });
+    }
+  });
+  
+  if (allDrills.length === 0) {
+    await ctx.reply('❌ Нет доступных упражнений.');
+    return;
+  }
+  
+  // Инициализируем упражнения в сессии
+  session.writingDrills = allDrills;
+  session.currentDrillIndex = 0;
+  session.drillResults = [];
+  session.step = 'writing_drill';
+  
+  await showCurrentWritingDrill(ctx, session);
+}
+
+// Функция отображения текущего упражнения
+async function showCurrentWritingDrill(ctx, session) {
+  const drills = session.writingDrills;
+  const currentIndex = session.currentDrillIndex;
+  
+  if (currentIndex >= drills.length) {
+    // Все упражнения завершены
+    await showWritingDrillsCompletion(ctx, session);
+    return;
+  }
+  
+  const currentDrill = drills[currentIndex];
+  const drill = currentDrill.drill;
+  
+  let message = `📝 <b>Упражнение ${currentIndex + 1}/${drills.length}</b>\n\n`;
+  message += `🎯 <b>Тема:</b> ${currentDrill.errorTitle}\n`;
+  message += `💡 <b>Правило:</b> ${currentDrill.errorRule}\n\n`;
+  message += `❓ <b>Заполните пропуск:</b>\n<code>${drill.prompt}</code>\n\n`;
+  message += `Введите ответ (одно слово или короткую фразу):`;
+  
+  await ctx.reply(message, { 
+    parse_mode: 'HTML',
+    reply_markup: new Keyboard()
+      .text('🔄 Показать подсказку')
+      .row()
+      .text('⏭️ Пропустить упражнение')
+      .row()
+      .oneTime()
+      .resized()
+  });
+}
+
+// Функция обработки ответа на упражнение
+async function handleWritingDrillAnswer(ctx, session, userAnswer) {
+  const drills = session.writingDrills;
+  const currentIndex = session.currentDrillIndex;
+  const currentDrill = drills[currentIndex];
+  const drill = currentDrill.drill;
+  
+  if (userAnswer === '🔄 Показать подсказку') {
+    let hintMessage = `💡 <b>Подсказка:</b>\n${drill.explanation}\n\n`;
+    hintMessage += `❓ <b>Заполните пропуск:</b>\n<code>${drill.prompt}</code>`;
+    
+    await ctx.reply(hintMessage, { 
+      parse_mode: 'HTML',
+      reply_markup: new Keyboard()
+        .text('⏭️ Пропустить упражнение')
+        .row()
+        .oneTime()
+        .resized()
+    });
+    return;
+  }
+  
+  if (userAnswer === '⏭️ Пропустить упражнение') {
+    // Записываем результат как пропущенный
+    session.drillResults.push({
+      drillIndex: currentIndex,
+      userAnswer: null,
+      correct: false,
+      skipped: true,
+      explanation: drill.explanation
+    });
+    
+    session.currentDrillIndex++;
+    await showCurrentWritingDrill(ctx, session);
+    return;
+  }
+  
+  // Проверяем ответ
+  const normalizedAnswer = userAnswer.trim().toLowerCase();
+  const expectedAnswer = drill.expected.toLowerCase();
+  const acceptedAnswers = drill.accepted.map(ans => ans.toLowerCase());
+  
+  const isCorrect = normalizedAnswer === expectedAnswer || acceptedAnswers.includes(normalizedAnswer);
+  
+  // Записываем результат
+  session.drillResults.push({
+    drillIndex: currentIndex,
+    userAnswer: userAnswer,
+    correct: isCorrect,
+    skipped: false,
+    explanation: drill.explanation,
+    expectedAnswer: drill.expected
+  });
+  
+  // Показываем результат
+  let resultMessage;
+  if (isCorrect) {
+    resultMessage = `✅ <b>Правильно!</b>\n\n`;
+    resultMessage += `💡 ${drill.explanation}`;
+  } else {
+    resultMessage = `❌ <b>Неверно</b>\n\n`;
+    resultMessage += `✅ <b>Правильный ответ:</b> ${drill.expected}\n`;
+    resultMessage += `📝 <b>Ваш ответ:</b> ${userAnswer}\n\n`;
+    resultMessage += `💡 ${drill.explanation}`;
+  }
+  
+  await ctx.reply(resultMessage, { 
+    parse_mode: 'HTML',
+    reply_markup: new Keyboard()
+      .text('➡️ Следующее упражнение')
+      .row()
+      .oneTime()
+      .resized()
+  });
+  
+  session.currentDrillIndex++;
+  
+  // Через небольшую паузу показываем следующее упражнение
+  setTimeout(async () => {
+    await showCurrentWritingDrill(ctx, session);
+  }, 1500);
+}
+
+// Функция завершения упражнений
+async function showWritingDrillsCompletion(ctx, session) {
+  const results = session.drillResults;
+  const totalDrills = results.length;
+  const correctAnswers = results.filter(r => r.correct).length;
+  const skippedAnswers = results.filter(r => r.skipped).length;
+  
+  let message = `🎉 <b>Упражнения завершены!</b>\n\n`;
+  message += `📊 <b>Результаты:</b>\n`;
+  message += `✅ Правильных ответов: ${correctAnswers}/${totalDrills}\n`;
+  message += `⏭️ Пропущено: ${skippedAnswers}\n`;
+  
+  if (correctAnswers === totalDrills) {
+    message += `\n🏆 Отлично! Все ответы верные!`;
+  } else if (correctAnswers >= totalDrills * 0.7) {
+    message += `\n👏 Хорошая работа! Большинство ответов правильные.`;
+  } else {
+    message += `\n💪 Продолжайте практиковаться! Обратите внимание на разобранные правила.`;
+  }
+  
+  // Очищаем данные упражнений
+  delete session.writingDrills;
+  delete session.currentDrillIndex;
+  delete session.drillResults;
+  delete session.writingAnalysis;
+  
+  // Переходим к следующему этапу
+  session.smartRepeatStage = 3;
+  
+  await ctx.reply(message, { 
+    parse_mode: 'HTML',
+    reply_markup: new Keyboard()
+      .text('➡️ Продолжить к следующему этапу')
+      .row()
+      .oneTime()
+      .resized()
+  });
+  
+  setTimeout(async () => {
+    await ctx.reply('🧠 <b>Умное повторение - Этап 3/5</b>\n<b>Знаю/Не знаю</b>\n\nПереходим к быстрой оценке слов...');
+    await startSmartRepeatStage2(ctx, session); // Это старая функция "Знаю/Не знаю", которая стала этапом 3
+  }, 2000);
+}
+
 // Функция запуска этапа 3 умного повторения (предложения)
 async function startSmartRepeatStage3(ctx, session) {
   // Собираем слова из предыдущих этапов
@@ -5512,77 +6113,77 @@ async function sendDetailedFeedback(ctx, session, analysis) {
     console.log(`Session answers count: ${session.sentenceTaskAnswers.length}`);
     
     for (let i = 0; i < analysis.detailed_analysis.length; i++) {
-      const eval = analysis.detailed_analysis[i];
+      const evaluation = analysis.detailed_analysis[i];
       
-      console.log(`Processing detailed analysis ${i + 1}: word="${eval.word}"`);
+      console.log(`Processing detailed analysis ${i + 1}: word="${evaluation.word}"`);
       
       // Находим предложение по ID из анализа
-      const userAnswer = session.sentenceTaskAnswers.find(answer => answer.id === eval.id);
+      const userAnswer = session.sentenceTaskAnswers.find(answer => answer.id === evaluation.id);
       
       if (!userAnswer) {
-        console.error(`Не найдено предложение для ID: ${eval.id}, слово: ${eval.word}`);
+        console.error(`Не найдено предложение для ID: ${evaluation.id}, слово: ${evaluation.word}`);
         console.error('Available IDs:', session.sentenceTaskAnswers.map(a => a.id));
         
         // Создаем fallback сообщение
-        const fallbackMessage = `❓ <b>${i + 1}. "${eval.word}"</b> - ОШИБКА АНАЛИЗА\n` +
+        const fallbackMessage = `❓ <b>${i + 1}. "${evaluation.word}"</b> - ОШИБКА АНАЛИЗА\n` +
                                `📝 <b>Анализ ошибки:</b> Не удалось найти ваше предложение для этого слова.`;
         await ctx.reply(fallbackMessage, { parse_mode: 'HTML' });
         continue;
       }
       
-      const status = eval.correct ? '✅' : '❌';
-      const statusText = eval.correct ? 'ПРАВИЛЬНО' : 'ТРЕБУЕТ ИСПРАВЛЕНИЯ';
+      const status = evaluation.correct ? '✅' : '❌';
+      const statusText = evaluation.correct ? 'ПРАВИЛЬНО' : 'ТРЕБУЕТ ИСПРАВЛЕНИЯ';
       
       // Создаем подробное сообщение с новой структурой
-      let message = `${status} <b>${i + 1}. Слово: "${eval.word}"</b> - ${statusText}\n\n` +
+      let message = `${status} <b>${i + 1}. Слово: "${evaluation.word}"</b> - ${statusText}\n\n` +
                    `💬 <i>Ваше предложение:</i>\n"${userAnswer.sentence}"\n\n`;
       
-      if (eval.correct) {
+      if (evaluation.correct) {
         // Для правильных предложений показываем похвалу
-        if (eval.why_correct) {
-          message += `🎉 <b>Почему это правильно:</b>\n${eval.why_correct}\n\n`;
+        if (evaluation.why_correct) {
+          message += `🎉 <b>Почему это правильно:</b>\n${evaluation.why_correct}\n\n`;
         } else {
           message += `🎉 <b>Отлично!</b> Ваше предложение грамматически правильное и звучит естественно.\n\n`;
         }
         
         // Добавляем примеры для правильных предложений тоже
-        if (eval.practice_examples && eval.practice_examples.length > 0) {
-          message += `💡 <b>Примеры с "${eval.word}":</b>\n`;
-          eval.practice_examples.forEach((example, idx) => {
+        if (evaluation.practice_examples && evaluation.practice_examples.length > 0) {
+          message += `💡 <b>Примеры с "${evaluation.word}":</b>\n`;
+          evaluation.practice_examples.forEach((example, idx) => {
             message += `${idx + 1}. ${example}\n`;
           });
         }
       } else {
         // Для неправильных предложений показываем анализ ошибки
-        if (eval.error_analysis) {
-          message += `📝 <b>Анализ ошибки:</b>\n${eval.error_analysis}\n\n`;
+        if (evaluation.error_analysis) {
+          message += `📝 <b>Анализ ошибки:</b>\n${evaluation.error_analysis}\n\n`;
         }
         
         // Добавляем исправленную версию (если есть)
-        if (eval.corrected_version && eval.corrected_version !== userAnswer.sentence) {
-          message += `✨ <b>Исправленная версия:</b>\n"${eval.corrected_version}"\n\n`;
+        if (evaluation.corrected_version && evaluation.corrected_version !== userAnswer.sentence) {
+          message += `✨ <b>Исправленная версия:</b>\n"${evaluation.corrected_version}"\n\n`;
         }
         
         // Добавляем хитрый совет-трюк
-        if (eval.clever_trick) {
-          message += `🧠 <b>Хитрый совет-трюк:</b>\n${eval.clever_trick}\n\n`;
+        if (evaluation.clever_trick) {
+          message += `🧠 <b>Хитрый совет-трюк:</b>\n${evaluation.clever_trick}\n\n`;
         }
         
         // Добавляем объяснение правила
-        if (eval.rule_explanation) {
-          message += `📚 <b>Правило:</b>\n${eval.rule_explanation}\n\n`;
+        if (evaluation.rule_explanation) {
+          message += `📚 <b>Правило:</b>\n${evaluation.rule_explanation}\n\n`;
         }
         
         // Добавляем примеры для практики
-        if (eval.practice_examples && eval.practice_examples.length > 0) {
+        if (evaluation.practice_examples && evaluation.practice_examples.length > 0) {
           message += `💡 <b>Примеры для практики:</b>\n`;
-          eval.practice_examples.forEach((example, idx) => {
+          evaluation.practice_examples.forEach((example, idx) => {
             message += `${idx + 1}. ${example}\n`;
           });
         }
       }
       
-      console.log(`Sending detailed message for word "${eval.word}": ${status}`);
+      console.log(`Sending detailed message for word "${evaluation.word}": ${status}`);
       await ctx.reply(message, { parse_mode: 'HTML' });
       
       // Небольшая пауза между сообщениями для лучшего восприятия
@@ -5614,9 +6215,9 @@ async function proceedAfterSentenceAnalysis(ctx, session) {
   delete session.sentenceTaskIndex;
   delete session.sentenceTaskAnswers;
   
-  if (session.smartRepeatStage === 3) {
-    // Этап 3 умного повторения завершен - переходим к этапу 4
-    await startSmartRepeatStage4(ctx, session);
+  if (session.smartRepeatStage === 4) {
+    // Этап 4 умного повторения завершен - переходим к этапу 5
+    await startSmartRepeatStage5(ctx, session);
   } else {
     // Обычное задание предложений - запускаем story_task
     const storyWords = (session.lastWordsToRepeat || session.wordsToRepeat || []).map(w => w.word);
@@ -5633,9 +6234,9 @@ async function proceedAfterSentenceAnalysis(ctx, session) {
 }
 
 // Функция запуска этапа 4 умного повторения (текстовое задание)
-async function startSmartRepeatStage4(ctx, session) {
+async function startSmartRepeatStage5(ctx, session) {
   try {
-    console.log('=== SMART REPEAT STAGE 4 START ===');
+    console.log('=== SMART REPEAT STAGE 5 START ===');
     console.log('User ID:', ctx.from.id);
     console.log('Session smartRepeatWords:', session.smartRepeatWords?.length || 0);
     
@@ -5669,7 +6270,7 @@ async function startSmartRepeatStage4(ctx, session) {
     console.log('- step:', session.step);
     
     await ctx.reply(
-      `🧠 <b>Умное повторение - Этап 4/4</b>\n` +
+      `🧠 <b>Умное повторение - Этап 5/5</b>\n` +
       `📖 <b>Текстовое задание</b>\n\n` +
       `Сейчас будет сгенерирован текст с вашими словами. Внимательно прочитайте его и ответьте на вопросы.`,
       { parse_mode: 'HTML' }
