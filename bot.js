@@ -5384,15 +5384,29 @@ OUTPUT TEMPLATE (ВЕРНИ ТОЛЬКО JSON ОБЪЕКТ, БЕЗ ЛИШНЕГ�
       ],
       "drills": [
         {
-          "prompt": "Упражнение с пропуском",
-          "expected": "правильный ответ",
-          "accepted": ["правильный ответ", "альтернатива"],
-          "explanation": "объяснение на русском"
+          "rule": "краткое правило грамматики (1-2 предложения)",
+          "question": "предложение с ▢ для пропусков. Пример: This habit ▢ you ▢ focused.",
+          "words_count": 2,
+          "correct_answer": "точный правильный ответ",
+          "accepted": ["основной ответ", "возможная альтернатива"],
+          "hint": "краткая подсказка при ошибке"
         }
       ]
     }
   ]
 }
+
+ОСОБЫЕ ТРЕБОВАНИЯ К УПРАЖНЕНИЯМ (drills):
+- Используйте символ ▢ вместо подчеркиваний (_) для пропусков
+- Четко указывайте количество слов для заполнения: "Введите 1 слово" или "Введите 2 слова"
+- Делайте правила короткими и конкретными (1-2 предложения)
+- Ответ должен быть точным без вариантов (максимум 3 слова)
+- Избегайте двусмысленности и сложных конструкций
+- Формат: "This habit ▢ you ▢ focused." (если нужно 2 слова)
+- Всегда указывайте rule - краткое правило грамматики
+- Примеры хороших упражнений:
+  * "She ▢ happy." (1 слово) → "is"
+  * "They ▢ ▢ dinner." (2 слова) → "are having"
 
 ВАЖНО: Возвращай ТОЛЬКО этот JSON объект, никакого лишнего текста!
 `;
@@ -5557,11 +5571,10 @@ async function showCurrentWritingDrill(ctx, session) {
   const currentDrill = drills[currentIndex];
   const drill = currentDrill.drill;
   
-  let message = `📝 <b>Упражнение ${currentIndex + 1}/${drills.length}</b>\n\n`;
-  message += `🎯 <b>Тема:</b> ${currentDrill.errorTitle}\n`;
-  message += `💡 <b>Правило:</b> ${currentDrill.errorRule}\n\n`;
-  message += `❓ <b>Заполните пропуск:</b>\n<code>${drill.prompt}</code>\n\n`;
-  message += `Введите ответ (одно слово или короткую фразу):`;
+  let message = `📝 <b>Упражнение ${currentIndex + 1}/${drills.length}</b>\n`;
+  message += `Правило: ${drill.rule || currentDrill.errorRule}\n\n`;
+  message += `Заполните пропуск:\n<code>${drill.question}</code>\n\n`;
+  message += `👉 Введите ${drill.words_count || 1} ${drill.words_count === 1 ? 'слово' : 'слова'}.`;
   
   await ctx.reply(message, { 
     parse_mode: 'HTML',
@@ -5583,8 +5596,8 @@ async function handleWritingDrillAnswer(ctx, session, userAnswer) {
   const drill = currentDrill.drill;
   
   if (userAnswer === '🔄 Показать подсказку') {
-    let hintMessage = `💡 <b>Подсказка:</b>\n${drill.explanation}\n\n`;
-    hintMessage += `❓ <b>Заполните пропуск:</b>\n<code>${drill.prompt}</code>`;
+    let hintMessage = `💡 <b>Подсказка:</b>\n${drill.hint || drill.explanation}\n\n`;
+    hintMessage += `Заполните пропуск:\n<code>${drill.question}</code>`;
     
     await ctx.reply(hintMessage, { 
       parse_mode: 'HTML',
@@ -5604,7 +5617,7 @@ async function handleWritingDrillAnswer(ctx, session, userAnswer) {
       userAnswer: null,
       correct: false,
       skipped: true,
-      explanation: drill.explanation
+      explanation: drill.hint || drill.explanation
     });
     
     session.currentDrillIndex++;
@@ -5614,7 +5627,7 @@ async function handleWritingDrillAnswer(ctx, session, userAnswer) {
   
   // Проверяем ответ
   const normalizedAnswer = userAnswer.trim().toLowerCase();
-  const expectedAnswer = drill.expected.toLowerCase();
+  const expectedAnswer = (drill.correct_answer || drill.expected).toLowerCase();
   const acceptedAnswers = drill.accepted.map(ans => ans.toLowerCase());
   
   const isCorrect = normalizedAnswer === expectedAnswer || acceptedAnswers.includes(normalizedAnswer);
@@ -5625,20 +5638,21 @@ async function handleWritingDrillAnswer(ctx, session, userAnswer) {
     userAnswer: userAnswer,
     correct: isCorrect,
     skipped: false,
-    explanation: drill.explanation,
-    expectedAnswer: drill.expected
+    explanation: drill.hint || drill.explanation,
+    expectedAnswer: drill.correct_answer || drill.expected
   });
   
   // Показываем результат
   let resultMessage;
   if (isCorrect) {
-    resultMessage = `✅ <b>Правильно!</b>\n\n`;
-    resultMessage += `💡 ${drill.explanation}`;
+    resultMessage = `✅ Правильно: ${drill.correct_answer || drill.expected}`;
   } else {
-    resultMessage = `❌ <b>Неверно</b>\n\n`;
-    resultMessage += `✅ <b>Правильный ответ:</b> ${drill.expected}\n`;
-    resultMessage += `📝 <b>Ваш ответ:</b> ${userAnswer}\n\n`;
-    resultMessage += `💡 ${drill.explanation}`;
+    resultMessage = `❌ Неверно\n`;
+    resultMessage += `Правильный ответ: ${drill.correct_answer || drill.expected}\n`;
+    resultMessage += `Твоё: ${userAnswer}\n`;
+    if (drill.hint) {
+      resultMessage += `Подсказка: ${drill.hint}`;
+    }
   }
   
   await ctx.reply(resultMessage, { 
