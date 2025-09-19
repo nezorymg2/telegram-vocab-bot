@@ -5423,13 +5423,13 @@ QUALITY CHECK (ОБЯЗАТЕЛЬНО ПРОВЕРЬ ПЕРЕД ВЫВОДОМ):
 `;
 
     const gptRes = await axios.post('https://api.openai.com/v1/chat/completions', {
-      model: 'gpt-5',
+      model: 'gpt-4o',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: `LANG=ru\nTEXT=\n${userText}` }
       ],
-      temperature: 0.2,
-      max_completion_tokens: 3000
+      temperature: 1,
+      max_completion_tokens: 6000
     }, {
       headers: {
         'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
