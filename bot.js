@@ -5403,7 +5403,7 @@ OUTPUT TEMPLATE (ВЕРНИ ТОЛЬКО JSON ОБЪЕКТ, БЕЗ ЛИШНЕГ�
         { role: 'system', content: systemPrompt },
         { role: 'user', content: `LANG=ru\nTEXT=\n${userText}` }
       ],
-      temperature: 0.2,
+      temperature: 1, // GPT-5 supports only temperature=1
       max_completion_tokens: 6000
     }, {
       headers: {
