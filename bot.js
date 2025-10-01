@@ -301,9 +301,34 @@ function getRandomRelaxTip() {
   return RELAX_TIPS[Math.floor(Math.random() * RELAX_TIPS.length)];
 }
 
+// Функция создания таблицы денежной системы
+async function createMoneySystemTable() {
+  try {
+    await prisma.$executeRaw`
+      CREATE TABLE IF NOT EXISTS "money_system" (
+        "id" SERIAL PRIMARY KEY,
+        "profileName" VARCHAR(255) UNIQUE NOT NULL,
+        "totalEarned" INTEGER DEFAULT 0,
+        "totalOwed" INTEGER DEFAULT 0,
+        "dailyCompletions" INTEGER DEFAULT 0,
+        "dailyMissed" INTEGER DEFAULT 0,
+        "lastCompletionDate" VARCHAR(255),
+        "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `;
+    console.log('💰 Money system table created/verified');
+  } catch (error) {
+    console.error('Error creating money system table:', error);
+  }
+}
+
 // Функция инициализации денежной системы с настройкой Telegram ID
 async function initializeMoneySystem() {
   try {
+    // Создаём таблицу денежной системы если её нет
+    await createMoneySystemTable();
+    
     // Получаем всех пользователей из базы для настройки ID
     const userProfiles = await prisma.userProfile.findMany();
     
@@ -421,26 +446,27 @@ function getMainMenuMessage(session) {
 async function getOrCreateMoneyRecord(profileName) {
   try {
     // Пытаемся найти существующую запись
-    let moneyRecord = await prisma.moneySystem.findFirst({
-      where: { profileName: profileName }
-    });
+    const existingRecords = await prisma.$queryRaw`
+      SELECT * FROM "money_system" WHERE "profileName" = ${profileName}
+    `;
     
-    if (!moneyRecord) {
-      // Создаем новую запись
-      moneyRecord = await prisma.moneySystem.create({
-        data: {
-          profileName: profileName,
-          totalEarned: 0,
-          totalOwed: 0,
-          dailyCompletions: 0,
-          dailyMissed: 0,
-          lastCompletionDate: null,
-          createdAt: new Date()
-        }
-      });
+    if (existingRecords.length > 0) {
+      return existingRecords[0];
     }
     
-    return moneyRecord;
+    // Создаем новую запись
+    await prisma.$executeRaw`
+      INSERT INTO "money_system" 
+      ("profileName", "totalEarned", "totalOwed", "dailyCompletions", "dailyMissed", "lastCompletionDate")
+      VALUES (${profileName}, 0, 0, 0, 0, NULL)
+    `;
+    
+    // Возвращаем созданную запись
+    const newRecords = await prisma.$queryRaw`
+      SELECT * FROM "money_system" WHERE "profileName" = ${profileName}
+    `;
+    
+    return newRecords[0];
   } catch (error) {
     console.error('Error in getOrCreateMoneyRecord:', error);
     return null;
@@ -452,15 +478,18 @@ async function recordSmartRepeatCompletion(profileName) {
   try {
     const today = new Date().toDateString();
     
+    // Создаём запись если её нет
+    await getOrCreateMoneyRecord(profileName);
+    
     // Обновляем запись пользователя
-    await prisma.moneySystem.updateMany({
-      where: { profileName: profileName },
-      data: {
-        lastCompletionDate: today,
-        dailyCompletions: { increment: 1 },
-        totalEarned: { increment: MONEY_SYSTEM.DAILY_REWARD }
-      }
-    });
+    await prisma.$executeRaw`
+      UPDATE "money_system" SET 
+        "lastCompletionDate" = ${today},
+        "dailyCompletions" = "dailyCompletions" + 1,
+        "totalEarned" = "totalEarned" + ${MONEY_SYSTEM.DAILY_REWARD},
+        "updatedAt" = CURRENT_TIMESTAMP
+      WHERE "profileName" = ${profileName}
+    `;
     
     // Отправляем уведомление сразу после завершения
     await sendCompletionNotification(profileName);
@@ -524,14 +553,17 @@ async function checkMissedSmartRepeats() {
 // Функция записи пропущенного умного повторения
 async function recordMissedSmartRepeat(profileName) {
   try {
+    // Создаём запись если её нет
+    await getOrCreateMoneyRecord(profileName);
+    
     // Обновляем статистику пропуска
-    await prisma.moneySystem.updateMany({
-      where: { profileName: profileName },
-      data: {
-        dailyMissed: { increment: 1 },
-        totalOwed: { increment: MONEY_SYSTEM.DAILY_REWARD }
-      }
-    });
+    await prisma.$executeRaw`
+      UPDATE "money_system" SET 
+        "dailyMissed" = "dailyMissed" + 1,
+        "totalOwed" = "totalOwed" + ${MONEY_SYSTEM.DAILY_REWARD},
+        "updatedAt" = CURRENT_TIMESTAMP
+      WHERE "profileName" = ${profileName}
+    `;
     
     console.log(`Money system: ${profileName} missed smart repeat`);
   } catch (error) {
@@ -2315,6 +2347,50 @@ bot.command('achievements', async (ctx) => {
   }
   
   await ctx.reply(msg, { parse_mode: 'HTML' });
+});
+
+// Команда для просмотра таблицы денежной системы в базе
+bot.command('moneytable', async (ctx) => {
+  const userId = ctx.from.id;
+  const session = sessions[userId];
+  if (!session || !session.profile) {
+    return ctx.reply('Сначала выполните /start');
+  }
+  
+  try {
+    // Получаем все записи из таблицы
+    const records = await prisma.$queryRaw`SELECT * FROM "money_system" ORDER BY "createdAt" DESC`;
+    
+    let msg = `📊 <b>Таблица денежной системы</b>\n\n`;
+    
+    if (records.length === 0) {
+      msg += 'ℹ️ Таблица пуста - данные появятся после первого умного повторения';
+    } else {
+      records.forEach((record, index) => {
+        msg += `<b>${index + 1}. ${record.profileName}</b>\n`;
+        msg += `✅ Заработал: ${record.totalEarned.toLocaleString()} тг\n`;
+        msg += `❌ Должен: ${record.totalOwed.toLocaleString()} тг\n`;
+        msg += `📅 Завершил: ${record.dailyCompletions} дней\n`;
+        msg += `⏭️ Пропустил: ${record.dailyMissed} дней\n`;
+        
+        if (record.lastCompletionDate) {
+          const today = new Date().toDateString();
+          const isToday = record.lastCompletionDate === today;
+          msg += `🕗 Последнее: ${isToday ? 'Сегодня' : record.lastCompletionDate}\n`;
+        }
+        
+        const createdDate = new Date(record.createdAt);
+        msg += `📄 Создан: ${createdDate.toLocaleDateString('ru-RU')}\n\n`;
+      });
+    }
+    
+    msg += `ℹ️ <i>Обновляется автоматически после каждого умного повторения</i>`;
+    
+    await ctx.reply(msg, { parse_mode: 'HTML' });
+  } catch (error) {
+    console.error('Error in moneytable command:', error);
+    await ctx.reply('❌ Ошибка при получении данных из таблицы');
+  }
 });
 
 // Команда для просмотра статистики денежной системы
@@ -4140,6 +4216,7 @@ bot.api.setMyCommands([
   { command: 'sections', description: 'Показать разделы' },
   { command: 'achievements', description: 'Личный прогресс и достижения' },
   { command: 'money', description: '💰 Денежная мотивация и статистика' },
+  { command: 'moneytable', description: '📊 Просмотр таблицы денежной системы' },
   { command: 'reminder', description: 'Настроить ежедневные напоминания' },
   { command: 'delete', description: 'Удалить слово' },
   { command: 'clear', description: 'Удалить все слова' },
