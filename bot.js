@@ -4128,6 +4128,14 @@ async function sendRemindersToUsers(reminderType) {
   const now = new Date();
   const today = now.toDateString();
   
+  // Защита от множественного запуска одного типа напоминаний в течение часа
+  const lockKey = `reminder_${reminderType}_${today}_${now.getHours()}`;
+  if (global[lockKey]) {
+    console.log(`DEBUG REMINDERS: ${reminderType} reminder already sent this hour, skipping...`);
+    return;
+  }
+  global[lockKey] = true;
+  
   console.log(`DEBUG REMINDERS: Running ${reminderType} reminders at ${now.toISOString()}`);
   console.log(`  - Today string: "${today}"`);
   
@@ -4181,41 +4189,48 @@ async function sendRemindersToUsers(reminderType) {
   }
 }
 
-// Настройка cron-задач для напоминаний
-// За 6 часов до полуночи (18:00)
-cron.schedule('0 18 * * *', () => {
-  console.log('Sending 6-hour reminders...');
-  sendRemindersToUsers('6h');
-}, {
-  timezone: "Asia/Yekaterinburg" // GMT+5
-});
+// Защита от множественного запуска cron задач
+if (!global.cronTasksInitialized) {
+  global.cronTasksInitialized = true;
+  
+  // Настройка cron-задач для напоминаний
+  // За 6 часов до полуночи (18:00)
+  cron.schedule('0 18 * * *', () => {
+    console.log('Sending 6-hour reminders...');
+    sendRemindersToUsers('6h');
+  }, {
+    timezone: "Asia/Yekaterinburg" // GMT+5
+  });
 
-// За 3 часа до полуночи (21:00)
-cron.schedule('0 21 * * *', () => {
-  console.log('Sending 3-hour reminders...');
-  sendRemindersToUsers('3h');
-}, {
-  timezone: "Asia/Yekaterinburg" // GMT+5
-});
+  // За 3 часа до полуночи (21:00)
+  cron.schedule('0 21 * * *', () => {
+    console.log('Sending 3-hour reminders...');
+    sendRemindersToUsers('3h');
+  }, {
+    timezone: "Asia/Yekaterinburg" // GMT+5
+  });
 
-// За 1 час до полуночи (23:00)
-cron.schedule('0 23 * * *', () => {
-  console.log('Sending 1-hour reminders...');
-  sendRemindersToUsers('1h');
-}, {
-  timezone: "Asia/Yekaterinburg" // GMT+5
-});
+  // За 1 час до полуночи (23:00)
+  cron.schedule('0 23 * * *', () => {
+    console.log('Sending 1-hour reminders...');
+    sendRemindersToUsers('1h');
+  }, {
+    timezone: "Asia/Yekaterinburg" // GMT+5
+  });
 
-// Ежедневный автоматический бэкап в 2:00 ночи
-cron.schedule('0 2 * * *', () => {
-  console.log('� Creating daily backup...');
-  createBackup();
-}, {
-  timezone: "Asia/Yekaterinburg" // GMT+5
-});
-
-console.log('�🔔 Reminder system initialized!');
-console.log('📦 Daily backup system initialized!');
+  // Ежедневный автоматический бэкап в 2:00 ночи
+  cron.schedule('0 2 * * *', () => {
+    console.log('📦 Creating daily backup...');
+    createBackup();
+  }, {
+    timezone: "Asia/Yekaterinburg" // GMT+5
+  });
+  
+  console.log('🔔 Reminder system initialized!');
+  console.log('📦 Daily backup system initialized!');
+} else {
+  console.log('⚠️ Cron tasks already initialized, skipping...');
+}
 
 bot.catch((err) => console.error('Bot error:', err));
 // --- Система мини-игр ---
@@ -4845,6 +4860,9 @@ async function handleSmartRepeatStage2Answer(ctx, session, answerText) {
       } catch (error) {
         console.error('Error updating word progress in stage 2:', error);
       }
+      
+      // Переходим к следующему слову
+      return await moveToNextStage2Word(ctx, session);
     } else {
       await ctx.reply(`❌ <b>Неправильно!</b>\n\n📝 <b>${wordObj.word}</b> — <b>${wordObj.translation}</b>\n🎯 Вы ответили: ${answerText}`, { parse_mode: 'HTML' });
       
