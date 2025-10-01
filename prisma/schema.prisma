@@ -183,3 +183,17 @@ model users {
   google_accounts google_accounts[]
   notifications   notifications[]
 }
+
+model MoneySystem {
+  id                  Int      @id @default(autoincrement())
+  profileName         String   @unique
+  totalEarned         Int      @default(0)      // общая сумма заработанная
+  totalOwed           Int      @default(0)      // общая сумма задолженности
+  dailyCompletions    Int      @default(0)      // количество завершённых дней
+  dailyMissed         Int      @default(0)      // количество пропущенных дней
+  lastCompletionDate  String?                   // дата последнего завершения
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@map("money_system")
+}

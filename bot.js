@@ -280,9 +280,47 @@ const WRITING_TOPICS = [
   "A lesson I learned: Share something important you discovered"
 ];
 
+// === СИСТЕМА ДЕНЕЖНОЙ МОТИВАЦИИ ===
+// Настройки денежной системы
+const MONEY_SYSTEM = {
+  TOTAL_BANK: 60000,           // Общий банк в тенге
+  DAILY_REWARD: 1000,          // Награда за день в тенге
+  TOTAL_DAYS: 30,              // Количество дней в месяце
+  
+  // ID участников
+  NURBOLAT_ID: 'Нурболат',     // ID профиля Нурболата
+  AMINA_ID: 'Амина',           // ID профиля Амины
+  
+  // Telegram ID для уведомлений (нужно будет заполнить реальными)
+  NURBOLAT_TELEGRAM_ID: null,   // Заполнить при инициализации
+  AMINA_TELEGRAM_ID: null       // Заполнить при инициализации
+};
+
 // Функция для получения случайного совета для отдыха
 function getRandomRelaxTip() {
   return RELAX_TIPS[Math.floor(Math.random() * RELAX_TIPS.length)];
+}
+
+// Функция инициализации денежной системы с настройкой Telegram ID
+async function initializeMoneySystem() {
+  try {
+    // Получаем всех пользователей из базы для настройки ID
+    const userProfiles = await prisma.userProfile.findMany();
+    
+    for (const profile of userProfiles) {
+      if (profile.profileName === MONEY_SYSTEM.NURBOLAT_ID) {
+        MONEY_SYSTEM.NURBOLAT_TELEGRAM_ID = parseInt(profile.telegramId);
+        console.log(`💰 Nurbolat Telegram ID: ${MONEY_SYSTEM.NURBOLAT_TELEGRAM_ID}`);
+      } else if (profile.profileName === MONEY_SYSTEM.AMINA_ID) {
+        MONEY_SYSTEM.AMINA_TELEGRAM_ID = parseInt(profile.telegramId);
+        console.log(`💰 Amina Telegram ID: ${MONEY_SYSTEM.AMINA_TELEGRAM_ID}`);
+      }
+    }
+    
+    console.log('💰 Money system initialized!');
+  } catch (error) {
+    console.error('Error initializing money system:', error);
+  }
 }
 
 // Функция расчета XP за правильный ответ
@@ -375,6 +413,181 @@ function getMainMenuMessage(session) {
   
   message += `\nВыберите действие:`;
   return message;
+}
+
+// === ФУНКЦИИ ДЕНЕЖНОЙ СИСТЕМЫ ===
+
+// Функция получения или создания записи денежной системы для пользователя
+async function getOrCreateMoneyRecord(profileName) {
+  try {
+    // Пытаемся найти существующую запись
+    let moneyRecord = await prisma.moneySystem.findFirst({
+      where: { profileName: profileName }
+    });
+    
+    if (!moneyRecord) {
+      // Создаем новую запись
+      moneyRecord = await prisma.moneySystem.create({
+        data: {
+          profileName: profileName,
+          totalEarned: 0,
+          totalOwed: 0,
+          dailyCompletions: 0,
+          dailyMissed: 0,
+          lastCompletionDate: null,
+          createdAt: new Date()
+        }
+      });
+    }
+    
+    return moneyRecord;
+  } catch (error) {
+    console.error('Error in getOrCreateMoneyRecord:', error);
+    return null;
+  }
+}
+
+// Функция записи завершения умного повторения и отправки уведомления
+async function recordSmartRepeatCompletion(profileName) {
+  try {
+    const today = new Date().toDateString();
+    
+    // Обновляем запись пользователя
+    await prisma.moneySystem.updateMany({
+      where: { profileName: profileName },
+      data: {
+        lastCompletionDate: today,
+        dailyCompletions: { increment: 1 },
+        totalEarned: { increment: MONEY_SYSTEM.DAILY_REWARD }
+      }
+    });
+    
+    // Отправляем уведомление сразу после завершения
+    await sendCompletionNotification(profileName);
+    
+    console.log(`Money system: ${profileName} completed smart repeat on ${today}`);
+  } catch (error) {
+    console.error('Error recording smart repeat completion:', error);
+  }
+}
+
+// Функция отправки уведомления о завершении умного повторения
+async function sendCompletionNotification(completedBy) {
+  try {
+    let recipientTelegramId;
+    let message;
+    
+    if (completedBy === MONEY_SYSTEM.NURBOLAT_ID) {
+      // Нурболат прошёл - уведомляем Амину
+      recipientTelegramId = MONEY_SYSTEM.AMINA_TELEGRAM_ID;
+      message = `💰 <b>Денежное уведомление</b>\n\n` +
+                `✅ Нурболат только что прошел умное повторение!\n` +
+                `💸 Пришли ему 1000 тенге на Каспи`;
+    } else if (completedBy === MONEY_SYSTEM.AMINA_ID) {
+      // Амина прошла - уведомляем Нурболата  
+      recipientTelegramId = MONEY_SYSTEM.NURBOLAT_TELEGRAM_ID;
+      message = `💰 <b>Денежное уведомление</b>\n\n` +
+                `✅ Амина только что прошла умное повторение!\n` +
+                `💸 Она забирает 1000 тенге себе`;
+    }
+    
+    if (recipientTelegramId && message) {
+      await bot.api.sendMessage(recipientTelegramId, message, { parse_mode: 'HTML' });
+      console.log(`Completion notification sent to ${recipientTelegramId}`);
+    }
+  } catch (error) {
+    console.error('Error sending completion notification:', error);
+  }
+}
+
+// Функция проверки пропущенных умных повторений (запускается в 23:59)
+async function checkMissedSmartRepeats() {
+  try {
+    const today = new Date().toDateString();
+    console.log(`Checking missed smart repeats for ${today}`);
+    
+    // Проверяем каждого участника
+    for (const profileName of [MONEY_SYSTEM.NURBOLAT_ID, MONEY_SYSTEM.AMINA_ID]) {
+      const moneyRecord = await getOrCreateMoneyRecord(profileName);
+      
+      if (!moneyRecord || moneyRecord.lastCompletionDate !== today) {
+        // Этот пользователь не прошёл умное повторение сегодня
+        await recordMissedSmartRepeat(profileName);
+        await sendMissedNotification(profileName);
+      }
+    }
+  } catch (error) {
+    console.error('Error checking missed smart repeats:', error);
+  }
+}
+
+// Функция записи пропущенного умного повторения
+async function recordMissedSmartRepeat(profileName) {
+  try {
+    // Обновляем статистику пропуска
+    await prisma.moneySystem.updateMany({
+      where: { profileName: profileName },
+      data: {
+        dailyMissed: { increment: 1 },
+        totalOwed: { increment: MONEY_SYSTEM.DAILY_REWARD }
+      }
+    });
+    
+    console.log(`Money system: ${profileName} missed smart repeat`);
+  } catch (error) {
+    console.error('Error recording missed smart repeat:', error);
+  }
+}
+
+// Функция отправки уведомления о пропуске умного повторения  
+async function sendMissedNotification(missedBy) {
+  try {
+    let recipientTelegramId;
+    let message;
+    
+    if (missedBy === MONEY_SYSTEM.NURBOLAT_ID) {
+      // Нурболат пропустил - уведомляем Амину
+      recipientTelegramId = MONEY_SYSTEM.AMINA_TELEGRAM_ID;
+      message = `💰 <b>Денежное уведомление</b>\n\n` +
+                `❌ Нурболат ленивец, не прошел умное повторение сегодня!\n` +
+                `💸 Можешь взять себе 1000 тенге с его банка 😏`;
+    } else if (missedBy === MONEY_SYSTEM.AMINA_ID) {
+      // Амина пропустила - уведомляем Нурболата
+      recipientTelegramId = MONEY_SYSTEM.NURBOLAT_TELEGRAM_ID;
+      message = `💰 <b>Денежное уведомление</b>\n\n` +
+                `❌ Вот лентяйка! Амина не прошла умное повторение сегодня!\n` +
+                `💸 Скажи чтобы она отдала 1000 тенге с её банка тебе 😈`;
+    }
+    
+    if (recipientTelegramId && message) {
+      await bot.api.sendMessage(recipientTelegramId, message, { parse_mode: 'HTML' });
+      console.log(`Missed notification sent to ${recipientTelegramId}`);
+    }
+  } catch (error) {
+    console.error('Error sending missed notification:', error);
+  }
+}
+
+// Функция получения статистики денежной системы
+async function getMoneySystemStats() {
+  try {
+    const nurbolatRecord = await getOrCreateMoneyRecord(MONEY_SYSTEM.NURBOLAT_ID);
+    const aminaRecord = await getOrCreateMoneyRecord(MONEY_SYSTEM.AMINA_ID);
+    
+    const totalTransferred = nurbolatRecord.totalEarned + aminaRecord.totalEarned;
+    const remainingBank = MONEY_SYSTEM.TOTAL_BANK - totalTransferred;
+    
+    return {
+      nurbolat: nurbolatRecord,
+      amina: aminaRecord,
+      totalBank: MONEY_SYSTEM.TOTAL_BANK,
+      remainingBank: remainingBank,
+      totalTransferred: totalTransferred
+    };
+  } catch (error) {
+    console.error('Error getting money system stats:', error);
+    return null;
+  }
 }
 
 // Функция проверки и начисления ежедневных бонусов
@@ -2102,6 +2315,71 @@ bot.command('achievements', async (ctx) => {
   }
   
   await ctx.reply(msg, { parse_mode: 'HTML' });
+});
+
+// Команда для просмотра статистики денежной системы
+bot.command('money', async (ctx) => {
+  const userId = ctx.from.id;
+  const session = sessions[userId];
+  if (!session || !session.profile) {
+    return ctx.reply('Сначала выполните /start');
+  }
+  
+  try {
+    const stats = await getMoneySystemStats();
+    if (!stats) {
+      return ctx.reply('❌ Ошибка получения статистики денежной системы');
+    }
+    
+    let msg = `💰 <b>Денежная система мотивации</b>\n\n`;
+    
+    // Общая информация
+    msg += `🏦 <b>Общий банк:</b> ${stats.totalBank.toLocaleString()} тенге\n`;
+    msg += `💸 <b>Переведено:</b> ${stats.totalTransferred.toLocaleString()} тенге\n`;
+    msg += `💼 <b>Остаток:</b> ${stats.remainingBank.toLocaleString()} тенге\n\n`;
+    
+    // Статистика Нурболата
+    msg += `👨‍💼 <b>Нурболат:</b>\n`;
+    msg += `✅ Заработал: ${stats.nurbolat.totalEarned.toLocaleString()} тенге\n`;
+    msg += `❌ Должен: ${stats.nurbolat.totalOwed.toLocaleString()} тенге\n`;
+    msg += `📅 Завершено: ${stats.nurbolat.dailyCompletions} дней\n`;
+    msg += `⏭️ Пропущено: ${stats.nurbolat.dailyMissed} дней\n`;
+    
+    if (stats.nurbolat.lastCompletionDate) {
+      const lastDate = new Date(stats.nurbolat.lastCompletionDate);
+      const today = new Date().toDateString();
+      const isToday = stats.nurbolat.lastCompletionDate === today;
+      msg += `🕐 Последнее: ${isToday ? 'Сегодня' : lastDate.toLocaleDateString('ru-RU')}\n`;
+    }
+    msg += `\n`;
+    
+    // Статистика Амины
+    msg += `👩‍💼 <b>Амина:</b>\n`;
+    msg += `✅ Заработала: ${stats.amina.totalEarned.toLocaleString()} тенге\n`;
+    msg += `❌ Должна: ${stats.amina.totalOwed.toLocaleString()} тенге\n`;
+    msg += `📅 Завершено: ${stats.amina.dailyCompletions} дней\n`;
+    msg += `⏭️ Пропущено: ${stats.amina.dailyMissed} дней\n`;
+    
+    if (stats.amina.lastCompletionDate) {
+      const lastDate = new Date(stats.amina.lastCompletionDate);
+      const today = new Date().toDateString();
+      const isToday = stats.amina.lastCompletionDate === today;
+      msg += `🕐 Последнее: ${isToday ? 'Сегодня' : lastDate.toLocaleDateString('ru-RU')}\n`;
+    }
+    msg += `\n`;
+    
+    // Правила
+    msg += `📋 <b>Правила:</b>\n`;
+    msg += `• Прошёл умное повторение → +${MONEY_SYSTEM.DAILY_REWARD} тенге\n`;
+    msg += `• Не прошёл → ${MONEY_SYSTEM.DAILY_REWARD} тенге другому\n`;
+    msg += `• Проверка в 23:59 каждый день\n`;
+    msg += `• Всего дней: ${MONEY_SYSTEM.TOTAL_DAYS}`;
+    
+    await ctx.reply(msg, { parse_mode: 'HTML' });
+  } catch (error) {
+    console.error('Error in money command:', error);
+    await ctx.reply('❌ Произошла ошибка при получении статистики');
+  }
 });
 
 // Обработка любых текстовых сообщений
@@ -3861,6 +4139,7 @@ bot.api.setMyCommands([
   { command: 'words', description: 'Показать мои слова' },
   { command: 'sections', description: 'Показать разделы' },
   { command: 'achievements', description: 'Личный прогресс и достижения' },
+  { command: 'money', description: '💰 Денежная мотивация и статистика' },
   { command: 'reminder', description: 'Настроить ежедневные напоминания' },
   { command: 'delete', description: 'Удалить слово' },
   { command: 'clear', description: 'Удалить все слова' },
@@ -4225,9 +4504,18 @@ if (!global.cronTasksInitialized) {
   }, {
     timezone: "Asia/Yekaterinburg" // GMT+5
   });
+
+  // Проверка пропущенных умных повторений в 23:59
+  cron.schedule('59 23 * * *', () => {
+    console.log('💰 Checking missed smart repeats...');
+    checkMissedSmartRepeats();
+  }, {
+    timezone: "Asia/Yekaterinburg" // GMT+5
+  });
   
   console.log('🔔 Reminder system initialized!');
   console.log('📦 Daily backup system initialized!');
+  console.log('💰 Money system cron initialized!');
 } else {
   console.log('⚠️ Cron tasks already initialized, skipping...');
 }
@@ -6404,8 +6692,12 @@ async function completeSmartRepeat(ctx, session) {
 }
 
 // Запускаем бота с инициализацией базы данных
-initializeDatabase().then(() => {
+initializeDatabase().then(async () => {
   console.log('🚀 Starting bot...');
+  
+  // Инициализируем денежную систему
+  await initializeMoneySystem();
+  
   bot.start();
 }).catch((error) => {
   console.error('❌ Failed to start bot:', error);
@@ -6427,6 +6719,9 @@ async function finishSmartRepeat(ctx, session) {
   if (session.profile) {
     await saveUserSession(ctx.from.id, session.profile, session);
     console.log(`  - Saved to database for profile: ${session.profile}`);
+    
+    // Записываем завершение умного повторения в денежную систему
+    await recordSmartRepeatCompletion(session.profile);
   }
   
   // Очищаем все состояния умного повторения
