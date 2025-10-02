@@ -478,9 +478,11 @@ async function recordSmartRepeatCompletion(profileName) {
   try {
     const today = new Date().toDateString();
     
+    console.log(`💰 COMPLETION: Recording completion for ${profileName} on ${today}`);
+    
     // Создаём запись если её нет
     await getOrCreateMoneyRecord(profileName);
-    
+
     // Обновляем запись пользователя
     await prisma.$executeRaw`
       UPDATE "money_system" SET 
@@ -491,20 +493,25 @@ async function recordSmartRepeatCompletion(profileName) {
       WHERE "profileName" = ${profileName}
     `;
     
+    console.log(`💰 COMPLETION: Database updated for ${profileName}`);
+    
     // Отправляем уведомление сразу после завершения
+    console.log(`💰 COMPLETION: Sending notification for ${profileName}`);
     await sendCompletionNotification(profileName);
     
-    console.log(`Money system: ${profileName} completed smart repeat on ${today}`);
+    console.log(`💰 COMPLETION: ${profileName} completed smart repeat on ${today}`);
   } catch (error) {
-    console.error('Error recording smart repeat completion:', error);
+    console.error('💰 COMPLETION ERROR: Error recording smart repeat completion:', error);
   }
-}
-
-// Функция отправки уведомления о завершении умного повторения
+}// Функция отправки уведомления о завершении умного повторения
 async function sendCompletionNotification(completedBy) {
   try {
     let recipientTelegramId;
     let message;
+    
+    console.log(`💰 NOTIFICATION: Sending completion notification for ${completedBy}`);
+    console.log(`💰 NOTIFICATION: Nurbolat ID = ${MONEY_SYSTEM.NURBOLAT_TELEGRAM_ID}`);
+    console.log(`💰 NOTIFICATION: Amina ID = ${MONEY_SYSTEM.AMINA_TELEGRAM_ID}`);
     
     if (completedBy === MONEY_SYSTEM.NURBOLAT_ID) {
       // Нурболат прошёл - уведомляем Амину
@@ -521,11 +528,14 @@ async function sendCompletionNotification(completedBy) {
     }
     
     if (recipientTelegramId && message) {
+      console.log(`💰 NOTIFICATION: Sending to ${recipientTelegramId}: ${message.substring(0, 50)}...`);
       await bot.api.sendMessage(recipientTelegramId, message, { parse_mode: 'HTML' });
-      console.log(`Completion notification sent to ${recipientTelegramId}`);
+      console.log(`💰 NOTIFICATION: Successfully sent completion notification to ${recipientTelegramId}`);
+    } else {
+      console.log(`💰 NOTIFICATION: Missing data - recipientId=${recipientTelegramId}, hasMessage=${!!message}`);
     }
   } catch (error) {
-    console.error('Error sending completion notification:', error);
+    console.error('💰 NOTIFICATION ERROR: Failed to send completion notification:', error);
   }
 }
 
@@ -533,16 +543,32 @@ async function sendCompletionNotification(completedBy) {
 async function checkMissedSmartRepeats() {
   try {
     const today = new Date().toDateString();
-    console.log(`Checking missed smart repeats for ${today}`);
+    console.log(`💰 MONEY SYSTEM: Checking missed smart repeats for ${today}`);
     
-    // Проверяем каждого участника
+    // Проверяем каждого участника используя данные из user_profiles
     for (const profileName of [MONEY_SYSTEM.NURBOLAT_ID, MONEY_SYSTEM.AMINA_ID]) {
-      const moneyRecord = await getOrCreateMoneyRecord(profileName);
+      console.log(`💰 Checking ${profileName}...`);
       
-      if (!moneyRecord || moneyRecord.lastCompletionDate !== today) {
+      // Получаем данные из основной таблицы user_profiles
+      const userProfile = await prisma.userProfile.findFirst({
+        where: { profileName: profileName }
+      });
+      
+      if (!userProfile) {
+        console.log(`💰 ${profileName}: No user profile found`);
+        continue;
+      }
+      
+      const didSmartRepeatToday = userProfile.lastSmartRepeatDate === today;
+      console.log(`💰 ${profileName}: lastSmartRepeatDate="${userProfile.lastSmartRepeatDate}", today="${today}", completed=${didSmartRepeatToday}`);
+      
+      if (!didSmartRepeatToday) {
         // Этот пользователь не прошёл умное повторение сегодня
+        console.log(`💰 ${profileName}: Recording as missed`);
         await recordMissedSmartRepeat(profileName);
         await sendMissedNotification(profileName);
+      } else {
+        console.log(`💰 ${profileName}: Already completed today, skipping`);
       }
     }
   } catch (error) {
