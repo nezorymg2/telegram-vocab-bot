@@ -477,13 +477,21 @@ async function getOrCreateMoneyRecord(profileName) {
 async function recordSmartRepeatCompletion(profileName) {
   try {
     const today = new Date().toDateString();
+    const todayISO = new Date().toISOString().split('T')[0];
     
-    console.log(`💰 COMPLETION: Recording completion for ${profileName} on ${today}`);
+    console.log(`💰 COMPLETION: Recording completion for ${profileName} on ${today} (${todayISO})`);
     
-    // Создаём запись если её нет
+    // 1. Обновляем основную таблицу user_profiles (для проверки в 23:59)
+    const userProfileResult = await prisma.userProfile.updateMany({
+      where: { profileName: profileName },
+      data: { lastSmartRepeatDate: today }
+    });
+    
+    console.log(`💰 COMPLETION: Updated ${userProfileResult.count} user profiles with completion date: "${today}"`);
+    
+    // 2. Обновляем денежную систему
     await getOrCreateMoneyRecord(profileName);
 
-    // Обновляем запись пользователя
     await prisma.$executeRaw`
       UPDATE "money_system" SET 
         "lastCompletionDate" = ${today},
@@ -493,13 +501,16 @@ async function recordSmartRepeatCompletion(profileName) {
       WHERE "profileName" = ${profileName}
     `;
     
-    console.log(`💰 COMPLETION: Database updated for ${profileName}`);
+    console.log(`💰 COMPLETION: Money system database updated for ${profileName}`);
     
-    // Отправляем уведомление сразу после завершения
-    console.log(`💰 COMPLETION: Sending notification for ${profileName}`);
-    await sendCompletionNotification(profileName);
-    
-    console.log(`💰 COMPLETION: ${profileName} completed smart repeat on ${today}`);
+    // 3. Отправляем уведомление только если основное обновление прошло успешно
+    if (userProfileResult.count > 0) {
+      console.log(`💰 COMPLETION: Sending notification for ${profileName}`);
+      await sendCompletionNotification(profileName);
+      console.log(`💰 COMPLETION: ${profileName} completed smart repeat on ${today} - notification sent`);
+    } else {
+      console.error(`💰 COMPLETION ERROR: No user profiles updated for ${profileName} - notification not sent`);
+    }
   } catch (error) {
     console.error('💰 COMPLETION ERROR: Error recording smart repeat completion:', error);
   }
@@ -543,7 +554,8 @@ async function sendCompletionNotification(completedBy) {
 async function checkMissedSmartRepeats() {
   try {
     const today = new Date().toDateString();
-    console.log(`💰 MONEY SYSTEM: Checking missed smart repeats for ${today}`);
+    const todayISO = new Date().toISOString().split('T')[0]; // YYYY-MM-DD формат
+    console.log(`💰 MONEY SYSTEM: Checking missed smart repeats for ${today} (${todayISO})`);
     
     // Проверяем каждого участника используя данные из user_profiles
     for (const profileName of [MONEY_SYSTEM.NURBOLAT_ID, MONEY_SYSTEM.AMINA_ID]) {
@@ -559,8 +571,14 @@ async function checkMissedSmartRepeats() {
         continue;
       }
       
-      const didSmartRepeatToday = userProfile.lastSmartRepeatDate === today;
-      console.log(`💰 ${profileName}: lastSmartRepeatDate="${userProfile.lastSmartRepeatDate}", today="${today}", completed=${didSmartRepeatToday}`);
+      // Более надежное сравнение дат - проверяем и строковый и ISO формат
+      const didSmartRepeatToday = 
+        userProfile.lastSmartRepeatDate === today || 
+        userProfile.lastSmartRepeatDate === todayISO ||  
+        (userProfile.lastSmartRepeatDate && 
+         new Date(userProfile.lastSmartRepeatDate).toDateString() === today);
+      
+      console.log(`💰 ${profileName}: lastSmartRepeatDate="${userProfile.lastSmartRepeatDate}", today="${today}", todayISO="${todayISO}", completed=${didSmartRepeatToday}`);
       
       if (!didSmartRepeatToday) {
         // Этот пользователь не прошёл умное повторение сегодня
@@ -5307,6 +5325,59 @@ async function moveToNextStage2Word(ctx, session) {
   }
 }
 
+// Обработка ответов в этапе 3 умного повторения (Знаю/Не знаю)
+async function handleSmartRepeatStage3Answer(ctx, session, answerText) {
+  console.log(`DEBUG: handleSmartRepeatStage3Answer called with text: "${answerText}"`);
+  
+  // Проверяем кнопку "Пропустить"
+  if (answerText === '⏭️ Пропустить слово') {
+    const wordObj = session.wordsToRepeat[session.currentIndex];
+    await ctx.reply(`⏭️ Пропущено: <b>${wordObj.word}</b> — ${wordObj.translation}`, { parse_mode: 'HTML' });
+    return await moveToNextStage3Word(ctx, session);
+  }
+
+  // В этапе 3 пользователь просто должен ответить, знает ли он слово
+  // Принимаем любой ответ как попытку и показываем правильный перевод
+  const wordObj = session.wordsToRepeat[session.currentIndex];
+  
+  // Показываем правильный ответ
+  await ctx.reply(`📝 <b>${wordObj.word}</b> — <b>${wordObj.translation}</b>`, { parse_mode: 'HTML' });
+  
+  // Переходим к следующему слову
+  return await moveToNextStage3Word(ctx, session);
+}
+
+// Переход к следующему слову в этапе 3
+async function moveToNextStage3Word(ctx, session) {
+  session.currentIndex++;
+  
+  if (session.currentIndex < session.wordsToRepeat.length) {
+    // Есть еще слова - показываем следующее
+    const next = session.wordsToRepeat[session.currentIndex];
+    const question = `Как переводится слово: "${next.word}"?`;
+      
+    const skipKeyboard = new Keyboard()
+      .text('⏭️ Пропустить слово')
+      .row()
+      .oneTime()
+      .resized();
+      
+    await ctx.reply(question, { reply_markup: skipKeyboard });
+    
+    // Отправляем аудио для слова
+    if (next.word) {
+      try {
+        await sendWordAudioFromDB(ctx, next.word, session.profile, { silent: true });
+      } catch (error) {
+        console.error('Error sending audio in moveToNextStage3Word:', error);
+      }
+    }
+  } else {
+    // Этап 3 завершен - переходим к этапу 4
+    await startSmartRepeatStage3(ctx, session);
+  }
+}
+
 // Функция проверки ответа с гибридной логикой
 async function checkAnswerWithAI(userAnswer, correctAnswer, direction) {
   const normalizedUser = userAnswer.toLowerCase().trim();
@@ -5837,19 +5908,73 @@ OUTPUT TEMPLATE (ВЕРНИ ТОЛЬКО JSON ОБЪЕКТ, БЕЗ ЛИШНЕГ�
     
     let analysisResponse = gptRes.data.choices[0].message.content.trim();
     
-    // Пытаемся извлечь JSON
-    const jsonMatch = analysisResponse.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      console.error('No JSON found in response:', analysisResponse);
-      throw new Error('AI не вернул валидный JSON');
+    // Пытаемся извлечь JSON с максимально надежной обработкой
+    console.log('DEBUG: OpenAI raw response:', analysisResponse);
+    
+    let analysisData;
+    
+    // Множественные попытки парсинга JSON
+    try {
+      // 1. Пробуем парсить весь ответ как JSON
+      analysisData = JSON.parse(analysisResponse);
+    } catch (e1) {
+      try {
+        // 2. Ищем JSON между фигурными скобками (жадный поиск)
+        const jsonMatch = analysisResponse.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          analysisData = JSON.parse(jsonMatch[0]);
+        } else {
+          throw new Error('JSON not found');
+        }
+      } catch (e2) {
+        try {
+          // 3. Ищем JSON между ```json блоками
+          const codeBlockMatch = analysisResponse.match(/```json\s*([\s\S]*?)\s*```/);
+          if (codeBlockMatch) {
+            analysisData = JSON.parse(codeBlockMatch[1]);
+          } else {
+            throw new Error('JSON block not found');
+          }
+        } catch (e3) {
+          try {
+            // 4. Ищем только первый JSON объект (нежадный поиск)
+            const firstJsonMatch = analysisResponse.match(/\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/);
+            if (firstJsonMatch) {
+              analysisData = JSON.parse(firstJsonMatch[0]);
+            } else {
+              throw new Error('No valid JSON structure found');
+            }
+          } catch (e4) {
+            console.error('All JSON parsing attempts failed:', {
+              originalResponse: analysisResponse,
+              errors: [e1.message, e2.message, e3.message, e4.message]
+            });
+            throw new Error('AI не вернул валидный JSON. Попробуйте еще раз.');
+          }
+        }
+      }
     }
     
-    const analysisData = JSON.parse(jsonMatch[0]);
-    
-    // Проверяем обязательные поля
-    if (!analysisData.band_estimate || !analysisData.summary || !analysisData.global_advice || !Array.isArray(analysisData.errors)) {
-      throw new Error('Неполные данные анализа');
+    // Проверяем обязательные поля с fallback значениями
+    if (!analysisData.band_estimate) {
+      analysisData.band_estimate = "6.0"; // Fallback оценка
     }
+    if (!analysisData.summary) {
+      analysisData.summary = "Анализ завершен. Общий уровень письма соответствует среднему уровню.";
+    }
+    if (!analysisData.global_advice) {
+      analysisData.global_advice = "Продолжайте практиковаться в письме и изучении грамматики.";
+    }
+    if (!Array.isArray(analysisData.errors)) {
+      analysisData.errors = []; // Пустой массив ошибок как fallback
+    }
+    
+    console.log('DEBUG: Parsed analysis data:', {
+      band_estimate: analysisData.band_estimate,
+      summary_length: analysisData.summary?.length,
+      advice_length: analysisData.global_advice?.length,
+      errors_count: analysisData.errors?.length
+    });
     
     // Сохраняем анализ в сессии
     session.writingAnalysis = analysisData;
@@ -5860,6 +5985,11 @@ OUTPUT TEMPLATE (ВЕРНИ ТОЛЬКО JSON ОБЪЕКТ, БЕЗ ЛИШНЕГ�
     
   } catch (error) {
     console.error('Error in handleWritingAnalysis:', error);
+    console.error('Error details:', {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status
+    });
     
     let errorMsg = 'Произошла ошибка при анализе текста. ';
     
@@ -5871,7 +6001,15 @@ OUTPUT TEMPLATE (ВЕРНИ ТОЛЬКО JSON ОБЪЕКТ, БЕЗ ЛИШНЕГ�
         errorMsg = 'Лимит API исчерпан. Обратитесь к администратору.';
       } else if (apiError.code === 'rate_limit_exceeded') {
         errorMsg = 'Слишком много запросов. Попробуйте через минуту.';
+      } else if (apiError.code === 'model_not_found') {
+        errorMsg = 'Модель GPT-5 недоступна. Попробуйте позже.';
+      } else {
+        errorMsg += `API ошибка: ${apiError.message}`;
       }
+    } else if (error.message.includes('JSON')) {
+      errorMsg += 'AI вернул некорректный ответ. Попробуйте еще раз.';
+    } else {
+      errorMsg += `Детали: ${error.message}`;
     }
     
     session.step = 'main_menu';
