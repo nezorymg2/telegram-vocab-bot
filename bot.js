@@ -5643,36 +5643,35 @@ async function checkAnswerWithAI(userAnswer, correctAnswer, direction) {
   if (distance >= 2) {
     console.log('DEBUG: 2+ errors - sending to GPT');
     try {
-      const prompt = `Ты проверяешь правильность перевода английского слова на русский. Будь максимально снисходительным и принимай ответы, если они хотя бы близки по смыслу.
+      const prompt = `Проверь перевод с английского на русский. Принимай синонимы и связанные слова.
 
 Правильный перевод: "${correctAnswer}"
 Ответ пользователя: "${userAnswer}"
 
-ПРАВИЛА - ПРИНИМАЙ:
-✅ Синонимы и близкие по смыслу слова
-✅ Разные части речи (существительное/глагол/прилагательное) если смысл тот же
-✅ Разные формы слов (падежи, времена, число)
-✅ Сокращенные или расширенные формы
+ПРИНИМАЙ:
+✅ Синонимы и близкие по смыслу слова  
+✅ Разные части речи если смысл тот же ("жертва"="жертвовать")
+✅ Разные формы слов (падежи, времена)
 
 ПРИМЕРЫ:
-- "вдох" для "вдыхать" = true (связанные понятия)
-- "разнообразный" для "варьироваться" = true (связанные понятия)
-- "поход" для "hike" = true (точный перевод)
-- "прогулка" для "hike" = true (близко по смыслу)
-- "включать" для "содержать" = true (синонимы)
-- "проводить" для "выполнять" = true (близкие по смыслу)
+- "жертвовать" для "жертва" = true
+- "вдох" для "вдыхать" = true  
+- "разнообразный" для "варьироваться" = true
+- "содержать" для "соединение" = false (разный смысл)
 
-НЕ ПРИНИМАЙ только если:
-❌ Совершенно другое значение (например "собака" для "кот")
-❌ Английские слова вместо русского перевода
+НЕ ПРИНИМАЙ:
+❌ Совершенно другие значения
+❌ Английские слова вместо перевода
 
-Ответь только "true" или "false".`;
+ВАЖНО: Отвечай ТОЛЬКО словом "true" или "false". Никакого дополнительного текста!
+
+Ответ:`;
 
       const response = await axios.post('https://api.openai.com/v1/chat/completions', {
         model: 'gpt-3.5-turbo',
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.1,
-        max_tokens: 10
+        max_tokens: 50
       }, {
         headers: {
           'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
@@ -5681,7 +5680,8 @@ async function checkAnswerWithAI(userAnswer, correctAnswer, direction) {
       });
       
       const result = response.data.choices[0].message.content.trim().toLowerCase();
-      const isCorrect = result === 'true';
+      // Ищем "true" или "false" в ответе, даже если есть дополнительный текст
+      const isCorrect = result.includes('true') && !result.includes('false');
       console.log(`DEBUG: GPT result: ${result} -> ${isCorrect}`);
       return isCorrect;
       
