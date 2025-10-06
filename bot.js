@@ -6258,13 +6258,13 @@ OUTPUT TEMPLATE (ВЕРНИ ТОЛЬКО JSON ОБЪЕКТ, БЕЗ ЛИШНЕГ�
 `;
 
     const gptRes = await axios.post('https://api.openai.com/v1/chat/completions', {
-      model: 'gpt-5',
+      model: 'gpt-4o',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: `LANG=ru\nTEXT=\n${userText}` }
       ],
-      temperature: 1, // GPT-5 supports only temperature=1
-      max_completion_tokens: 6000
+      temperature: 0.7,
+      max_tokens: 4000
     }, {
       headers: {
         'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
@@ -6349,6 +6349,9 @@ OUTPUT TEMPLATE (ВЕРНИ ТОЛЬКО JSON ОБЪЕКТ, БЕЗ ЛИШНЕГ�
     // Показываем результат анализа
     await showWritingAnalysisResult(ctx, session);
     
+    // Генерируем улучшенную версию текста
+    await generateImprovedVersion(ctx, session, userText);
+    
   } catch (error) {
     console.error('Error in handleWritingAnalysis:', error);
     console.error('Error details:', {
@@ -6381,6 +6384,173 @@ OUTPUT TEMPLATE (ВЕРНИ ТОЛЬКО JSON ОБЪЕКТ, БЕЗ ЛИШНЕГ�
     session.step = 'main_menu';
     await ctx.reply(`❌ ${errorMsg}`, { reply_markup: mainMenu });
   }
+}
+
+// Функция генерации улучшенной версии текста
+async function generateImprovedVersion(ctx, session, originalText) {
+  try {
+    console.log('=== GENERATING IMPROVED VERSION ===');
+    
+    await ctx.reply('✨ Генерирую улучшенную версию вашего текста...');
+    
+    const improvementPrompt = `
+YOU ARE: IELTS Writing Expert & Text Improver
+
+TASK: Улучшить текст студента до уровня IELTS Writing 7.0, учитывая все 4 критерия оценки.
+
+КРИТЕРИИ IELTS WRITING 7.0:
+1. Task Response (Ответ на задание):
+   - Полное раскрытие темы
+   - Четкая позиция автора
+   - Развернутые и релевантные идеи
+   - Логичное заключение
+
+2. Coherence & Cohesion (Связность):
+   - Логичная структура
+   - Эффективные связующие слова
+   - Четкие параграфы
+   - Плавные переходы между идеями
+
+3. Lexical Resource (Лексика):
+   - Широкий словарный запас
+   - Точное использование слов
+   - Идиоматические выражения
+   - Минимальные лексические ошибки
+
+4. Grammar (Грамматика):
+   - Разнообразные грамматические структуры
+   - Сложные предложения
+   - Высокая точность
+   - Редкие ошибки
+
+ИНСТРУКЦИИ:
+1. Сохрани основную идею и смысл оригинального текста
+2. Улучши структуру и логику изложения
+3. Обогати лексику более продвинутыми словами и фразами
+4. Используй разнообразные грамматические конструкции
+5. Добавь связующие слова для лучшей связности
+6. Исправь все грамматические и лексические ошибки
+
+ФОРМАТ ОТВЕТА (JSON):
+{
+  "improved_text": "Улучшенный текст на уровне IELTS 7.0",
+  "improvements": [
+    {
+      "category": "Task Response|Coherence & Cohesion|Lexical Resource|Grammar",
+      "description": "Что было улучшено",
+      "example": "Пример улучшения"
+    }
+  ],
+  "key_changes": "Краткое объяснение основных изменений",
+  "writing_tips": [
+    "Конкретный совет для развития навыков письма",
+    "Еще один полезный совет"
+  ]
+}
+
+ВАЖНО: Возвращай ТОЛЬКО JSON объект без дополнительного текста!
+`;
+
+    const gptRes = await axios.post('https://api.openai.com/v1/chat/completions', {
+      model: 'gpt-4o',
+      messages: [
+        { role: 'system', content: improvementPrompt },
+        { role: 'user', content: `Исходный текст для улучшения:\n\n${originalText}` }
+      ],
+      temperature: 0.7,
+      max_tokens: 3000
+    }, {
+      headers: {
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    let improvementResponse = gptRes.data.choices[0].message.content.trim();
+    console.log('DEBUG: Improvement raw response:', improvementResponse);
+    
+    let improvementData;
+    
+    // Парсим JSON ответ
+    try {
+      improvementData = JSON.parse(improvementResponse);
+    } catch (e1) {
+      try {
+        const jsonMatch = improvementResponse.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          improvementData = JSON.parse(jsonMatch[0]);
+        } else {
+          throw new Error('JSON not found');
+        }
+      } catch (e2) {
+        console.error('Failed to parse improvement response:', improvementResponse);
+        // Fallback - показываем только оригинальный анализ
+        return;
+      }
+    }
+    
+    // Проверяем обязательные поля
+    if (!improvementData.improved_text) {
+      console.error('No improved_text in response');
+      return;
+    }
+    
+    // Сохраняем улучшенную версию в сессии
+    session.improvedText = improvementData;
+    
+    // Показываем улучшенную версию
+    await showImprovedVersion(ctx, session);
+    
+  } catch (error) {
+    console.error('Error generating improved version:', error);
+    // Не прерываем весь процесс, просто пропускаем улучшенную версию
+  }
+}
+
+// Функция отображения улучшенной версии
+async function showImprovedVersion(ctx, session) {
+  const improved = session.improvedText;
+  
+  if (!improved || !improved.improved_text) {
+    return;
+  }
+  
+  let message = `✨ <b>Улучшенная версия (IELTS 7.0 уровень):</b>\n\n`;
+  message += `<i>${improved.improved_text}</i>\n\n`;
+  
+  if (improved.key_changes) {
+    message += `🔄 <b>Основные изменения:</b>\n${improved.key_changes}\n\n`;
+  }
+  
+  if (improved.improvements && improved.improvements.length > 0) {
+    message += `📈 <b>Что было улучшено:</b>\n`;
+    improved.improvements.forEach((improvement, index) => {
+      message += `\n${index + 1}. <b>${improvement.category}</b>`;
+      message += `\n   ${improvement.description}`;
+      if (improvement.example) {
+        message += `\n   <i>Пример: ${improvement.example}</i>`;
+      }
+    });
+    message += `\n`;
+  }
+  
+  if (improved.writing_tips && improved.writing_tips.length > 0) {
+    message += `\n💡 <b>Советы для развития:</b>\n`;
+    improved.writing_tips.forEach((tip, index) => {
+      message += `${index + 1}. ${tip}\n`;
+    });
+  }
+  
+  await ctx.reply(message, { 
+    parse_mode: 'HTML',
+    reply_markup: new Keyboard()
+      .text('📝 Выполнить упражнения')
+      .row()
+      .text('➡️ Продолжить к следующему этапу')
+      .row()
+      .oneTime()
+      .resized()
+  });
 }
 
 // Функция отображения результатов анализа письма
