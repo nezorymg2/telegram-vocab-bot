@@ -9,9 +9,9 @@ async function testImprovedVersion() {
     const testText = `I think climate change is very bad problem. It make many problems for people and animals. We should do something about it because it is important. The temperature is getting higher and this cause problems. People need to use less energy and drive less cars.`;
     
     const improvementPrompt = `
-YOU ARE: IELTS Writing Expert & Text Improver
+ТЫ: Эксперт IELTS Writing и улучшатель текстов
 
-TASK: Улучшить текст студента до уровня IELTS Writing 7.0, учитывая все 4 критерия оценки.
+ЗАДАЧА: Улучшить текст студента до уровня IELTS Writing 7.0, учитывая все 4 критерия оценки.
 
 КРИТЕРИИ IELTS WRITING 7.0:
 1. Task Response (Ответ на задание):
@@ -48,29 +48,51 @@ TASK: Улучшить текст студента до уровня IELTS Writi
 
 ФОРМАТ ОТВЕТА (JSON):
 {
-  "improved_text": "Улучшенный текст на уровне IELTS 7.0",
+  "improved_text": "Улучшенный текст на уровне IELTS 7.0 (на английском языке)",
   "improvements": [
     {
       "category": "Task Response|Coherence & Cohesion|Lexical Resource|Grammar",
-      "description": "Что было улучшено",
-      "example": "Пример улучшения"
+      "description": "Что было улучшено (НА РУССКОМ ЯЗЫКЕ)",
+      "example": "Пример улучшения (НА РУССКОМ ЯЗЫКЕ)"
     }
   ],
-  "key_changes": "Краткое объяснение основных изменений",
+  "key_changes": "Краткое объяснение основных изменений (НА РУССКОМ ЯЗЫКЕ)",
   "writing_tips": [
-    "Конкретный совет для развития навыков письма",
-    "Еще один полезный совет"
+    "Конкретный совет для развития навыков письма (НА РУССКОМ ЯЗЫКЕ)",
+    "Еще один полезный совет (НА РУССКОМ ЯЗЫКЕ)"
   ]
 }
 
-ВАЖНО: Возвращай ТОЛЬКО JSON объект без дополнительного текста!
+ЯЗЫКОВЫЕ ТРЕБОВАНИЯ:
+- Улучшенный текст: ТОЛЬКО НА АНГЛИЙСКОМ
+- Все объяснения, описания, примеры, советы: ТОЛЬКО НА РУССКОМ ЯЗЫКЕ
+- НИ ОДНОГО АНГЛИЙСКОГО СЛОВА в объяснениях!
+
+ПРИМЕР правильного ответа:
+{
+  "improved_text": "Climate change represents a critical global challenge...",
+  "key_changes": "Текст был переработан для улучшения связности и обогащен продвинутой лексикой",
+  "improvements": [
+    {
+      "category": "Grammar",
+      "description": "Добавлены сложные грамматические конструкции и исправлены все ошибки",
+      "example": "Вместо простых предложений использованы придаточные предложения"
+    }
+  ],
+  "writing_tips": [
+    "Используйте разнообразные связующие слова для улучшения связности текста",
+    "Применяйте синонимы чтобы избежать повторений"
+  ]
+}
+
+СТРОГО: Возвращай ТОЛЬКО JSON без лишнего текста!
 `;
 
     const response = await axios.post('https://api.openai.com/v1/chat/completions', {
       model: 'gpt-3.5-turbo',
       messages: [
         { role: 'system', content: improvementPrompt },
-        { role: 'user', content: `Исходный текст для улучшения:\n\n${testText}` }
+        { role: 'user', content: `Исходный текст для улучшения:\n\n${testText}\n\nОТВЕЧАЙ НА РУССКОМ ЯЗЫКЕ ВО ВСЕХ ОБЪЯСНЕНИЯХ! Только сам улучшенный текст должен быть на английском.` }
       ],
       temperature: 0.7,
       max_tokens: 2000
