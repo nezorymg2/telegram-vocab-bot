@@ -75,8 +75,9 @@ if (prisma.word) {
 
 const sessions = {};
 
-// Максимальное время неактивности сессии (30 минут)
-const SESSION_TIMEOUT = 30 * 60 * 1000;
+// Максимальное время неактивности сессии (3 часа для обычных, 6 часов для критических состояний)
+const SESSION_TIMEOUT = 3 * 60 * 60 * 1000; // 3 часа
+const CRITICAL_SESSION_TIMEOUT = 6 * 60 * 60 * 1000; // 6 часов
 
 // Функция очистки неактивных сессий для экономии памяти
 function cleanupInactiveSessions() {
@@ -86,9 +87,29 @@ function cleanupInactiveSessions() {
   for (const [userId, session] of Object.entries(sessions)) {
     const lastActivity = session.lastActivity || now;
     
-    // Если сессия неактивна более 30 минут, очищаем её
-    if (now - lastActivity > SESSION_TIMEOUT) {
-      console.log(`🧹 Cleaning inactive session for user ${userId} (inactive for ${Math.round((now - lastActivity) / 60000)} minutes)`);
+    // ВАЖНО: НЕ удаляем сессии в критических состояниях
+    const criticalSteps = [
+      'writing_task',
+      'writing_analysis_result', 
+      'writing_drill',
+      'sentence_task',
+      'story_task',
+      'smart_repeat_quiz',
+      'waiting_answer'
+    ];
+    
+    // Если пользователь в критическом состоянии - увеличиваем таймаут
+    const isCriticalState = criticalSteps.includes(session.step) || 
+                           session.smartRepeatStage !== undefined;
+    
+    const timeoutLimit = isCriticalState ? CRITICAL_SESSION_TIMEOUT : SESSION_TIMEOUT;
+    
+    // Если сессия неактивна более установленного лимита, очищаем её
+    if (now - lastActivity > timeoutLimit) {
+      const inactiveMinutes = Math.round((now - lastActivity) / 60000);
+      const timeoutMinutes = Math.round(timeoutLimit / 60000);
+      
+      console.log(`🧹 Cleaning inactive session for user ${userId} (inactive for ${inactiveMinutes} minutes, timeout: ${timeoutMinutes} minutes)`);
       
       // Очищаем большие объекты из памяти
       if (session.smartRepeatWords) delete session.smartRepeatWords;
@@ -103,6 +124,8 @@ function cleanupInactiveSessions() {
       // Удаляем всю сессию
       delete sessions[userId];
       cleanedCount++;
+    } else if (isCriticalState) {
+      console.log(`⏳ Keeping critical session for user ${userId} (step: ${session.step}, stage: ${session.smartRepeatStage})`);
     }
   }
   
@@ -185,6 +208,60 @@ function cleanupSessionData(session, dataType = 'all') {
     }
   } catch (error) {
     console.error('Error cleaning session data:', error);
+  }
+}
+
+// Функция восстановления сессии из базы данных
+async function restoreSessionFromDB(userId, text) {
+  try {
+    console.log(`🔄 Attempting to restore session for user ${userId}`);
+    
+    // Загружаем профили пользователя из базы
+    const existingProfiles = await prisma.userProfile.findMany({
+      where: { telegramId: userId.toString() }
+    });
+    
+    if (existingProfiles.length === 0) {
+      console.log(`❌ No profiles found for user ${userId}`);
+      return false;
+    }
+    
+    let profile;
+    if (existingProfiles.length === 1) {
+      profile = existingProfiles[0];
+    } else {
+      // Если несколько профилей, пытаемся определить по последней активности
+      profile = existingProfiles.reduce((latest, current) => 
+        new Date(current.updatedAt || current.createdAt) > new Date(latest.updatedAt || latest.createdAt) 
+          ? current : latest
+      );
+    }
+    
+    console.log(`✅ Restoring session for profile: ${profile.profileName}`);
+    
+    // Восстанавливаем сессию
+    sessions[userId] = {
+      profile: profile.profileName,
+      step: 'writing_task',
+      smartRepeatStage: 2,
+      xp: profile.xp,
+      level: profile.level,
+      loginStreak: profile.loginStreak,
+      studyStreak: profile.studyStreak,
+      lastStudyDate: profile.lastStudyDate,
+      lastBonusDate: profile.lastBonusDate,
+      lastSmartRepeatDate: profile.lastSmartRepeatDate,
+      reminderTime: profile.reminderTime,
+      lastActivity: Date.now(),
+      writingTopic: "Восстановленная сессия письменного задания"
+    };
+    
+    console.log(`✅ Session restored for user ${userId}, profile: ${profile.profileName}`);
+    return true;
+    
+  } catch (error) {
+    console.error('❌ Error restoring session from DB:', error);
+    return false;
   }
 }
 
@@ -2740,6 +2817,23 @@ bot.on('message:text', async (ctx) => {
   // Шаг 1: ввод пароля
   if (step === 'awaiting_password') {
     const allowed = ['123', 'Aminur777'];
+    
+    // СПЕЦИАЛЬНАЯ ОБРАБОТКА: если пользователь отправляет длинный текст,
+    // возможно его сессия была сброшена во время письменного задания
+    if (text.length > 100 && !allowed.includes(text)) {
+      console.log(`🔄 User ${userId} sent long text without session - attempting restore`);
+      
+      const restored = await restoreSessionFromDB(userId, text);
+      if (restored) {
+        await ctx.reply('✅ Ваша сессия была восстановлена! Анализирую ваш текст...');
+        // Обрабатываем текст как письменное задание
+        return await handleWritingAnalysis(ctx, sessions[userId], text);
+      } else {
+        await ctx.reply('⚠️ Похоже, ваша сессия истекла во время письменного задания.\n\nВведите пароль для входа, а затем я помогу восстановить прогресс:');
+        return;
+      }
+    }
+    
     if (allowed.includes(text)) {
       session.step = 'awaiting_profile';
       return ctx.reply('Выберите профиль:', {
