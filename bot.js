@@ -1082,7 +1082,16 @@ async function getMoneySystemStats() {
     const nurbolatRecord = await getOrCreateMoneyRecord(MONEY_SYSTEM.NURBOLAT_ID);
     const aminaRecord = await getOrCreateMoneyRecord(MONEY_SYSTEM.AMINA_ID);
     
-    const totalTransferred = nurbolatRecord.totalEarned + aminaRecord.totalEarned;
+    // Получаем сумму в банке накоплений
+    let sharedBankAmount = 0;
+    try {
+      const sharedBank = await getOrCreateSharedBank();
+      sharedBankAmount = sharedBank.totalAmount;
+    } catch (error) {
+      console.error('Error getting shared bank amount:', error);
+    }
+    
+    const totalTransferred = nurbolatRecord.totalEarned + aminaRecord.totalEarned + sharedBankAmount;
     const remainingBank = MONEY_SYSTEM.TOTAL_BANK - totalTransferred;
     
     return {
@@ -1090,7 +1099,8 @@ async function getMoneySystemStats() {
       amina: aminaRecord,
       totalBank: MONEY_SYSTEM.TOTAL_BANK,
       remainingBank: remainingBank,
-      totalTransferred: totalTransferred
+      totalTransferred: totalTransferred,
+      sharedBankAmount: sharedBankAmount
     };
   } catch (error) {
     console.error('Error getting money system stats:', error);
@@ -2913,6 +2923,7 @@ bot.command('money', async (ctx) => {
     msg += `❌ Должен: ${stats.nurbolat.totalOwed.toLocaleString()} тенге\n`;
     msg += `📅 Завершено: ${stats.nurbolat.dailyCompletions} дней\n`;
     msg += `⏭️ Пропущено: ${stats.nurbolat.dailyMissed} дней\n`;
+    msg += `👥 Оба пропустили: ${stats.nurbolat.bothMissedDays || 0} дней\n`;
     
     if (stats.nurbolat.lastCompletionDate) {
       const lastDate = new Date(stats.nurbolat.lastCompletionDate);
@@ -2928,6 +2939,7 @@ bot.command('money', async (ctx) => {
     msg += `❌ Должна: ${stats.amina.totalOwed.toLocaleString()} тенге\n`;
     msg += `📅 Завершено: ${stats.amina.dailyCompletions} дней\n`;
     msg += `⏭️ Пропущено: ${stats.amina.dailyMissed} дней\n`;
+    msg += `👥 Оба пропустили: ${stats.amina.bothMissedDays || 0} дней\n`;
     
     if (stats.amina.lastCompletionDate) {
       const lastDate = new Date(stats.amina.lastCompletionDate);
@@ -2937,10 +2949,22 @@ bot.command('money', async (ctx) => {
     }
     msg += `\n`;
     
+    // Информация о банке накоплений
+    try {
+      const sharedBank = await getOrCreateSharedBank();
+      msg += `🏦 <b>Банк накоплений:</b> ${sharedBank.totalAmount.toLocaleString()} тенге\n`;
+      msg += `💰 <i>Деньги за дни когда оба пропустили (делится в конце месяца)</i>\n\n`;
+    } catch (error) {
+      console.error('Error getting shared bank info:', error);
+      msg += `🏦 <b>Банк накоплений:</b> 0 тенге\n\n`;
+    }
+    
     // Правила
     msg += `📋 <b>Правила:</b>\n`;
     msg += `• Прошёл умное повторение → +${MONEY_SYSTEM.DAILY_REWARD} тенге\n`;
-    msg += `• Не прошёл → ${MONEY_SYSTEM.DAILY_REWARD} тенге другому\n`;
+    msg += `• Один пропустил → ${MONEY_SYSTEM.DAILY_REWARD} тенге другому\n`;
+    msg += `• Оба пропустили → ${MONEY_SYSTEM.DAILY_REWARD * 2} тенге в банк накоплений\n`;
+    msg += `• Банк делится пополам в конце месяца\n`;
     msg += `• Проверка в 23:59 каждый день\n`;
     msg += `• Всего дней: ${MONEY_SYSTEM.TOTAL_DAYS}`;
     
