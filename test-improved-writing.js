@@ -44,7 +44,8 @@ async function testImprovedVersion() {
 3. Обогати лексику более продвинутыми словами и фразами
 4. Используй разнообразные грамматические конструкции
 5. Добавь связующие слова для лучшей связности
-6. Исправь все грамматические и лексические ошибки
+6. Исправи все грамматические и лексические ошибки
+7. Подбери 10 продвинутых слов по теме для развития словарного запаса
 
 ФОРМАТ ОТВЕТА (JSON):
 {
@@ -82,8 +83,23 @@ async function testImprovedVersion() {
   "writing_tips": [
     "Используйте разнообразные связующие слова для улучшения связности текста",
     "Применяйте синонимы чтобы избежать повторений"
+  ],
+  "vocabulary_boost": [
+    {
+      "word": "catastrophic",
+      "translation": "катастрофический",
+      "usage": "The catastrophic effects of climate change are becoming evident.",
+      "level": "C1"
+    }
   ]
 }
+
+ОБЯЗАТЕЛЬНЫЕ ПОЛЯ в JSON:
+- improved_text (улучшенный текст на английском)
+- key_changes (описание изменений на русском)
+- improvements (массив улучшений на русском)
+- writing_tips (массив советов на русском)
+- vocabulary_boost (ОБЯЗАТЕЛЬНО! массив из 10 слов с переводом и примерами)
 
 СТРОГО: Возвращай ТОЛЬКО JSON без лишнего текста!
 `;
@@ -122,6 +138,14 @@ async function testImprovedVersion() {
       parsedResult.writing_tips?.forEach((tip, i) => {
         console.log(`${i+1}. ${tip}`);
       });
+      
+      if (parsedResult.vocabulary_boost?.length > 0) {
+        console.log('\nТоп-10 слов для этой темы:');
+        parsedResult.vocabulary_boost.forEach((vocab, i) => {
+          console.log(`${i+1}. ${vocab.word} - ${vocab.translation}`);
+          if (vocab.usage) console.log(`   Пример: ${vocab.usage}`);
+        });
+      }
     } catch (e) {
       console.log('Ошибка парсинга JSON:', e.message);
     }

@@ -79,6 +79,22 @@ const sessions = {};
 const SESSION_TIMEOUT = 3 * 60 * 60 * 1000; // 3 часа
 const CRITICAL_SESSION_TIMEOUT = 6 * 60 * 60 * 1000; // 6 часов
 
+// Функция для получения локальной даты GMT+5
+function getLocalDateGMT5() {
+  const now = new Date();
+  // Добавляем 5 часов к UTC времени
+  const localTime = new Date(now.getTime() + 5 * 60 * 60 * 1000);
+  return localTime.toDateString();
+}
+
+// Функция для получения локальной даты в ISO формате GMT+5
+function getLocalDateISOGMT5() {
+  const now = new Date();
+  // Добавляем 5 часов к UTC времени
+  const localTime = new Date(now.getTime() + 5 * 60 * 60 * 1000);
+  return localTime.toISOString().split('T')[0];
+}
+
 // Функция очистки неактивных сессий для экономии памяти
 function cleanupInactiveSessions() {
   const now = Date.now();
@@ -520,9 +536,20 @@ async function createMoneySystemTable() {
         "totalOwed" INTEGER DEFAULT 0,
         "dailyCompletions" INTEGER DEFAULT 0,
         "dailyMissed" INTEGER DEFAULT 0,
+        "bothMissedDays" INTEGER DEFAULT 0,
         "lastCompletionDate" VARCHAR(255),
         "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `;
+    
+    // Создаем отдельную таблицу для общего банка
+    await prisma.$executeRaw`
+      CREATE TABLE IF NOT EXISTS "shared_bank" (
+        "id" SERIAL PRIMARY KEY,
+        "totalAmount" INTEGER DEFAULT 0,
+        "lastUpdated" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        "month" VARCHAR(7) NOT NULL DEFAULT (TO_CHAR(CURRENT_DATE, 'YYYY-MM'))
       )
     `;
     console.log('💰 Money system table created/verified');
@@ -549,6 +576,9 @@ async function initializeMoneySystem() {
         console.log(`💰 Amina Telegram ID: ${MONEY_SYSTEM.AMINA_TELEGRAM_ID}`);
       }
     }
+    
+    // Инициализируем исторические данные
+    await initializeHistoricalBankData();
     
     console.log('💰 Money system initialized!');
   } catch (error) {
@@ -684,8 +714,8 @@ async function getOrCreateMoneyRecord(profileName) {
 // Функция записи завершения умного повторения и отправки уведомления
 async function recordSmartRepeatCompletion(profileName) {
   try {
-    const today = new Date().toDateString();
-    const todayISO = new Date().toISOString().split('T')[0];
+    const today = getLocalDateGMT5();
+    const todayISO = getLocalDateISOGMT5();
     
     console.log(`💰 COMPLETION: Recording completion for ${profileName} on ${today} (${todayISO})`);
     
@@ -758,15 +788,194 @@ async function sendCompletionNotification(completedBy) {
   }
 }
 
+// Функция получения или создания записи банка для текущего месяца
+async function getOrCreateSharedBank() {
+  try {
+    const currentMonth = new Date().toISOString().substring(0, 7); // YYYY-MM формат
+    
+    // Проверяем есть ли запись для текущего месяца
+    const existingBank = await prisma.$queryRaw`
+      SELECT * FROM "shared_bank" WHERE "month" = ${currentMonth} LIMIT 1
+    `;
+    
+    if (existingBank.length > 0) {
+      return existingBank[0];
+    }
+    
+    // Создаем новую запись для месяца
+    await prisma.$executeRaw`
+      INSERT INTO "shared_bank" ("totalAmount", "month", "lastUpdated")
+      VALUES (0, ${currentMonth}, CURRENT_TIMESTAMP)
+    `;
+    
+    const newBank = await prisma.$queryRaw`
+      SELECT * FROM "shared_bank" WHERE "month" = ${currentMonth} LIMIT 1
+    `;
+    
+    return newBank[0];
+  } catch (error) {
+    console.error('Error in getOrCreateSharedBank:', error);
+    throw error;
+  }
+}
+
+// Функция добавления денег в банк накоплений
+async function addToSharedBank(amount) {
+  try {
+    const bank = await getOrCreateSharedBank();
+    
+    await prisma.$executeRaw`
+      UPDATE "shared_bank" SET 
+        "totalAmount" = "totalAmount" + ${amount},
+        "lastUpdated" = CURRENT_TIMESTAMP
+      WHERE "id" = ${bank.id}
+    `;
+    
+    // Возвращаем обновленную сумму
+    const updatedBank = await getOrCreateSharedBank();
+    return updatedBank.totalAmount;
+  } catch (error) {
+    console.error('Error in addToSharedBank:', error);
+    throw error;
+  }
+}
+
+// Функция записи дня когда оба пропустили
+async function recordBothMissedDay() {
+  try {
+    const today = getLocalDateGMT5();
+    console.log(`💰 BOTH MISSED: Recording both missed day for ${today}`);
+    
+    // Увеличиваем счетчик для обоих участников
+    await prisma.$executeRaw`
+      UPDATE "money_system" SET 
+        "bothMissedDays" = "bothMissedDays" + 1,
+        "updatedAt" = CURRENT_TIMESTAMP
+      WHERE "profileName" IN (${MONEY_SYSTEM.NURBOLAT_ID}, ${MONEY_SYSTEM.AMINA_ID})
+    `;
+    
+    // Добавляем 2000 тг в банк (по 1000 за каждого)
+    const newBankTotal = await addToSharedBank(2000);
+    
+    // Отправляем уведомление обоим
+    const message = `💰 <b>Денежное уведомление</b>\n\n` +
+                    `😴 Сегодня оба пропустили умное повторение\n` +
+                    `💰 Ваши 2000 тг добавлены в банк накоплений\n` +
+                    `🏦 Итого в банке: ${newBankTotal.toLocaleString()} тг`;
+
+    // Отправляем уведомления
+    if (MONEY_SYSTEM.NURBOLAT_TELEGRAM_ID) {
+      await bot.api.sendMessage(MONEY_SYSTEM.NURBOLAT_TELEGRAM_ID, message, { parse_mode: 'HTML' });
+    }
+    if (MONEY_SYSTEM.AMINA_TELEGRAM_ID) {
+      await bot.api.sendMessage(MONEY_SYSTEM.AMINA_TELEGRAM_ID, message, { parse_mode: 'HTML' });
+    }
+    
+    console.log(`💰 BOTH MISSED: Added 2000 tg to bank, new total: ${newBankTotal}`);
+    return newBankTotal;
+    
+  } catch (error) {
+    console.error('Error in recordBothMissedDay:', error);
+    throw error;
+  }
+}
+
+// Функция инициализации исторических данных (вызывается один раз)
+async function initializeHistoricalBankData() {
+  try {
+    const bank = await getOrCreateSharedBank();
+    
+    // Проверяем не инициализированы ли уже исторические данные
+    if (bank.totalAmount > 0) {
+      console.log(`💰 INIT: Historical data already exists, bank has ${bank.totalAmount} tg`);
+      return;
+    }
+    
+    console.log('💰 INIT: Initializing historical bank data for October 4-5...');
+    
+    // Добавляем 4000 тг за 4,5 октября (по 2000 за каждый день когда оба пропустили)
+    await addToSharedBank(4000);
+    
+    // Обновляем счетчики bothMissedDays для обоих участников (по 2 дня каждый)
+    await prisma.$executeRaw`
+      UPDATE "money_system" SET 
+        "bothMissedDays" = "bothMissedDays" + 2,
+        "updatedAt" = CURRENT_TIMESTAMP
+      WHERE "profileName" IN (${MONEY_SYSTEM.NURBOLAT_ID}, ${MONEY_SYSTEM.AMINA_ID})
+    `;
+    
+    console.log('💰 INIT: Added 4000 tg to bank and updated bothMissedDays counters');
+    
+  } catch (error) {
+    console.error('Error in initializeHistoricalBankData:', error);
+  }
+}
+
+// Функция деления банка накоплений в конце месяца
+async function divideBankAtMonthEnd() {
+  try {
+    const bank = await getOrCreateSharedBank();
+    const totalAmount = bank.totalAmount;
+    
+    if (totalAmount === 0) {
+      console.log('💰 MONTH END: No money in bank to divide');
+      return;
+    }
+    
+    console.log(`💰 MONTH END: Dividing bank of ${totalAmount} tg`);
+    
+    // Делим пополам
+    const amountPerPerson = Math.floor(totalAmount / 2);
+    
+    // Добавляем деньги каждому участнику
+    await prisma.$executeRaw`
+      UPDATE "money_system" SET 
+        "totalEarned" = "totalEarned" + ${amountPerPerson},
+        "updatedAt" = CURRENT_TIMESTAMP
+      WHERE "profileName" IN (${MONEY_SYSTEM.NURBOLAT_ID}, ${MONEY_SYSTEM.AMINA_ID})
+    `;
+    
+    // Обнуляем банк
+    await prisma.$executeRaw`
+      UPDATE "shared_bank" SET 
+        "totalAmount" = 0,
+        "lastUpdated" = CURRENT_TIMESTAMP
+      WHERE "id" = ${bank.id}
+    `;
+    
+    // Отправляем уведомления
+    const message = `💰 <b>Конец месяца!</b>\n\n` +
+                    `🏦 Банк накоплений разделен\n` +
+                    `💸 Каждый получает: ${amountPerPerson.toLocaleString()} тг\n` +
+                    `📊 Общая сумма была: ${totalAmount.toLocaleString()} тг`;
+
+    if (MONEY_SYSTEM.NURBOLAT_TELEGRAM_ID) {
+      await bot.api.sendMessage(MONEY_SYSTEM.NURBOLAT_TELEGRAM_ID, message, { parse_mode: 'HTML' });
+    }
+    if (MONEY_SYSTEM.AMINA_TELEGRAM_ID) {
+      await bot.api.sendMessage(MONEY_SYSTEM.AMINA_TELEGRAM_ID, message, { parse_mode: 'HTML' });
+    }
+    
+    console.log(`💰 MONTH END: Successfully divided ${totalAmount} tg (${amountPerPerson} each)`);
+    
+  } catch (error) {
+    console.error('Error in divideBankAtMonthEnd:', error);
+    throw error;
+  }
+}
+
 // Функция проверки пропущенных умных повторений (запускается в 23:59)
 async function checkMissedSmartRepeats() {
   try {
-    const today = new Date().toDateString();
-    const todayISO = new Date().toISOString().split('T')[0]; // YYYY-MM-DD формат
+    const today = getLocalDateGMT5();
+    const todayISO = getLocalDateISOGMT5(); // YYYY-MM-DD формат
     console.log(`💰 MONEY SYSTEM: Checking missed smart repeats for ${today} (${todayISO})`);
     
-    // Проверяем каждого участника используя данные из user_profiles
-    for (const profileName of [MONEY_SYSTEM.NURBOLAT_ID, MONEY_SYSTEM.AMINA_ID]) {
+    // Сначала проверяем статус обоих участников
+    const participants = [MONEY_SYSTEM.NURBOLAT_ID, MONEY_SYSTEM.AMINA_ID];
+    const completionStatus = {};
+    
+    for (const profileName of participants) {
       console.log(`💰 Checking ${profileName}...`);
       
       // Получаем данные из основной таблицы user_profiles
@@ -776,6 +985,7 @@ async function checkMissedSmartRepeats() {
       
       if (!userProfile) {
         console.log(`💰 ${profileName}: No user profile found`);
+        completionStatus[profileName] = false;
         continue;
       }
       
@@ -788,13 +998,27 @@ async function checkMissedSmartRepeats() {
       
       console.log(`💰 ${profileName}: lastSmartRepeatDate="${userProfile.lastSmartRepeatDate}", today="${today}", todayISO="${todayISO}", completed=${didSmartRepeatToday}`);
       
-      if (!didSmartRepeatToday) {
-        // Этот пользователь не прошёл умное повторение сегодня
-        console.log(`💰 ${profileName}: Recording as missed`);
-        await recordMissedSmartRepeat(profileName);
-        await sendMissedNotification(profileName);
-      } else {
-        console.log(`💰 ${profileName}: Already completed today, skipping`);
+      completionStatus[profileName] = didSmartRepeatToday;
+    }
+    
+    // Проверяем результаты
+    const nurbolatCompleted = completionStatus[MONEY_SYSTEM.NURBOLAT_ID];
+    const aminaCompleted = completionStatus[MONEY_SYSTEM.AMINA_ID];
+    
+    if (!nurbolatCompleted && !aminaCompleted) {
+      // Оба пропустили - добавляем в банк накоплений
+      console.log(`💰 BOTH MISSED: Both participants missed smart repeat`);
+      await recordBothMissedDay();
+    } else {
+      // Обычная логика - кто-то один пропустил
+      for (const profileName of participants) {
+        if (!completionStatus[profileName]) {
+          console.log(`💰 ${profileName}: Recording individual miss`);
+          await recordMissedSmartRepeat(profileName);
+          await sendMissedNotification(profileName);
+        } else {
+          console.log(`💰 ${profileName}: Already completed today, skipping`);
+        }
       }
     }
   } catch (error) {
@@ -876,7 +1100,7 @@ async function getMoneySystemStats() {
 
 // Функция проверки и начисления ежедневных бонусов
 async function checkDailyBonus(session, ctx) {
-  const today = new Date().toDateString();
+  const today = getLocalDateGMT5();
   const lastBonusDate = session.lastBonusDate;
   
   if (lastBonusDate === today) {
@@ -2624,22 +2848,33 @@ bot.command('moneytable', async (ctx) => {
     if (records.length === 0) {
       msg += 'ℹ️ Таблица пуста - данные появятся после первого умного повторения';
     } else {
-      records.forEach((record, index) => {
+      for (let index = 0; index < records.length; index++) {
+        const record = records[index];
         msg += `<b>${index + 1}. ${record.profileName}</b>\n`;
         msg += `✅ Заработал: ${record.totalEarned.toLocaleString()} тг\n`;
         msg += `❌ Должен: ${record.totalOwed.toLocaleString()} тг\n`;
         msg += `📅 Завершил: ${record.dailyCompletions} дней\n`;
         msg += `⏭️ Пропустил: ${record.dailyMissed} дней\n`;
+        msg += `👥 Оба пропустили: ${record.bothMissedDays || 0} дней\n`;
         
         if (record.lastCompletionDate) {
-          const today = new Date().toDateString();
+          const today = getLocalDateGMT5();
           const isToday = record.lastCompletionDate === today;
           msg += `🕗 Последнее: ${isToday ? 'Сегодня' : record.lastCompletionDate}\n`;
         }
         
         const createdDate = new Date(record.createdAt);
         msg += `📄 Создан: ${createdDate.toLocaleDateString('ru-RU')}\n\n`;
-      });
+      }
+      
+      // Добавляем информацию о банке накоплений
+      try {
+        const sharedBank = await getOrCreateSharedBank();
+        msg += `🏦 <b>Банк накоплений:</b> ${sharedBank.totalAmount.toLocaleString()} тг\n`;
+        msg += `📅 Месяц: ${sharedBank.month}\n\n`;
+      } catch (error) {
+        console.error('Error getting shared bank info:', error);
+      }
     }
     
     msg += `ℹ️ <i>Обновляется автоматически после каждого умного повторения</i>`;
@@ -2681,7 +2916,7 @@ bot.command('money', async (ctx) => {
     
     if (stats.nurbolat.lastCompletionDate) {
       const lastDate = new Date(stats.nurbolat.lastCompletionDate);
-      const today = new Date().toDateString();
+      const today = getLocalDateGMT5();
       const isToday = stats.nurbolat.lastCompletionDate === today;
       msg += `🕐 Последнее: ${isToday ? 'Сегодня' : lastDate.toLocaleDateString('ru-RU')}\n`;
     }
@@ -2696,7 +2931,7 @@ bot.command('money', async (ctx) => {
     
     if (stats.amina.lastCompletionDate) {
       const lastDate = new Date(stats.amina.lastCompletionDate);
-      const today = new Date().toDateString();
+      const today = getLocalDateGMT5();
       const isToday = stats.amina.lastCompletionDate === today;
       msg += `🕐 Последнее: ${isToday ? 'Сегодня' : lastDate.toLocaleDateString('ru-RU')}\n`;
     }
@@ -3075,7 +3310,7 @@ bot.on('message:text', async (ctx) => {
       let studyStreak = session.studyStreak || 0;
       if (!session.slothOfTheDay) {
         if (uniqueDays.length > 0) {
-          const today = new Date().toDateString();
+          const today = getLocalDateGMT5();
           const isStudiedToday = uniqueDays.includes(today);
           if (isStudiedToday) {
             studyStreak = 1;
@@ -3761,7 +3996,7 @@ bot.on('message:text', async (ctx) => {
         } else {
           // Обычное умное повторение (не многоэтапное) или этап 3 завершен
           // Отмечаем что умное повторение пройдено сегодня
-          const todayString = new Date().toDateString();
+          const todayString = getLocalDateGMT5();
           session.lastSmartRepeatDate = todayString;
           
           console.log(`DEBUG SMART REPEAT: User ${ctx.from.id} completed smart repeat`);
@@ -4791,7 +5026,7 @@ function getRandomReminder(remindersArray) {
 // Функция для отправки напоминаний всем пользователям
 async function sendRemindersToUsers(reminderType) {
   const now = new Date();
-  const today = now.toDateString();
+  const today = getLocalDateGMT5();
   
   // Защита от множественного запуска одного типа напоминаний в течение часа
   const lockKey = `reminder_${reminderType}_${today}_${now.getHours()}`;
@@ -4898,10 +5133,19 @@ if (!global.cronTasksInitialized) {
   }, {
     timezone: "Asia/Yekaterinburg" // GMT+5
   });
+
+  // Деление банка накоплений 1 числа каждого месяца в 00:01
+  cron.schedule('1 0 1 * *', () => {
+    console.log('🏦 Dividing shared bank at month end...');
+    divideBankAtMonthEnd();
+  }, {
+    timezone: "Asia/Yekaterinburg" // GMT+5
+  });
   
   console.log('🔔 Reminder system initialized!');
   console.log('📦 Daily backup system initialized!');
   console.log('💰 Money system cron initialized!');
+  console.log('🏦 Bank division system initialized!');
 } else {
   console.log('⚠️ Cron tasks already initialized, skipping...');
 }
@@ -5434,25 +5678,21 @@ async function handleSmartRepeatQuizAnswer(ctx, session, answerText) {
   }
 }
 
-// Функция запуска этапа 2 умного повторения (Знаю/Не знаю)
+// Функция запуска этапа 3 умного повторения (Знаю/Не знаю)
 async function startSmartRepeatStage2(ctx, session) {
   // Используем слова из умного повторения
-  const wordsToRepeat = session.smartRepeatWords || [];
+  let wordsToRepeat = session.smartRepeatWords || [];
+  
+  // Если слов нет, но есть слова из викторины - используем их
+  if (wordsToRepeat.length === 0 && session.currentQuizSession && session.currentQuizSession.words) {
+    wordsToRepeat = session.currentQuizSession.words;
+    session.smartRepeatWords = wordsToRepeat; // Сохраняем для следующих этапов
+  }
   
   if (wordsToRepeat.length === 0) {
-    // Отмечаем что умное повторение пройдено сегодня
-    const todayString = new Date().toDateString();
-    session.lastSmartRepeatDate = todayString;
-    
-    // Сохраняем изменения в базу данных
-    if (session.profile) {
-      await saveUserSession(ctx.from.id, session.profile, session);
-    }
-    
-    session.step = 'word_tasks_menu';
-    return ctx.reply('🧠 Умное повторение завершено!', {
-      reply_markup: wordTasksMenu,
-    });
+    // Если нет слов для этапа 3, завершаем умное повторение через финальную функцию
+    console.log('No words for stage 3, completing smart repeat...');
+    return await completeSmartRepeat(ctx, session);
   }
   
   // Во втором этапе ВСЕГДА показываем английские слова для перевода на русский
@@ -6429,29 +6669,67 @@ async function generateImprovedVersion(ctx, session, originalText) {
 3. Обогати лексику более продвинутыми словами и фразами
 4. Используй разнообразные грамматические конструкции
 5. Добавь связующие слова для лучшей связности
-6. Исправь все грамматические и лексические ошибки
+6. Исправи все грамматические и лексические ошибки
+7. Подбери 10 продвинутых слов по теме для развития словарного запаса
 
-ЯЗЫКОВЫЕ ТРЕБОВАНИЯ:
-- Улучшенный текст: ТОЛЬКО НА АНГЛИЙСКОМ
-- Все объяснения, описания, примеры, советы: ТОЛЬКО НА РУССКОМ ЯЗЫКЕ
-- НИ ОДНОГО АНГЛИЙСКОГО СЛОВА в объяснениях!
+ЯЗЫКОВЫЕ ТРЕБОВАНИЯ - КРИТИЧЕСКИ ВАЖНО:
+- improved_text: ТОЛЬКО НА АНГЛИЙСКОМ ЯЗЫКЕ
+- key_changes: ТОЛЬКО НА РУССКОМ ЯЗЫКЕ  
+- improvements[].description: ТОЛЬКО НА РУССКОМ ЯЗЫКЕ
+- improvements[].example: ТОЛЬКО НА РУССКОМ ЯЗЫКЕ
+- writing_tips: ТОЛЬКО НА РУССКОМ ЯЗЫКЕ
+- vocabulary_boost[].translation: НА РУССКОМ ЯЗЫКЕ
+- vocabulary_boost[].usage: НА АНГЛИЙСКОМ ЯЗЫКЕ (это пример предложения)
 
-ПРИМЕР правильного ответа:
+ЗАПРЕЩЕНО писать объяснения на английском! Это грубая ошибка!
+
+ПРИМЕР правильного ответа (ОБРАТИ ВНИМАНИЕ НА ЯЗЫКИ!):
 {
   "improved_text": "Climate change represents a critical global challenge...",
-  "key_changes": "Текст был переработан для улучшения связности и обогащен продвинутой лексикой",
+  "key_changes": "Текст был полностью переработан для улучшения связности между идеями и обогащен продвинутой академической лексикой",
   "improvements": [
     {
+      "category": "Task Response",
+      "description": "Тема раскрыта более полно с четкой позицией автора и развернутыми аргументами",
+      "example": "Добавлены конкретные примеры и более детальное обоснование позиции"
+    },
+    {
+      "category": "Coherence & Cohesion", 
+      "description": "Улучшена логическая структура текста с помощью связующих слов и четких переходов",
+      "example": "Использованы фразы типа 'Furthermore', 'In addition', 'Consequently'"
+    },
+    {
+      "category": "Lexical Resource",
+      "description": "Заменена простая лексика на более продвинутую и точную", 
+      "example": "Вместо 'big problem' использовано 'significant challenge'"
+    },
+    {
       "category": "Grammar",
-      "description": "Добавлены сложные грамматические конструкции и исправлены все ошибки",
-      "example": "Вместо простых предложений использованы придаточные предложения"
+      "description": "Добавлены сложные грамматические конструкции для разнообразия",
+      "example": "Использованы условные предложения и причастные обороты"
     }
   ],
   "writing_tips": [
-    "Используйте разнообразные связующие слова для улучшения связности текста",
-    "Применяйте синонимы чтобы избежать повторений"
+    "Используйте разнообразные связующие слова для плавного перехода между идеями",
+    "Применяйте синонимы и перефразирование чтобы избежать повторений",
+    "Структурируйте каждый параграф с четкой главной мыслью"
+  ],
+  "vocabulary_boost": [
+    {
+      "word": "catastrophic",
+      "translation": "катастрофический",
+      "usage": "The catastrophic effects of climate change are becoming evident.",
+      "level": "C1"
+    }
   ]
 }
+
+ОБЯЗАТЕЛЬНЫЕ ПОЛЯ в JSON:
+- improved_text (улучшенный текст на английском)
+- key_changes (описание изменений на русском)
+- improvements (массив улучшений на русском)
+- writing_tips (массив советов на русском)
+- vocabulary_boost (ОБЯЗАТЕЛЬНО! массив из 10 слов с переводом и примерами)
 
 СТРОГО: Возвращай ТОЛЬКО JSON без лишнего текста!
 `;
@@ -6460,7 +6738,7 @@ async function generateImprovedVersion(ctx, session, originalText) {
       model: 'gpt-5',
       messages: [
         { role: 'system', content: improvementPrompt },
-        { role: 'user', content: `Исходный текст для улучшения:\n\n${originalText}\n\nОТВЕЧАЙ НА РУССКОМ ЯЗЫКЕ ВО ВСЕХ ОБЪЯСНЕНИЯХ! Только сам улучшенный текст должен быть на английском.` }
+        { role: 'user', content: `Исходный текст для улучшения:\n\n${originalText}\n\nВНИМАНИE! КРИТИЧЕСКИ ВАЖНО:\n- Улучшенный текст: ТОЛЬКО НА АНГЛИЙСКОМ\n- ВСЕ описания, объяснения, примеры, советы: ТОЛЬКО НА РУССКОМ!\n- НИ ОДНОГО АНГЛИЙСКОГО СЛОВА в key_changes, improvements, writing_tips!\n- Если напишешь объяснения на английском - это ОШИБКА!\n\nОТВЕЧАЙ СТРОГО ПО ИНСТРУКЦИИ!` }
       ],
       temperature: 1,
       max_completion_tokens: 6000
@@ -6544,6 +6822,17 @@ async function showImprovedVersion(ctx, session) {
     improved.writing_tips.forEach((tip, index) => {
       message += `${index + 1}. ${tip}\n`;
     });
+  }
+  
+  if (improved.vocabulary_boost && improved.vocabulary_boost.length > 0) {
+    message += `\n📚 <b>Топ-10 слов для этой темы (${improved.vocabulary_boost[0]?.level || 'C1'} уровень):</b>\n`;
+    improved.vocabulary_boost.forEach((vocab, index) => {
+      message += `\n${index + 1}. <b>${vocab.word}</b> - ${vocab.translation}`;
+      if (vocab.usage) {
+        message += `\n   <i>${vocab.usage}</i>`;
+      }
+    });
+    message += `\n`;
   }
   
   await ctx.reply(message, { 
@@ -7577,7 +7866,7 @@ async function startSmartRepeatStage5(ctx, session) {
 // Функция завершения умного повторения
 async function completeSmartRepeat(ctx, session) {
   // Отмечаем что умное повторение пройдено сегодня
-  const todayString = new Date().toDateString();
+  const todayString = getLocalDateGMT5();
   session.lastSmartRepeatDate = todayString;
   
   console.log(`DEBUG SMART REPEAT: User ${ctx.from.id} completed all smart repeat stages`);
@@ -7632,7 +7921,7 @@ async function finishSmartRepeat(ctx, session) {
   console.log(`DEBUG: Finishing smart repeat for user ${ctx.from.id}`);
   
   // Отмечаем что умное повторение пройдено сегодня
-  const todayString = new Date().toDateString();
+  const todayString = getLocalDateGMT5();
   session.lastSmartRepeatDate = todayString;
   
   console.log(`DEBUG SMART REPEAT: User ${ctx.from.id} completed smart repeat (finishSmartRepeat)`);
