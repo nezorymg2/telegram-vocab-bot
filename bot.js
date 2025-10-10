@@ -3520,6 +3520,9 @@ bot.on('message:text', async (ctx) => {
       session.step = 'smart_repeat_quiz';
       session.smartRepeatStage = 1; // Отслеживаем этап умного повторения
       
+      // Сохраняем слова стадии 1 для использования в стадии 5
+      session.stage1Words = quizWords.map(w => w.word);
+      
       // Инициализируем викторину
       const currentQuizSession = {
         words: quizWords,
@@ -6578,7 +6581,12 @@ OUTPUT TEMPLATE (ВЕРНИ ТОЛЬКО JSON ОБЪЕКТ, БЕЗ ЛИШНЕГ�
         ]
       };
       
-      await showAnalysisResults(ctx, session, fallbackAnalysis, userText);
+      session.writingAnalysis = fallbackAnalysis;
+      session.step = 'writing_analysis_result';
+      
+      await ctx.reply('✅ Анализ завершен! Показываю основные рекомендации:', { reply_markup: { remove_keyboard: true } });
+      await showWritingAnalysisResult(ctx, session);
+      await generateImprovedVersion(ctx, session, userText);
       return;
     }
     
@@ -7847,38 +7855,53 @@ async function startSmartRepeatStage5(ctx, session) {
     console.log('=== SMART REPEAT STAGE 5 START ===');
     console.log('User ID:', ctx.from.id);
     console.log('Session smartRepeatWords:', session.smartRepeatWords?.length || 0);
+    console.log('Session stage1Words:', session.stage1Words);
     
-    // Пересчитываем слова для умного повторения на случай если прошло время
-    const userWords = await getWords(session.profile);
-    const now = new Date();
-    const DAY_MS = 24 * 60 * 60 * 1000;
+    // Используем слова из стадии 1 вместо пересчета по приоритету
+    let words = [];
     
-    // Функция расчета приоритета слова для повторения
-    function calculatePriority(word) {
-      const lastUpdate = word.updatedAt || word.createdAt;
-      const daysSinceUpdate = (now - lastUpdate) / DAY_MS;
+    if (session.stage1Words && session.stage1Words.length > 0) {
+      console.log('Using stage 1 words for stage 5:', session.stage1Words);
       
-      // Базовые интервалы в зависимости от уровня знания
-      let intervalDays;
-      if (word.correct <= 1) intervalDays = 1;      // новые слова каждый день
-      else if (word.correct === 2) intervalDays = 2; // через день
-      else if (word.correct === 3) intervalDays = 4; // через 4 дня
-      else if (word.correct === 4) intervalDays = 7; // через неделю
-      else if (word.correct === 5) intervalDays = 14; // через 2 недели
-      else intervalDays = 30; // месяц для хорошо изученных
+      // Получаем полную информацию о словах из стадии 1
+      const userWords = await getWords(session.profile);
+      const stage1WordsData = userWords.filter(word => session.stage1Words.includes(word.word));
       
-      // Чем больше просрочка, тем выше приоритет
-      const overdue = Math.max(0, daysSinceUpdate - intervalDays);
-      return overdue + (6 - Math.min(word.correct, 5)) * 2; // бонус за низкий уровень
+      // Перемешиваем слова и берем случайные 15 (или меньше если слов недостаточно)
+      const shuffled = [...stage1WordsData].sort(() => Math.random() - 0.5);
+      words = shuffled.slice(0, Math.min(15, shuffled.length));
+      
+      console.log('Selected words for story task:', words.map(w => w.word));
+    } else {
+      console.log('No stage1Words found, falling back to priority-based selection');
+      
+      // Fallback: используем старую логику если нет слов из стадии 1
+      const userWords = await getWords(session.profile);
+      const now = new Date();
+      const DAY_MS = 24 * 60 * 60 * 1000;
+      
+      function calculatePriority(word) {
+        const lastUpdate = word.updatedAt || word.createdAt;
+        const daysSinceUpdate = (now - lastUpdate) / DAY_MS;
+        
+        let intervalDays;
+        if (word.correct <= 1) intervalDays = 1;
+        else if (word.correct === 2) intervalDays = 2;
+        else if (word.correct === 3) intervalDays = 4;
+        else if (word.correct === 4) intervalDays = 7;
+        else if (word.correct === 5) intervalDays = 14;
+        else intervalDays = 30;
+        
+        const overdue = Math.max(0, daysSinceUpdate - intervalDays);
+        return overdue + (6 - Math.min(word.correct, 5)) * 2;
+      }
+      
+      const sortedWords = userWords
+        .map(w => ({ ...w, priority: calculatePriority(w) }))
+        .sort((a, b) => b.priority - a.priority);
+      
+      words = sortedWords.slice(0, 20);
     }
-    
-    // Сортируем слова по приоритету (убывание)
-    const sortedWords = userWords
-      .map(w => ({ ...w, priority: calculatePriority(w) }))
-      .sort((a, b) => b.priority - a.priority);
-    
-    // Берем топ-20 слов с наивысшим приоритетом для умного повторения
-    const words = sortedWords.slice(0, 20);
     
     // Обновляем слова в сессии
     session.smartRepeatWords = words;
