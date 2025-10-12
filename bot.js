@@ -6551,15 +6551,15 @@ OUTPUT TEMPLATE (ВЕРНИ ТОЛЬКО JSON ОБЪЕКТ, БЕЗ ЛИШНЕГ�
       // Fallback анализ без AI
       const fallbackAnalysis = {
         band_estimate: "6.0",
-        summary: "Ваш текст проанализирован. Уровень письма соответствует среднему уровню. В тексте есть как сильные стороны, так и области для улучшения.",
+        summary: "Ваш текст проанализирован базовой системой. Уровень письма соответствует среднему уровню. В тексте есть как сильные стороны, так и области для улучшения.",
         global_advice: "Продолжайте практиковаться в письме, обращайте внимание на грамматику и структуру предложений. Читайте больше английских текстов для расширения словарного запаса.",
         errors: [
           {
-            from: "I hadn't a lot of motivation",
-            to: "I didn't have a lot of motivation",
-            rule: "В английском языке 'have' в отрицании требует вспомогательного глагола 'did not' в прошедшем времени",
-            association: "Had НЕ используется как основной глагол в отрицании",
-            example: "I didn't have time yesterday."
+            from: "Общие рекомендации",
+            to: "Улучшенная версия",
+            rule: "Обратите внимание на грамматику, времена глаголов и структуру предложений",
+            association: "Постоянная практика письма поможет улучшить навыки",
+            example: "Попробуйте писать короткие тексты ежедневно"
           }
         ],
         drills: [
@@ -6895,53 +6895,86 @@ async function showImprovedVersion(ctx, session) {
     return;
   }
   
-  let message = `✨ <b>Улучшенная версия (IELTS 7.0 уровень):</b>\n\n`;
-  message += `<i>${improved.improved_text}</i>\n\n`;
-  
-  if (improved.key_changes) {
-    message += `🔄 <b>Основные изменения:</b>\n${improved.key_changes}\n\n`;
-  }
-  
-  if (improved.improvements && improved.improvements.length > 0) {
-    message += `📈 <b>Что было улучшено:</b>\n`;
-    improved.improvements.forEach((improvement, index) => {
-      message += `\n${index + 1}. <b>${improvement.category}</b>`;
-      message += `\n   ${improvement.description}`;
-      if (improvement.example) {
-        message += `\n   <i>Пример: ${improvement.example}</i>`;
-      }
+  try {
+    // Часть 1: Улучшенный текст
+    let message1 = `✨ <b>Улучшенная версия (IELTS 7.0 уровень):</b>\n\n`;
+    message1 += `<i>${improved.improved_text}</i>`;
+    
+    await ctx.reply(message1, { parse_mode: 'HTML' });
+    
+    // Часть 2: Изменения и улучшения
+    let message2 = '';
+    if (improved.key_changes) {
+      message2 += `🔄 <b>Основные изменения:</b>\n${improved.key_changes}\n\n`;
+    }
+    
+    if (improved.improvements && improved.improvements.length > 0) {
+      message2 += `📈 <b>Что было улучшено:</b>\n`;
+      improved.improvements.slice(0, 3).forEach((improvement, index) => {
+        message2 += `\n${index + 1}. <b>${improvement.category}</b>\n`;
+        message2 += `   ${improvement.description}`;
+        if (improvement.example && improvement.example.length < 100) {
+          message2 += `\n   <i>Пример: ${improvement.example}</i>`;
+        }
+        message2 += `\n`;
+      });
+    }
+    
+    if (message2.length > 0) {
+      await ctx.reply(message2, { parse_mode: 'HTML' });
+    }
+    
+    // Часть 3: Советы
+    let message3 = '';
+    if (improved.writing_tips && improved.writing_tips.length > 0) {
+      message3 += `💡 <b>Советы для развития:</b>\n`;
+      improved.writing_tips.slice(0, 5).forEach((tip, index) => {
+        message3 += `${index + 1}. ${tip}\n`;
+      });
+    }
+    
+    if (message3.length > 0) {
+      await ctx.reply(message3, { parse_mode: 'HTML' });
+    }
+    
+    // Часть 4: Словарь (только первые 5 слов)
+    let message4 = '';
+    if (improved.vocabulary_boost && improved.vocabulary_boost.length > 0) {
+      message4 += `📚 <b>Топ-5 слов для этой темы:</b>\n`;
+      improved.vocabulary_boost.slice(0, 5).forEach((vocab, index) => {
+        message4 += `\n${index + 1}. <b>${vocab.word}</b> - ${vocab.translation}`;
+        if (vocab.usage && vocab.usage.length < 80) {
+          message4 += `\n   <i>${vocab.usage}</i>`;
+        }
+      });
+    }
+    
+    if (message4.length > 0) {
+      await ctx.reply(message4, { parse_mode: 'HTML' });
+    }
+    
+    // Финальное сообщение с кнопками
+    await ctx.reply('✅ Анализ завершен! Что дальше?', { 
+      reply_markup: new Keyboard()
+        .text('📝 Выполнить упражнения')
+        .row()
+        .text('➡️ Продолжить к следующему этапу')
+        .row()
+        .oneTime()
+        .resized()
     });
-    message += `\n`;
-  }
-  
-  if (improved.writing_tips && improved.writing_tips.length > 0) {
-    message += `\n💡 <b>Советы для развития:</b>\n`;
-    improved.writing_tips.forEach((tip, index) => {
-      message += `${index + 1}. ${tip}\n`;
+    
+  } catch (error) {
+    console.error('Error in showImprovedVersion:', error);
+    // Fallback - простое сообщение
+    await ctx.reply('✨ Улучшенная версия готова! К сожалению, произошла ошибка при отправке полного анализа.', {
+      reply_markup: new Keyboard()
+        .text('➡️ Продолжить к следующему этапу')
+        .row()
+        .oneTime()
+        .resized()
     });
   }
-  
-  if (improved.vocabulary_boost && improved.vocabulary_boost.length > 0) {
-    message += `\n📚 <b>Топ-10 слов для этой темы (${improved.vocabulary_boost[0]?.level || 'C1'} уровень):</b>\n`;
-    improved.vocabulary_boost.forEach((vocab, index) => {
-      message += `\n${index + 1}. <b>${vocab.word}</b> - ${vocab.translation}`;
-      if (vocab.usage) {
-        message += `\n   <i>${vocab.usage}</i>`;
-      }
-    });
-    message += `\n`;
-  }
-  
-  await ctx.reply(message, { 
-    parse_mode: 'HTML',
-    reply_markup: new Keyboard()
-      .text('📝 Выполнить упражнения')
-      .row()
-      .text('➡️ Продолжить к следующему этапу')
-      .row()
-      .oneTime()
-      .resized()
-  });
 }
 
 // Функция отображения результатов анализа письма
