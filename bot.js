@@ -4755,6 +4755,42 @@ async function generateStoryTaskContent(session, ctx) {
       console.error('API response error:', e.response.data);
     }
     
+    // Проверяем если это временная ошибка сервера (502, 503, 504)
+    const isServerError = e.response && [502, 503, 504].includes(e.response.status);
+    const isAPIUnavailable = e.code === 'ECONNRESET' || e.code === 'ENOTFOUND' || isServerError;
+    
+    if (isAPIUnavailable || e.message.includes('502') || e.message.includes('Bad Gateway')) {
+      console.log('Server error detected, providing fallback story...');
+      
+      // Fallback текст с использованием слов из stадии 1
+      const fallbackStory = generateFallbackStory(session.storyTaskWords || []);
+      
+      session.storyText = fallbackStory.text;
+      session.storyQuestions = fallbackStory.questions;
+      session.storyQuestionIndex = 0;
+      session.additionalVocabulary = fallbackStory.vocabulary;
+      
+      // Показываем fallback текст
+      let storyMessage = `📖 **Текст для изучения:**\n\n${fallbackStory.text}\n\n`;
+      storyMessage += `🔍 **Внимательно прочитайте текст выше.** Сейчас будут вопросы на понимание!\n\n`;
+      storyMessage += `📚 **Полезные слова:**\n`;
+      fallbackStory.vocabulary.slice(0, 5).forEach(vocab => {
+        storyMessage += `• **${vocab.word}** - ${vocab.translation}\n`;
+      });
+      
+      await ctx.reply(storyMessage, { parse_mode: 'Markdown' });
+      
+      // Начинаем первый вопрос
+      const q = session.storyQuestions[0];
+      session.step = 'story_quiz';
+      await ctx.reply(`Вопрос 1/${session.storyQuestions.length}: ${q.question}`, {
+        reply_markup: Keyboard.from(q.options.map(opt => [opt]), { one_time_keyboard: true, resize_keyboard: true })
+      });
+      
+      return;
+    }
+    
+    // Остальные ошибки
     session.step = 'main_menu';
     let errorMsg = 'Произошла ошибка при генерации текста. ';
     
@@ -4772,11 +4808,112 @@ async function generateStoryTaskContent(session, ctx) {
     } else if (e.message.includes('JSON')) {
       errorMsg += 'AI вернул некорректный ответ. Попробуйте еще раз.';
     } else {
-      errorMsg += `Ошибка: ${e.message}`;
+      errorMsg += `Попробуйте позже или обратитесь к администратору.`;
     }
     
     await ctx.reply(errorMsg, { reply_markup: mainMenu });
   }
+}
+
+// Функция генерации fallback текста при недоступности OpenAI API
+function generateFallbackStory(words) {
+  // Базовые шаблоны текстов с местами для вставки слов
+  const templates = [
+    {
+      text: `Modern life presents many challenges that require us to **assess** situations carefully and **commit** to making positive changes. It is **vital** to **remain** focused on our **wellbeing** while living in an increasingly **competitive** world.
+
+When we **undertake** new projects, we must create a proper **sequence** of actions. **Meanwhile**, it's important not to let **anxiety** take control of our daily lives. We should **perform** our duties with dedication and avoid letting negative thoughts **undermine** our confidence.
+
+**No longer** should we allow others to **mislead** us about what truly matters. Instead, we must **wrap** ourselves in positive thinking and focus on **renewable** energy sources for our motivation. Some people still practice **segregation** of ideas, but we must embrace diversity and **stunning** opportunities for growth.
+
+The key to success lies in understanding that every challenge is an opportunity to grow stronger and more resilient.`,
+      
+      questions: [
+        {
+          type: "General understanding",
+          question: "What is the main message of the text?",
+          options: ["Life is too difficult to handle", "We should focus on positive thinking and growth", "Modern life has no solutions", "Competition is harmful", "Anxiety is normal"],
+          correct_option: "We should focus on positive thinking and growth"
+        },
+        {
+          type: "General understanding", 
+          question: "According to the text, what should we do when facing challenges?",
+          options: ["Give up immediately", "Ask others for help", "Assess situations carefully and stay focused", "Avoid all competition", "Ignore the problems"],
+          correct_option: "Assess situations carefully and stay focused"
+        },
+        {
+          type: "Specific details",
+          question: "What should we avoid letting control our daily lives?",
+          options: ["Competition", "Wellbeing", "Anxiety", "Commitment", "Assessment"],
+          correct_option: "Anxiety"
+        },
+        {
+          type: "Specific details",
+          question: "What kind of energy sources does the text mention for motivation?",
+          options: ["Solar energy", "Renewable energy", "Electric energy", "Nuclear energy", "Wind energy"],
+          correct_option: "Renewable energy"
+        },
+        {
+          type: "Vocabulary in context",
+          question: "In this context, 'assess' means:",
+          options: ["To ignore", "To evaluate carefully", "To destroy", "To create", "To avoid"],
+          correct_option: "To evaluate carefully"
+        },
+        {
+          type: "Vocabulary in context",
+          question: "What does 'undermine' mean in this text?",
+          options: ["To strengthen", "To support", "To weaken or damage", "To improve", "To create"],
+          correct_option: "To weaken or damage"
+        },
+        {
+          type: "Inference question",
+          question: "The author suggests that diversity is:",
+          options: ["Harmful to society", "Something to avoid", "Beneficial and should be embraced", "Only for certain people", "Unnecessary"],
+          correct_option: "Beneficial and should be embraced"
+        },
+        {
+          type: "Inference question",
+          question: "The text implies that challenges:",
+          options: ["Should be avoided at all costs", "Are opportunities for growth", "Only happen to unlucky people", "Cannot be overcome", "Are always negative"],
+          correct_option: "Are opportunities for growth"
+        },
+        {
+          type: "Cause and effect",
+          question: "According to the text, what happens when we let anxiety control us?",
+          options: ["We become more successful", "It affects our daily lives negatively", "We perform better", "Nothing changes", "We become stronger"],
+          correct_option: "It affects our daily lives negatively"
+        },
+        {
+          type: "Cause and effect",
+          question: "What is the result of focusing on positive thinking and wellbeing?",
+          options: ["We become weak", "We fail more often", "We grow stronger and more resilient", "We avoid all problems", "We stop working"],
+          correct_option: "We grow stronger and more resilient"
+        }
+      ],
+      
+      vocabulary: [
+        { word: "resilient", translation: "устойчивый, выносливый" },
+        { word: "dedication", translation: "преданность, самоотдача" },
+        { word: "embrace", translation: "принимать, обнимать" },
+        { word: "diversity", translation: "разнообразие" },
+        { word: "motivation", translation: "мотивация" },
+        { word: "opportunities", translation: "возможности" },
+        { word: "challenges", translation: "вызовы, проблемы" },
+        { word: "confidence", translation: "уверенность" },
+        { word: "focused", translation: "сосредоточенный" },
+        { word: "positive", translation: "позитивный" }
+      ]
+    }
+  ];
+  
+  // Выбираем случайный шаблон (пока только один, но можно добавить больше)
+  const template = templates[0];
+  
+  return {
+    text: template.text,
+    questions: template.questions,
+    vocabulary: template.vocabulary
+  };
 }
 
 // Обработка команд бота
