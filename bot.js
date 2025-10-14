@@ -5,7 +5,7 @@ if (process.env.NODE_ENV !== 'production') {
   console.log('DEBUG: BOT_TOKEN:', process.env.BOT_TOKEN ? 'Set' : 'Not set');
   console.log('DEBUG: OPENAI_API_KEY:', process.env.OPENAI_API_KEY ? 'Set' : 'Not set');
 }
-const { Bot, Keyboard, InputFile } = require('grammy');
+const { Bot, Keyboard, InputFile, InlineKeyboard } = require('grammy');
 const axios = require('axios');
 const fs = require('fs');
 const cron = require('node-cron');
@@ -552,7 +552,26 @@ async function createMoneySystemTable() {
         "month" VARCHAR(7) NOT NULL DEFAULT (TO_CHAR(CURRENT_DATE, 'YYYY-MM'))
       )
     `;
+    
+    // Создаем таблицу для вопросов интерактивного теста
+    await prisma.$executeRaw`
+      CREATE TABLE IF NOT EXISTS "quiz_questions" (
+        "id" SERIAL PRIMARY KEY,
+        "telegramId" BIGINT NOT NULL,
+        "questionType" VARCHAR(50) NOT NULL,
+        "questionText" TEXT NOT NULL,
+        "options" TEXT,
+        "correctAnswer" VARCHAR(500),
+        "explanation" TEXT,
+        "rule" TEXT,
+        "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        "lastAsked" TIMESTAMP,
+        "timesAsked" INTEGER DEFAULT 0,
+        "timesCorrect" INTEGER DEFAULT 0
+      )
+    `;
     console.log('💰 Money system table created/verified');
+    console.log('🧠 Quiz questions table created/verified');
   } catch (error) {
     console.error('Error creating money system table:', error);
   }
@@ -4398,6 +4417,12 @@ bot.on('message:text', async (ctx) => {
     }
   }
 
+  // --- Ответы на интерактивный тест ---
+  if (session.waitingForQuizAnswer) {
+    await handleQuizAnswer(ctx, session, text);
+    return;
+  }
+
   // --- Результат анализа письма ---
   if (step === 'writing_analysis_result') {
     if (text === '📝 Выполнить упражнения') {
@@ -6572,34 +6597,29 @@ async function handleWritingAnalysis(ctx, session, userText) {
     
     await ctx.reply('🔍 Анализирую ваш текст... Это займет несколько секунд.');
     
-    // Простой системный промпт для анализа
-const systemPrompt = `Ты эксперт по английскому языку. Проанализируй текст студента и найди грамматические ошибки.
+    // Детальный системный промпт для анализа
+const systemPrompt = `Ты строгий преподаватель английского языка и эксперт по IELTS Writing. Проанализируй текст студента КРИТИЧЕСКИ и найди ВСЕ грамматические ошибки, стилистические проблемы и неточности.
+
+КРИТИЧЕСКИ ВАЖНО:
+1. Найди МИНИМУМ 5-8 различных ошибок или областей улучшения
+2. Каждое правило должно начинаться с "💡 Rule:" и быть конкретным
+3. Создай для каждой ошибки несколько примеров для тренировки
 
 Верни только JSON в таком формате:
 {
-  "band_estimate": "6.5",
-  "summary": "Краткий отзыв о тексте",
-  "global_advice": "Главные советы",
+  "band_estimate": "6.5", 
+  "summary": "Детальный анализ с упоминанием конкретных проблем",
+  "global_advice": "Конкретные советы по улучшению",
   "errors": [
     {
-      "title": "Название ошибки",
-      "rule": "Правило",
-      "meme": "Подсказка для запоминания",
+      "title": "Конкретная грамматическая проблема",
+      "rule": "💡 Rule: Детальное правило с примерами",
+      "meme": "Запоминающаяся подсказка", 
       "examples": [
         {
-          "from": "ошибочный фрагмент",
+          "from": "точный ошибочный фрагмент из текста",
           "to": "исправленный вариант",
-          "why": "объяснение"
-        }
-      ],
-      "drills": [
-        {
-          "rule": "правило",
-          "question": "предложение с ▢",
-          "words_count": 1,
-          "correct_answer": "ответ",
-          "accepted": ["ответ"],
-          "hint": "подсказка"
+          "why": "почему именно так"
         }
       ]
     }
@@ -6607,13 +6627,13 @@ const systemPrompt = `Ты эксперт по английскому языку
 }`;
 
     const gptRes = await axios.post('https://api.openai.com/v1/chat/completions', {
-      model: 'gpt-5',
+      model: 'gpt-4o-mini',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: `LANG=ru\nTEXT=\n${userText}` }
       ],
-      temperature: 1, // GPT-5 supports only temperature=1
-      max_completion_tokens: 6000
+      temperature: 0.7,
+      max_completion_tokens: 10000
     }, {
       headers: {
         'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
@@ -6668,7 +6688,14 @@ const systemPrompt = `Ты эксперт по английскому языку
       };
       
       session.writingAnalysis = fallbackAnalysis;
+      session.stage2_analysis = fallbackAnalysis; // Для квиза
       session.step = 'writing_analysis_result';
+      
+      console.log('DEBUG: Saved fallback stage2_analysis:', {
+        hasErrors: !!fallbackAnalysis.errors,
+        errorsCount: fallbackAnalysis.errors?.length,
+        errorsType: typeof fallbackAnalysis.errors
+      });
       
       await ctx.reply('✅ Анализ завершен! Показываю основные рекомендации:', { reply_markup: { remove_keyboard: true } });
       await showWritingAnalysisResult(ctx, session);
@@ -6743,7 +6770,14 @@ const systemPrompt = `Ты эксперт по английскому языку
     
     // Сохраняем анализ в сессии
     session.writingAnalysis = analysisData;
+    session.stage2_analysis = analysisData; // Для квиза
     session.step = 'writing_analysis_result';
+    
+    console.log('DEBUG: Saved stage2_analysis:', {
+      hasErrors: !!analysisData.errors,
+      errorsCount: analysisData.errors?.length,
+      errorsType: typeof analysisData.errors
+    });
     
     // Показываем результат анализа
     await showWritingAnalysisResult(ctx, session);
@@ -6770,7 +6804,7 @@ const systemPrompt = `Ты эксперт по английскому языку
       } else if (apiError.code === 'rate_limit_exceeded') {
         errorMsg = 'Слишком много запросов. Попробуйте через минуту.';
       } else if (apiError.code === 'model_not_found') {
-        errorMsg = 'Модель GPT-5 недоступна. Попробуйте позже.';
+        errorMsg = 'Модель недоступна. Попробуйте позже.';
       } else {
         errorMsg += `API ошибка: ${apiError.message}`;
       }
@@ -6821,9 +6855,9 @@ async function generateImprovedVersion(ctx, session, originalText) {
     await ctx.reply('✨ Генерирую улучшенную версию вашего текста...');
     
     const improvementPrompt = `
-ТЫ: Эксперт IELTS Writing и улучшатель текстов
+ТЫ: Эксперт IELTS Writing, улучшаешь тексты студентов до уровня 7.0
 
-ЗАДАЧА: Улучшить текст студента до уровня IELTS Writing 7.0, учитывая все 4 критерия оценки.
+ЗАДАЧА: Улучшить текст и дать 5 практических советов в новом формате с примерами из реального текста пользователя.
 
 КРИТЕРИИ IELTS WRITING 7.0:
 1. Task Response (Ответ на задание):
@@ -6901,34 +6935,92 @@ async function generateImprovedVersion(ctx, session, originalText) {
     "Применяйте синонимы и перефразирование чтобы избежать повторений",
     "Структурируйте каждый параграф с четкой главной мыслью"
   ],
-  "vocabulary_boost": [
+  "vocabulary_words": [
     {
       "word": "catastrophic",
       "translation": "катастрофический",
-      "usage": "The catastrophic effects of climate change are becoming evident.",
-      "level": "C1"
+      "example": "The catastrophic effects of climate change are becoming evident."
     }
   ]
 }
 
-ОБЯЗАТЕЛЬНЫЕ ПОЛЯ в JSON:
-- improved_text (улучшенный текст на английском)
-- key_changes (описание изменений на русском)
-- improvements (массив улучшений на русском)
-- writing_tips (массив советов на русском)
-- vocabulary_boost (ОБЯЗАТЕЛЬНО! массив из 10 слов с переводом и примерами)
+КРИТИЧЕСКИ ВАЖНО - ИСПОЛЬЗУЙ ТОЛЬКО ЭТОТ ФОРМАТ JSON:
+{
+  "improved_text": "улучшенный текст на английском",
+  "writing_advice": [
+    {
+      "number": "1️⃣",
+      "title": "Сделай позицию чёткой и возвращайся к ней в конце",
+      "why": "💬 Зачем: IELTS оценивает, насколько ясно ты выражаешь мнение.",
+      "how": "🧠 Как: во вступлении пиши фразу, показывающую твою позицию (I strongly believe / I personally prefer / I am convinced that…).",
+      "example_bad": "цитата из оригинального текста пользователя",
+      "example_good": "исправленная версия этой же цитаты", 
+      "action": "🪄 Что делать: начни первое предложение с позиции, и повтори её в последней строке заключения другими словами."
+    },
+    {
+      "number": "2️⃣", 
+      "title": "Разделяй текст на 3 блока: вступление — аргументы — вывод",
+      "why": "💬 Зачем: Экзаменатор проверяет структуру (Coherence & Cohesion).",
+      "how": "🧠 Как:\\n\\nВступление → идея + мнение.\\n\\nОсновная часть → 2 причины с примерами.\\n\\nЗаключение → обобщение и финальная мысль.",
+      "example_bad": "цитата из оригинального текста пользователя",
+      "example_good": "исправленная версия этой же цитаты",
+      "action": "🪄 Что делать: проверь, что у тебя есть четкие границы между частями текста."
+    },
+    {
+      "number": "3️⃣",
+      "title": "Добавляй связки, чтобы текст \\"тёк\\" естественно",
+      "why": "💬 Зачем: Без связок текст кажется \\"кусочным\\".",  
+      "how": "🧠 Как: Используй разные типы:\\n\\nУступка: Although, Even though\\n\\nПротивопоставление: However, On the other hand\\n\\nПричина/следствие: Because, As a result, Therefore\\n\\nВремя: When, After, Before",
+      "example_bad": "цитата из оригинального текста пользователя",
+      "example_good": "исправленная версия этой же цитаты",
+      "action": "🪄 Что делать: найди места, где можно добавить linking words."
+    },
+    {
+      "number": "4️⃣",
+      "title": "Укрепляй словарь — 3 новых слова по теме",
+      "why": "💬 Зачем: Lexical Resource даёт +0.5–1 балл.",
+      "how": "🧠 Как: выбирай синонимы и устойчивые выражения по теме.",
+      "example_bad": "цитата из оригинального текста пользователя",
+      "example_good": "исправленная версия этой же цитаты",
+      "action": "🪄 Что делать: после каждого текста выписывай 3 новых слова и попробуй использовать их в следующем."
+    },
+    {
+      "number": "5️⃣",
+      "title": "Добавь \\"гибкую грамматику\\" — хотя бы одно сложное предложение",
+      "why": "💬 Зачем: Grammatical Range = обязательный критерий Band 7+.",
+      "how": "🧠 Как:\\n\\nИспользуй Although / While / Because для сложных предложений.\\n\\nДобавь условное или причастное:\\nIf I go to bed early, I can't focus well.\\nFeeling tired, I prefer working at night.",
+      "example_bad": "цитата из оригинального текста пользователя", 
+      "example_good": "исправленная версия этой же цитаты",
+      "action": "🪄 Что делать: найди простые предложения и объедини их в сложные."
+    }
+  ],
+  "vocabulary_words": [
+    {
+      "word": "слово",
+      "translation": "перевод", 
+      "example": "предложение с этим словом на английском"
+    }
+  ]
+}
 
-СТРОГО: Возвращай ТОЛЬКО JSON без лишнего текста!
+КРИТИЧЕСКИ ВАЖНО:
+- Все примеры example_bad и example_good должны быть ИЗ РЕАЛЬНОГО ТЕКСТА пользователя
+- ОБЯЗАТЕЛЬНО включи vocabulary_words - ровно 5 слов релевантных теме текста пользователя
+- improved_text только на английском
+- Все остальное только на русском
+- НИКОГДА НЕ используй поля: key_changes, improvements, writing_tips, vocabulary_boost
+- ИСПОЛЬЗУЙ ТОЛЬКО: improved_text, writing_advice, vocabulary_words
+- Возвращай ТОЛЬКО JSON!
 `;
 
     const gptRes = await axios.post('https://api.openai.com/v1/chat/completions', {
-      model: 'gpt-5',
+      model: 'gpt-4o-mini',
       messages: [
         { role: 'system', content: improvementPrompt },
         { role: 'user', content: `Исходный текст для улучшения:\n\n${originalText}\n\nВНИМАНИE! КРИТИЧЕСКИ ВАЖНО:\n- Улучшенный текст: ТОЛЬКО НА АНГЛИЙСКОМ\n- ВСЕ описания, объяснения, примеры, советы: ТОЛЬКО НА РУССКОМ!\n- НИ ОДНОГО АНГЛИЙСКОГО СЛОВА в key_changes, improvements, writing_tips!\n- Если напишешь объяснения на английском - это ОШИБКА!\n\nОТВЕЧАЙ СТРОГО ПО ИНСТРУКЦИИ!` }
       ],
       temperature: 1,
-      max_completion_tokens: 6000
+      max_completion_tokens: 10000
     }, {
       headers: {
         'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
@@ -6944,11 +7036,15 @@ async function generateImprovedVersion(ctx, session, originalText) {
     // Парсим JSON ответ
     try {
       improvementData = JSON.parse(improvementResponse);
+      console.log('DEBUG: Parsed improvement data:', JSON.stringify(improvementData, null, 2));
+      console.log('DEBUG: Has writing_advice:', !!improvementData.writing_advice);
+      console.log('DEBUG: Has vocabulary_words:', !!improvementData.vocabulary_words);
     } catch (e1) {
       try {
         const jsonMatch = improvementResponse.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
           improvementData = JSON.parse(jsonMatch[0]);
+          console.log('DEBUG: Parsed improvement data (fallback):', JSON.stringify(improvementData, null, 2));
         } else {
           throw new Error('JSON not found');
         }
@@ -6965,6 +7061,33 @@ async function generateImprovedVersion(ctx, session, originalText) {
       return;
     }
     
+    // Добавляем fallback данные если отсутствуют
+    if (!improvementData.writing_advice || improvementData.writing_advice.length === 0) {
+      console.log('WARNING: No writing_advice, adding fallback');
+      improvementData.writing_advice = [
+        {
+          "number": "1️⃣",
+          "title": "Используйте более разнообразную лексику",
+          "why": "💬 Зачем: Богатый словарный запас повышает оценку IELTS.",
+          "how": "🧠 Как: Заменяйте простые слова синонимами. Используйте более точные термины.",
+          "example_bad": "good experience",
+          "example_good": "valuable/enriching experience",
+          "action": "🪄 Что делать: выберите 3-4 простых слова в тексте и замените их на более продвинутые."
+        }
+      ];
+    }
+    
+    if (!improvementData.vocabulary_words || improvementData.vocabulary_words.length === 0) {
+      console.log('WARNING: No vocabulary_words, adding fallback');
+      improvementData.vocabulary_words = [
+        { "word": "excessive", "translation": "чрезмерный", "example": "excessive use of social media" },
+        { "word": "engage", "translation": "участвовать, заниматься", "example": "engage in productive activities" },
+        { "word": "consequently", "translation": "следовательно", "example": "consequently, I feel tired" },
+        { "word": "aspire", "translation": "стремиться", "example": "I aspire to read more books" },
+        { "word": "energized", "translation": "полный энергии", "example": "feel more energized each day" }
+      ];
+    }
+
     // Сохраняем улучшенную версию в сессии
     session.improvedText = improvementData;
     
@@ -6977,7 +7100,7 @@ async function generateImprovedVersion(ctx, session, originalText) {
   }
 }
 
-// Функция отображения улучшенной версии
+// Функция отображения улучшенной версии в новом формате
 async function showImprovedVersion(ctx, session) {
   const improved = session.improvedText;
   
@@ -6987,83 +7110,569 @@ async function showImprovedVersion(ctx, session) {
   
   try {
     // Часть 1: Улучшенный текст
-    let message1 = `✨ <b>Улучшенная версия (IELTS 7.0 уровень):</b>\n\n`;
+    let message1 = `✨ <b>Улучшенная версия (IELTS 7.0 - 8.0 уровень):</b>\n\n`;
     message1 += `<i>${improved.improved_text}</i>`;
     
     await ctx.reply(message1, { parse_mode: 'HTML' });
     
-    // Часть 2: Изменения и улучшения
-    let message2 = '';
-    if (improved.key_changes) {
-      message2 += `🔄 <b>Основные изменения:</b>\n${improved.key_changes}\n\n`;
+    // Часть 2: Советы в новом формате
+    if (improved.writing_advice && improved.writing_advice.length > 0) {
+      for (const advice of improved.writing_advice) {
+        let adviceMessage = `${advice.number} <b>${advice.title}</b>\n\n`;
+        adviceMessage += `${advice.why}\n\n`;
+        adviceMessage += `${advice.how}\n\n`;
+        adviceMessage += `✍️ <b>Пример:</b>\n`;
+        adviceMessage += `❌ ${advice.example_bad}\n`;
+        adviceMessage += `✅ ${advice.example_good}\n\n`;
+        adviceMessage += `${advice.action}`;
+        
+        await ctx.reply(adviceMessage, { parse_mode: 'HTML' });
+      }
     }
     
-    if (improved.improvements && improved.improvements.length > 0) {
-      message2 += `📈 <b>Что было улучшено:</b>\n`;
-      improved.improvements.slice(0, 3).forEach((improvement, index) => {
-        message2 += `\n${index + 1}. <b>${improvement.category}</b>\n`;
-        message2 += `   ${improvement.description}`;
-        if (improvement.example && improvement.example.length < 100) {
-          message2 += `\n   <i>Пример: ${improvement.example}</i>`;
-        }
-        message2 += `\n`;
+    // Часть 3: Словарь
+    if (improved.vocabulary_words && improved.vocabulary_words.length > 0) {
+      let vocabMessage = `📚 <b>Топ-5 слов для этой темы:</b>\n\n`;
+      improved.vocabulary_words.forEach((vocab, index) => {
+        vocabMessage += `${index + 1}. <b>${vocab.word}</b> - ${vocab.translation}\n`;
+        vocabMessage += `   <i>${vocab.example}</i>\n\n`;
       });
+      
+      await ctx.reply(vocabMessage, { parse_mode: 'HTML' });
     }
     
-    if (message2.length > 0) {
-      await ctx.reply(message2, { parse_mode: 'HTML' });
+    // После показа улучшенного текста переходим к добавлению слов в словарь
+    if (improved.vocabulary_words && improved.vocabulary_words.length > 0) {
+      setTimeout(() => {
+        startVocabularyAddition(ctx, session, improved.vocabulary_words);
+      }, 2000);
+    } else {
+      // Если слов нет, сразу переходим к тесту с ошибками
+      setTimeout(() => {
+        generatePersonalizedQuiz(ctx, session, session.stage2_analysis.errors);
+      }, 2000);
     }
-    
-    // Часть 3: Советы
-    let message3 = '';
-    if (improved.writing_tips && improved.writing_tips.length > 0) {
-      message3 += `💡 <b>Советы для развития:</b>\n`;
-      improved.writing_tips.slice(0, 5).forEach((tip, index) => {
-        message3 += `${index + 1}. ${tip}\n`;
-      });
-    }
-    
-    if (message3.length > 0) {
-      await ctx.reply(message3, { parse_mode: 'HTML' });
-    }
-    
-    // Часть 4: Словарь (только первые 5 слов)
-    let message4 = '';
-    if (improved.vocabulary_boost && improved.vocabulary_boost.length > 0) {
-      message4 += `📚 <b>Топ-5 слов для этой темы:</b>\n`;
-      improved.vocabulary_boost.slice(0, 5).forEach((vocab, index) => {
-        message4 += `\n${index + 1}. <b>${vocab.word}</b> - ${vocab.translation}`;
-        if (vocab.usage && vocab.usage.length < 80) {
-          message4 += `\n   <i>${vocab.usage}</i>`;
-        }
-      });
-    }
-    
-    if (message4.length > 0) {
-      await ctx.reply(message4, { parse_mode: 'HTML' });
-    }
-    
-    // Финальное сообщение с кнопками
-    await ctx.reply('✅ Анализ завершен! Что дальше?', { 
-      reply_markup: new Keyboard()
-        .text('📝 Выполнить упражнения')
-        .row()
-        .text('➡️ Продолжить к следующему этапу')
-        .row()
-        .oneTime()
-        .resized()
-    });
     
   } catch (error) {
     console.error('Error in showImprovedVersion:', error);
     // Fallback - простое сообщение
-    await ctx.reply('✨ Улучшенная версия готова! К сожалению, произошла ошибка при отправке полного анализа.', {
-      reply_markup: new Keyboard()
-        .text('➡️ Продолжить к следующему этапу')
-        .row()
-        .oneTime()
-        .resized()
+    await ctx.reply('✨ Улучшенная версия готова! К сожалению, произошла ошибка при отправке полного анализа.');
+    // Переходим к тесту с ошибками даже при ошибке
+    setTimeout(() => {
+      generatePersonalizedQuiz(ctx, session, session.stage2_analysis.errors);
+    }, 2000);
+  }
+}
+
+// Функция добавления слов в словарь (по одному слову)
+async function startVocabularyAddition(ctx, session, vocabularyWords) {
+  try {
+    session.vocabularyWords = vocabularyWords;
+    session.currentWordIndex = 0;
+    session.addedWordsCount = 0;
+    
+    await showNextVocabularyWord(ctx, session);
+    
+  } catch (error) {
+    console.error('Error in startVocabularyAddition:', error);
+    // При ошибке переходим сразу к тесту
+    await generatePersonalizedQuiz(ctx, session, session.stage2_analysis.errors);
+  }
+}
+
+// Функция показа следующего слова для добавления в словарь
+async function showNextVocabularyWord(ctx, session) {
+  try {
+    if (session.currentWordIndex >= session.vocabularyWords.length) {
+      // Все слова просмотрены, переходим к тесту
+      await ctx.reply(`✅ Готово! Добавлено слов в словарь: ${session.addedWordsCount}`);
+      
+      setTimeout(() => {
+        generatePersonalizedQuiz(ctx, session, session.stage2_analysis.errors);
+      }, 1500);
+      return;
+    }
+    
+    const currentWord = session.vocabularyWords[session.currentWordIndex];
+    const wordNumber = session.currentWordIndex + 1;
+    const totalWords = session.vocabularyWords.length;
+    
+    const message = `📚 <b>Добавить новое слово? (${wordNumber}/${totalWords})</b>\n\n` +
+                   `<b>${currentWord.word}</b> - ${currentWord.translation}\n` +
+                   `<i>${currentWord.example}</i>`;
+    
+    const keyboard = new InlineKeyboard()
+      .text('✅ Добавить в словарь', `add_vocab_${session.currentWordIndex}`)
+      .text('⏭ Пропустить', `skip_vocab_${session.currentWordIndex}`);
+    
+    await ctx.reply(message, { 
+      parse_mode: 'HTML', 
+      reply_markup: keyboard
     });
+    
+  } catch (error) {
+    console.error('Error in showNextVocabularyWord:', error);
+    // При ошибке переходим к следующему слову
+    session.currentWordIndex++;
+    await showNextVocabularyWord(ctx, session);
+  }
+}
+
+// Функция генерации персонального интерактивного теста
+async function generatePersonalizedQuiz(ctx, session, analysisErrors) {
+  try {
+    console.log('=== GENERATING PERSONALIZED QUIZ ===');
+    console.log('Analysis errors received:', analysisErrors);
+    
+    // Проверяем что analysisErrors корректен
+    console.log('DEBUG: analysisErrors type:', typeof analysisErrors);
+    console.log('DEBUG: analysisErrors isArray:', Array.isArray(analysisErrors));
+    console.log('DEBUG: analysisErrors length:', analysisErrors?.length);
+    
+    if (!analysisErrors) {
+      console.error('analysisErrors is null/undefined');
+      await ctx.reply('❌ Не удается создать персональный тест. Нет данных анализа.');
+      return;
+    }
+    
+    // analysisErrors уже должен быть массивом ошибок
+    if (!Array.isArray(analysisErrors)) {
+      console.error('analysisErrors is not an array:', typeof analysisErrors);
+      await ctx.reply('❌ Не удается создать персональный тест. Данные анализа некорректны.');
+      return;
+    }
+    
+    if (analysisErrors.length === 0) {
+      console.log('No errors found, cannot create quiz');
+      await ctx.reply('✅ В вашем тексте не найдено ошибок для создания персонального теста!');
+      return;
+    }
+    
+    await ctx.reply('🧠 Создаю персональный тест на основе ваших ошибок...');
+    
+    const quizPrompt = `ТЫ: Эксперт по английскому языку, создаешь персональные интерактивные тесты на основе ошибок студента
+
+ЗАДАЧА: Создать интерактивный тест из 10 вопросов на основе найденных ошибок пользователя
+
+ОБЯЗАТЕЛЬНАЯ СТРУКТУРА ТЕСТА:
+- 3 вопроса "Find the Hidden Error" (выбор правильного варианта A/B/C/D)  
+- 3 вопроса "Spot & Fix" (исправить предложение, ввод текста)
+- 4 вопроса "Mini-dialogs" (выбор правильного варианта A/B/C/D в диалоге)
+
+СТРОГИЕ ТРЕБОВАНИЯ К JSON:
+1. Возвращай ТОЛЬКО валидный JSON объект без markdown, без лишнего текста
+2. Точно соблюдай структуру полей 
+3. Все строки должны быть в двойных кавычках
+4. НЕ отмечай правильный ответ в options - пользователь должен сам найти ошибку
+5. Используй \\n для переносов строк внутри JSON
+
+ОБЯЗАТЕЛЬНЫЙ ФОРМАТ JSON:
+{
+  "quiz_sections": [
+    {
+      "section_title": "🧠 Часть 1 — Find the Hidden Error (Найди ошибку)",
+      "section_description": "(Развивает внимание и чувство языка)",
+      "questions": [
+        {
+          "type": "multiple_choice",
+          "question_text": "Choose the correct sentence:",
+          "options": [
+            "A) неправильный вариант",
+            "B) правильный вариант", 
+            "C) неправильный вариант"
+          ],
+          "correct_answer": "B",
+          "explanation": "💡 Rule: объяснение правила"
+        }
+      ]
+    },
+    {
+      "section_title": "✍️ Часть 2 — Spot & Fix (Исправь как носитель)",
+      "section_description": "(Развивает активное воспроизведение)",
+      "questions": [
+        {
+          "type": "text_input",
+          "question_text": "Fix the sentence:",
+          "wrong_example": "❌ неправильное предложение",
+          "input_prompt": "✅ ______________________________",
+          "tip": "💬 Tip: краткая подсказка",
+          "correct_answer": "правильное предложение",
+          "explanation": "🧩 Answer: правильное предложение ✅"
+        }
+      ]
+    },
+    {
+      "section_title": "💬 Часть 3 — Mini-dialogs (Диалоги в действии)",
+      "section_description": "(Закрепляет грамматику в контексте общения — как в IELTS Speaking)",
+      "questions": [
+        {
+          "type": "multiple_choice",
+          "question_text": "— Вопрос диалога?\\n— I ______ ответ.",
+          "options": [
+            "A) неправильный",
+            "B) неправильный", 
+            "C) правильный",
+            "D) неправильный"
+          ],
+          "correct_answer": "C",
+          "explanation": "💡 Rule: объяснение правила"
+        }
+      ]
+    }
+  ]
+}
+
+КРИТИЧЕСКИ ВАЖНО:
+- Все вопросы должны быть основаны на РЕАЛЬНЫХ ошибках из анализа пользователя
+- Используй точные фрагменты из текста пользователя в вопросах
+- В Find Hidden Error: правильный вариант помечай ✅
+- В Spot & Fix: ТОЛЬКО конкретные грамматические ошибки (артикли, времена, предлоги). НЕ стилистические улучшения!
+- В Spot & Fix: исправление должно быть ОДНО И ОЧЕВИДНОЕ (добавить артикль, изменить форму глагола)
+- В Spot & Fix: показывай ❌ неправильный пример из текста пользователя
+- В Mini-dialogs: создавай короткие диалоги с ГРАММАТИЧЕСКИМИ пропусками (времена, артикли, предлоги)
+- В Mini-dialogs: НЕ синонимы! Только четкие грамматические различия (was/were, much/many, a/an)
+- Объяснения ОБЯЗАТЕЛЬНО начинай с "💡 Rule:" и делай детальными с конкретными примерами
+- НИКОГДА не пиши простые объяснения типа "используйте правильную форму"
+- КАЖДЫЙ вопрос должен иметь ЛОГИЧНЫЕ варианты ответов с ОЧЕВИДНЫМИ различиями
+- Объяснение должно четко показывать ПОЧЕМУ выбранный ответ правильный
+- Примеры хороших объяснений: "💡 Rule: Before singular countable nouns → always a/an." или "💡 Rule: Many/much/a few — many + plural countable (many books), much + uncountable (much water), a few + plural countable (a few books)."
+- Примеры ПРАВИЛЬНЫХ Spot & Fix: "go for walk" → "go for a walk", "I have learn" → "I have learned", "he don't like" → "he doesn't like"
+- Примеры НЕПРАВИЛЬНЫХ Spot & Fix: "funny videos" → "humorous clips" (это стилистика, не грамматика!)
+- Примеры ПРАВИЛЬНЫХ Mini-dialogs: "I _____ yesterday" A)go B)went C)going (грамматика времен)
+- Примеры НЕПРАВИЛЬНЫХ Mini-dialogs: "_____ videos" A)Funny B)Humorous C)Enjoyable (это лексика, не грамматика!)
+- НЕ создавай вопросы где все варианты выглядят правильными или неправильными
+- ЗАПРЕЩЕНО: вопросы на синонимы, лексику, стиль ("funny vs humorous")
+- ОБЯЗАТЕЛЬНО: только грамматические различия с одним четким правильным ответом
+- ВОЗВРАЩАЙ ТОЛЬКО JSON БЕЗ ДОПОЛНИТЕЛЬНОГО ТЕКСТА!`;
+
+    // Получаем старые вопросы для повторения
+    const oldQuestions = await getOldQuestionsForRepeat(ctx.from.id);
+    
+    // Подготавливаем информацию об ошибках для GPT
+    let errorsInfo = 'Найденные ошибки пользователя:\n';
+    analysisErrors.forEach((error, index) => {
+      errorsInfo += `${index + 1}. ${error.title}\n`;
+      if (error.examples && error.examples.length > 0) {
+        error.examples.forEach(example => {
+          errorsInfo += `   ❌ ${example.from}\n   ✅ ${example.to}\n`;
+        });
+      }
+      errorsInfo += `   Правило: ${error.rule}\n\n`;
+    });
+    
+    // Добавляем информацию о старых вопросах
+    if (oldQuestions && oldQuestions.length > 0) {
+      errorsInfo += '\n\nСтарые вопросы для повторения:\n';
+      oldQuestions.forEach((q, index) => {
+        errorsInfo += `${index + 1}. ${q.questionText}\n`;
+        if (q.options) {
+          errorsInfo += `   Варианты: ${q.options}\n`;
+        }
+        errorsInfo += `   Правильный ответ: ${q.correctAnswer}\n`;
+        errorsInfo += `   Объяснение: ${q.explanation}\n\n`;
+      });
+    }
+
+    const gptRes = await axios.post('https://api.openai.com/v1/chat/completions', {
+      model: 'gpt-4o',
+      messages: [
+        { role: 'system', content: quizPrompt },
+        { role: 'user', content: errorsInfo }
+      ],
+      temperature: 0.7,
+      max_tokens: 5000
+    }, {
+      headers: {
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    let quizResponse = gptRes.data.choices[0].message.content.trim();
+    
+    // Парсим JSON ответ
+    let quizData;
+    try {
+      quizData = JSON.parse(quizResponse);
+    } catch (e1) {
+      try {
+        const jsonMatch = quizResponse.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          quizData = JSON.parse(jsonMatch[0]);
+        } else {
+          throw new Error('JSON not found');
+        }
+      } catch (e2) {
+        console.error('Failed to parse quiz response:', quizResponse);
+        await ctx.reply('❌ Произошла ошибка при создании теста. Попробуйте еще раз.');
+        return;
+      }
+    }
+
+    // Сохраняем тест в сессию и запускаем
+    session.currentQuiz = {
+      sections: quizData.quiz_sections,
+      currentSectionIndex: 0,
+      currentQuestionIndex: 0,
+      score: 0,
+      totalQuestions: 0,
+      answers: []
+    };
+
+    // Подсчитываем общее количество вопросов
+    quizData.quiz_sections.forEach(section => {
+      session.currentQuiz.totalQuestions += section.questions.length;
+    });
+
+    // Запускаем тест
+    await startQuiz(ctx, session);
+
+  } catch (error) {
+    console.error('Error generating personalized quiz:', error);
+    await ctx.reply('❌ Произошла ошибка при создании персонального теста.');
+  }
+}
+
+// Функция запуска интерактивного теста
+async function startQuiz(ctx, session) {
+  const quiz = session.currentQuiz;
+  const currentSection = quiz.sections[quiz.currentSectionIndex];
+  const currentQuestion = currentSection.questions[quiz.currentQuestionIndex];
+  
+  // Показываем заголовок секции (только для первого вопроса в секции)
+  if (quiz.currentQuestionIndex === 0) {
+    let sectionMessage = `${currentSection.section_title}\n\n`;
+    sectionMessage += `${currentSection.section_description}\n\n`;
+    await ctx.reply(sectionMessage);
+  }
+  
+  // Показываем вопрос
+  await showQuizQuestion(ctx, session, currentQuestion);
+}
+
+// Функция отображения вопроса теста
+async function showQuizQuestion(ctx, session, question) {
+  const quiz = session.currentQuiz;
+  const questionNumber = quiz.answers.length + 1;
+  
+  let message = `❓ <b>Вопрос ${questionNumber}/${quiz.totalQuestions}</b>\n\n`;
+  
+  if (question.type === 'multiple_choice') {
+    message += `${question.question_text}\n\n`;
+    question.options.forEach(option => {
+      message += `${option}\n`;
+    });
+    
+    // Создаем кнопки A, B, C, D
+    const keyboard = new Keyboard();
+    const letters = ['A', 'B', 'C', 'D'];
+    letters.slice(0, question.options.length).forEach(letter => {
+      keyboard.text(letter);
+    });
+    
+    await ctx.reply(message, { 
+      parse_mode: 'HTML',
+      reply_markup: keyboard.row().oneTime().resized()
+    });
+    
+  } else if (question.type === 'text_input') {
+    message += `${question.question_text}\n\n`;
+    message += `${question.wrong_example}\n`;
+    message += `${question.input_prompt}\n`;
+    message += `${question.tip}`;
+    
+    await ctx.reply(message, { parse_mode: 'HTML' });
+    await ctx.reply('💬 Напишите исправленное предложение:');
+  }
+  
+  // Сохраняем текущий вопрос для обработки ответа
+  session.waitingForQuizAnswer = {
+    question: question,
+    type: question.type
+  };
+}
+
+// Функция обработки ответа пользователя на вопрос теста
+async function handleQuizAnswer(ctx, session, userAnswer) {
+  const waitingFor = session.waitingForQuizAnswer;
+  const question = waitingFor.question;
+  const quiz = session.currentQuiz;
+  
+  let isCorrect = false;
+  let feedbackMessage = '';
+  
+  if (waitingFor.type === 'multiple_choice') {
+    // Обработка выбора A/B/C/D
+    const selectedLetter = userAnswer.toUpperCase();
+    if (['A', 'B', 'C', 'D'].includes(selectedLetter)) {
+      isCorrect = selectedLetter === question.correct_answer;
+      
+      if (isCorrect) {
+        feedbackMessage = `✅ <b>Правильно!</b>\n\n${question.explanation}`;
+        quiz.score++;
+      } else {
+        feedbackMessage = `❌ <b>Неправильно!</b>\n\n`;
+        feedbackMessage += `🔸 <b>Вы выбрали:</b> ${selectedLetter}\n`;
+        feedbackMessage += `🔸 <b>Правильный ответ:</b> ${question.correct_answer}\n\n`;
+        feedbackMessage += `${question.explanation}`;
+      }
+    } else {
+      await ctx.reply('❌ Пожалуйста, выберите правильный вариант: A, B, C или D');
+      return;
+    }
+    
+  } else if (waitingFor.type === 'text_input') {
+    // Обработка текстового ввода
+    const userText = userAnswer.toLowerCase().trim();
+    const correctText = question.correct_answer.toLowerCase().trim();
+    
+    // Строгая проверка - только точное совпадение (допускаем незначительные различия в пунктуации)
+    const normalizeText = (text) => text.replace(/[.,!?;]/g, '').replace(/\s+/g, ' ').trim();
+    const normalizedUser = normalizeText(userText);
+    const normalizedCorrect = normalizeText(correctText);
+    
+    isCorrect = normalizedUser === normalizedCorrect;
+    
+    if (isCorrect) {
+      feedbackMessage = `✅ <b>Правильно!</b>\n\n${question.explanation}`;
+      quiz.score++;
+    } else {
+      feedbackMessage = `❌ <b>Неправильно!</b>\n\n`;
+      feedbackMessage += `🔸 <b>Ваш ответ:</b> ${userAnswer}\n`;
+      feedbackMessage += `🔸 <b>Правильный ответ:</b> ${question.correct_answer}\n\n`;
+      feedbackMessage += `${question.explanation}\n\n`;
+      
+      // Добавляем конкретную ошибку если можем определить
+      if (userText.includes('had learn')) {
+        feedbackMessage += `💡 <b>Ошибка:</b> "had learn" неверно. Используйте Present Perfect: "have learned"`;
+      } else if (userText.includes('have learn ')) {
+        feedbackMessage += `💡 <b>Ошибка:</b> После "have" нужна форма Past Participle: "learned", а не "learn"`;
+      } else {
+        feedbackMessage += `💡 <b>Подсказка:</b> Обратите внимание на грамматическую структуру предложения`;
+      }
+    }
+  }
+  
+  // Показываем результат ответа
+  const replyOptions = { parse_mode: 'HTML' };
+  
+  // Для text_input вопросов убираем клавиатуру после обратной связи
+  if (waitingFor.type === 'text_input') {
+    replyOptions.reply_markup = { remove_keyboard: true };
+  }
+  
+  await ctx.reply(feedbackMessage, replyOptions);
+  
+  // Сохраняем ответ
+  quiz.answers.push({
+    question: question.question_text,
+    userAnswer: userAnswer,
+    correct: isCorrect,
+    correctAnswer: question.correct_answer
+  });
+  
+  // Сохраняем вопрос в базу данных для будущих повторений
+  await saveQuizQuestion(ctx.from.id, question);
+  
+  // Переходим к следующему вопросу
+  delete session.waitingForQuizAnswer;
+  setTimeout(() => {
+    nextQuizQuestion(ctx, session);
+  }, 2000);
+}
+
+// Переход к следующему вопросу или завершение теста
+async function nextQuizQuestion(ctx, session) {
+  const quiz = session.currentQuiz;
+  
+  // Увеличиваем индекс вопроса
+  quiz.currentQuestionIndex++;
+  
+  // Проверяем, закончились ли вопросы в текущей секции
+  const currentSection = quiz.sections[quiz.currentSectionIndex];
+  if (quiz.currentQuestionIndex >= currentSection.questions.length) {
+    // Переходим к следующей секции
+    quiz.currentSectionIndex++;
+    quiz.currentQuestionIndex = 0;
+    
+    // Проверяем, закончились ли все секции
+    if (quiz.currentSectionIndex >= quiz.sections.length) {
+      // Тест завершен
+      await finishQuiz(ctx, session);
+      return;
+    }
+  }
+  
+  // Показываем следующий вопрос
+  await startQuiz(ctx, session);
+}
+
+// Завершение теста и показ результатов
+async function finishQuiz(ctx, session) {
+  const quiz = session.currentQuiz;
+  const percentage = Math.round((quiz.score / quiz.totalQuestions) * 100);
+  
+  let resultMessage = `🎯 <b>Тест завершен!</b>\n\n`;
+  resultMessage += `📊 <b>Ваш результат:</b> ${quiz.score}/${quiz.totalQuestions} (${percentage}%)\n\n`;
+  
+  if (percentage >= 80) {
+    resultMessage += `🎉 <b>Отличная работа!</b> Вы хорошо усвоили материал.`;
+  } else if (percentage >= 60) {
+    resultMessage += `👍 <b>Хорошо!</b> Есть над чем поработать, но прогресс заметен.`;
+  } else {
+    resultMessage += `💪 <b>Продолжайте практиковаться!</b> Повторение - мать учения.`;
+  }
+  
+  await ctx.reply(resultMessage, { 
+    parse_mode: 'HTML',
+    reply_markup: { remove_keyboard: true }
+  });
+  
+  // Переходим к следующему этапу (этап 3)
+  setTimeout(() => {
+    session.smartRepeatStage = 3;
+    delete session.currentQuiz;
+    ctx.reply('🧠 <b>Умное повторение - Этап 3/5</b>\n<b>Знаю/Не знаю</b>\n\nПереходим к быстрой оценке слов...', {
+      reply_markup: { remove_keyboard: true }
+    });
+    startSmartRepeatStage3(ctx, session);
+  }, 3000);
+}
+
+// Получение 1-2 старых вопросов для повторения
+async function getOldQuestionsForRepeat(telegramId) {
+  try {
+    const oldQuestions = await prisma.$queryRaw`
+      SELECT "questionType", "questionText", "options", "correctAnswer", "explanation"
+      FROM "quiz_questions" 
+      WHERE "telegramId" = ${telegramId} 
+        AND "lastAsked" < CURRENT_DATE - INTERVAL '7 days'
+      ORDER BY RANDOM()
+      LIMIT 2
+    `;
+    return oldQuestions;
+  } catch (error) {
+    console.error('Error getting old questions:', error);
+    return [];
+  }
+}
+
+// Сохранение вопроса в базе данных для будущих повторений
+async function saveQuizQuestion(telegramId, question) {
+  try {
+    const questionText = question.question_text || question.wrong_example || '';
+    const options = question.options ? JSON.stringify(question.options) : null;
+    const correctAnswer = question.correct_answer || '';
+    const explanation = question.explanation || '';
+    const questionType = question.type === 'multiple_choice' ? 'multiple_choice' : 'text_input';
+    
+    await prisma.$executeRaw`
+      INSERT INTO "quiz_questions" 
+      ("telegramId", "questionType", "questionText", "options", "correctAnswer", "explanation", "timesAsked", "lastAsked")
+      VALUES (${telegramId}, ${questionType}, ${questionText}, ${options}, ${correctAnswer}, ${explanation}, 1, CURRENT_TIMESTAMP)
+    `;
+  } catch (error) {
+    console.error('Error saving quiz question:', error);
   }
 }
 
@@ -7091,16 +7700,9 @@ async function showWritingAnalysisResult(ctx, session) {
       }
     });
     
-    await ctx.reply(message, { 
-      parse_mode: 'HTML',
-      reply_markup: new Keyboard()
-        .text('📝 Выполнить упражнения')
-        .row()
-        .text('➡️ Продолжить к следующему этапу')
-        .row()
-        .oneTime()
-        .resized()
-    });
+    await ctx.reply(message, { parse_mode: 'HTML' });
+    
+    // НЕ запускаем квиз здесь - он запустится после добавления слов в словарь
   } else {
     message += `\n\n✅ <b>Отличная работа!</b> Серьезных ошибок не найдено.`;
     
@@ -8188,4 +8790,100 @@ async function finishSmartRepeat(ctx, session) {
     reply_markup: mainMenu,
     parse_mode: 'HTML'
   });
+}
+
+// Обработчик callback query для кнопок добавления слов в словарь
+bot.on('callback_query:data', async (ctx) => {
+  try {
+    const userId = ctx.from.id;
+    const data = ctx.callbackQuery.data;
+    const session = sessions[userId];
+    
+    console.log('DEBUG CALLBACK:', { userId, data, hasSession: !!session });
+    
+    if (!session) {
+      await ctx.answerCallbackQuery('Сессия истекла. Начните заново.');
+      return;
+    }
+    
+    // Обработка кнопок добавления/пропуска слов в словарь
+    if (data.startsWith('add_vocab_') || data.startsWith('skip_vocab_')) {
+      const wordIndex = parseInt(data.split('_')[2]);
+      
+      if (wordIndex !== session.currentWordIndex) {
+        await ctx.answerCallbackQuery('Устаревшая кнопка. Попробуйте еще раз.');
+        return;
+      }
+      
+      const currentWord = session.vocabularyWords[wordIndex];
+      
+      if (data.startsWith('add_vocab_')) {
+        // Добавляем слово в словарь пользователя
+        try {
+          console.log('DEBUG: Adding word to dictionary:', currentWord);
+          await addWordToUserDictionary(session.profile, currentWord);
+          session.addedWordsCount++;
+          console.log('DEBUG: Words added count:', session.addedWordsCount);
+          await ctx.answerCallbackQuery(`✅ Слово "${currentWord.word}" добавлено в словарь!`);
+        } catch (error) {
+          console.error('Error adding word to dictionary:', error);
+          await ctx.answerCallbackQuery('❌ Ошибка при добавлении слова');
+        }
+      } else {
+        // Пропускаем слово
+        await ctx.answerCallbackQuery(`⏭ Слово "${currentWord.word}" пропущено`);
+      }
+      
+      // Переходим к следующему слову
+      session.currentWordIndex++;
+      
+      // Удаляем предыдущее сообщение с кнопками
+      try {
+        await ctx.deleteMessage();
+      } catch (error) {
+        console.log('Could not delete message:', error.message);
+      }
+      
+      // Показываем следующее слово
+      await showNextVocabularyWord(ctx, session);
+    }
+    
+  } catch (error) {
+    console.error('Error in callback query handler:', error);
+    await ctx.answerCallbackQuery('Произошла ошибка');
+  }
+});
+
+// Функция добавления слова в словарь пользователя (используем существующую систему)
+async function addWordToUserDictionary(profileName, wordData) {
+  try {
+    // Проверяем, есть ли уже такое слово у пользователя
+    const existingWord = await prisma.word.findFirst({
+      where: {
+        profile: profileName,
+        word: wordData.word.toLowerCase()
+      }
+    });
+    
+    if (existingWord) {
+      console.log(`Word "${wordData.word}" already exists for user ${profileName}`);
+      return;
+    }
+    
+    // Добавляем слово в базу данных
+    await prisma.word.create({
+      data: {
+        profile: profileName,
+        word: wordData.word.toLowerCase(),
+        translation: wordData.translation,
+        section: 'stage2_vocab'
+      }
+    });
+    
+    console.log(`Added word "${wordData.word}" to dictionary for user ${profileName}`);
+    
+  } catch (error) {
+    console.error('Error in addWordToUserDictionary:', error);
+    throw error;
+  }
 }
