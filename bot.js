@@ -7141,6 +7141,11 @@ async function showImprovedVersion(ctx, session) {
       await ctx.reply(vocabMessage, { parse_mode: 'HTML' });
     }
     
+    // Сохраняем словарь для показа в 5 этапе
+    if (improved.vocabulary_words && improved.vocabulary_words.length > 0) {
+      session.stage2VocabularyWords = improved.vocabulary_words; // Сохраняем для 5 этапа
+    }
+    
     // После показа улучшенного текста переходим к добавлению слов в словарь
     if (improved.vocabulary_words && improved.vocabulary_words.length > 0) {
       setTimeout(() => {
@@ -7635,7 +7640,7 @@ async function finishQuiz(ctx, session) {
     ctx.reply('🧠 <b>Умное повторение - Этап 3/5</b>\n<b>Знаю/Не знаю</b>\n\nПереходим к быстрой оценке слов...', {
       reply_markup: { remove_keyboard: true }
     });
-    startSmartRepeatStage3(ctx, session);
+    startSmartRepeatStage2(ctx, session); // Исправлено: используем правильную функцию для этапа "Знаю/Не знаю"
   }, 3000);
 }
 
@@ -8782,7 +8787,22 @@ async function finishSmartRepeat(ctx, session) {
   delete session.currentStage3Index;
   delete session.stage3Sentences;
   delete session.stage3Context;
+  delete session.stage2VocabularyWords; // Очищаем сохраненные слова
   
+  // Проверяем есть ли сохраненные слова из 2 этапа
+  if (session.stage2VocabularyWords && session.stage2VocabularyWords.length > 0) {
+    await ctx.reply('🎉 <b>Умное повторение завершено!</b>\n\n📚 <b>Повторим слова из 2-го этапа:</b>\n\nВы можете добавить их в свой словарь...', {
+      parse_mode: 'HTML'
+    });
+    
+    // Запускаем добавление слов из 2 этапа
+    setTimeout(() => {
+      startVocabularyAdditionStage5(ctx, session, session.stage2VocabularyWords);
+    }, 1500);
+    return;
+  }
+  
+  // Если нет сохраненных слов - сразу завершаем
   // Возвращаемся в главное меню
   session.step = 'main_menu';
   
@@ -8807,7 +8827,48 @@ bot.on('callback_query:data', async (ctx) => {
     }
     
     // Обработка кнопок добавления/пропуска слов в словарь
-    if (data.startsWith('add_vocab_') || data.startsWith('skip_vocab_')) {
+    if (data.startsWith('add_vocab_stage5_') || data.startsWith('skip_vocab_stage5_')) {
+      // Обработка добавления слов в 5 этапе
+      const wordIndex = parseInt(data.split('_')[3]);
+      
+      if (wordIndex !== session.stage5CurrentWordIndex) {
+        await ctx.answerCallbackQuery('Устаревшая кнопка. Попробуйте еще раз.');
+        return;
+      }
+      
+      const currentWord = session.stage5VocabularyWords[wordIndex];
+      
+      if (data.startsWith('add_vocab_stage5_')) {
+        // Добавляем слово в словарь пользователя
+        try {
+          console.log('DEBUG: Adding stage5 word to dictionary:', currentWord);
+          await addWordToUserDictionary(session.profile, currentWord);
+          session.stage5AddedWordsCount++;
+          console.log('DEBUG: Stage5 words added count:', session.stage5AddedWordsCount);
+          await ctx.answerCallbackQuery(`✅ Слово "${currentWord.word}" добавлено в словарь!`);
+        } catch (error) {
+          console.error('Error adding stage5 word to dictionary:', error);
+          await ctx.answerCallbackQuery('❌ Ошибка при добавлении слова');
+        }
+      } else {
+        // Пропускаем слово
+        await ctx.answerCallbackQuery(`⏭ Слово "${currentWord.word}" пропущено`);
+      }
+      
+      // Переходим к следующему слову
+      session.stage5CurrentWordIndex++;
+      
+      // Удаляем предыдущее сообщение с кнопками
+      try {
+        await ctx.deleteMessage();
+      } catch (error) {
+        console.log('Could not delete message:', error.message);
+      }
+      
+      // Показываем следующее слово
+      await showNextVocabularyWordStage5(ctx, session);
+      
+    } else if (data.startsWith('add_vocab_') || data.startsWith('skip_vocab_')) {
       const wordIndex = parseInt(data.split('_')[2]);
       
       if (wordIndex !== session.currentWordIndex) {
@@ -8886,4 +8947,74 @@ async function addWordToUserDictionary(profileName, wordData) {
     console.error('Error in addWordToUserDictionary:', error);
     throw error;
   }
+}
+
+// Функция добавления слов из 2 этапа в конце 5 этапа
+async function startVocabularyAdditionStage5(ctx, session, vocabularyWords) {
+  try {
+    session.stage5VocabularyWords = vocabularyWords;
+    session.stage5CurrentWordIndex = 0;
+    session.stage5AddedWordsCount = 0;
+    
+    await showNextVocabularyWordStage5(ctx, session);
+    
+  } catch (error) {
+    console.error('Error in startVocabularyAdditionStage5:', error);
+    // При ошибке завершаем умное повторение
+    await finishSmartRepeatFinal(ctx, session);
+  }
+}
+
+// Функция показа следующего слова для добавления в словарь в 5 этапе
+async function showNextVocabularyWordStage5(ctx, session) {
+  try {
+    if (session.stage5CurrentWordIndex >= session.stage5VocabularyWords.length) {
+      // Все слова просмотрены, завершаем умное повторение
+      await ctx.reply(`✅ Готово! Добавлено слов в словарь: ${session.stage5AddedWordsCount}`);
+      
+      setTimeout(() => {
+        finishSmartRepeatFinal(ctx, session);
+      }, 2000);
+      return;
+    }
+    
+    const currentWord = session.stage5VocabularyWords[session.stage5CurrentWordIndex];
+    const currentIndex = session.stage5CurrentWordIndex + 1;
+    const totalWords = session.stage5VocabularyWords.length;
+    
+    let message = `📚 <b>Слово ${currentIndex}/${totalWords} из 2-го этапа:</b>\n\n`;
+    message += `🔤 <b>${currentWord.word}</b>\n`;
+    message += `🇷🇺 ${currentWord.translation}\n`;
+    message += `📝 <i>${currentWord.example}</i>\n\n`;
+    message += `Добавить в ваш словарь?`;
+    
+    const keyboard = new InlineKeyboard()
+      .text('✅ Добавить', `add_vocab_stage5_${session.stage5CurrentWordIndex}`)
+      .text('⏭ Пропустить', `skip_vocab_stage5_${session.stage5CurrentWordIndex}`);
+    
+    await ctx.reply(message, { 
+      parse_mode: 'HTML', 
+      reply_markup: keyboard 
+    });
+    
+  } catch (error) {
+    console.error('Error in showNextVocabularyWordStage5:', error);
+    await finishSmartRepeatFinal(ctx, session);
+  }
+}
+
+// Финальное завершение умного повторения
+async function finishSmartRepeatFinal(ctx, session) {
+  // Возвращаемся в главное меню
+  session.step = 'main_menu';
+  
+  // Очищаем состояния 5 этапа
+  delete session.stage5VocabularyWords;
+  delete session.stage5CurrentWordIndex;
+  delete session.stage5AddedWordsCount;
+  
+  await ctx.reply('🎉 <b>Умное повторение полностью завершено!</b>\n\nОтличная работа! Все этапы пройдены.', {
+    reply_markup: mainMenu,
+    parse_mode: 'HTML'
+  });
 }
