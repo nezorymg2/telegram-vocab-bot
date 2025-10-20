@@ -1507,13 +1507,18 @@ async function sendAudioForWords(ctx, profile, processedWords) {
 }
 
 async function getWords(profile, filter = {}) {
-  return prisma.word.findMany({
+  console.log(`DEBUG getWords: profile="${profile}", filter=${JSON.stringify(filter)}`);
+  
+  const result = await prisma.word.findMany({
     where: {
       profile,
       ...(filter.section ? { section: filter.section } : {}),
     },
     orderBy: { id: 'asc' },
   });
+  
+  console.log(`DEBUG getWords: found ${result.length} words for profile "${profile}"`);
+  return result;
 }
 
 async function updateWordCorrect(profile, word, translation, correct) {
@@ -1818,6 +1823,8 @@ bot.command('words', async (ctx) => {
   const userId = ctx.from.id;
   const session = sessions[userId];
   
+  console.log(`DEBUG /words: userId=${userId}, profile=${session?.profile}`);
+  
   if (!session || !session.profile) {
     return ctx.reply('Сначала выполните /start');
   }
@@ -1827,7 +1834,9 @@ bot.command('words', async (ctx) => {
   
   try {
     const filter = section ? { section } : {};
+    console.log(`DEBUG /words: filter=${JSON.stringify(filter)}, profile=${session.profile}`);
     const words = await getWords(session.profile, filter);
+    console.log(`DEBUG /words: found ${words.length} words`);
     
     if (!words.length) {
       const msg = section 
@@ -1835,6 +1844,12 @@ bot.command('words', async (ctx) => {
         : 'У вас нет добавленных слов';
       return ctx.reply(msg);
     }
+
+    // Подсчитываем статистику
+    const totalWords = words.length;
+    const newWords = words.filter(w => (w.correct || 0) <= 2).length;
+    const learningWords = words.filter(w => (w.correct || 0) >= 3 && (w.correct || 0) <= 4).length;
+    const learnedWords = words.filter(w => (w.correct || 0) >= 5).length;
     
     // Группируем по разделам
     const sections = {};
@@ -1844,32 +1859,51 @@ bot.command('words', async (ctx) => {
       sections[sec].push(word);
     });
     
-    let message = section 
+    let messages = [];
+    let currentMessage = section 
       ? `<b>Слова из раздела "${section}":</b>\n\n`
-      : '<b>Ваши слова:</b>\n\n';
+      : `<b>📚 Ваш словарь:</b> ${totalWords} слов\n\n📊 <b>Статистика:</b>\n🔴 Новые: ${newWords} | 🟡 Изучаемые: ${learningWords} | 🟢 Изученные: ${learnedWords}\n\n`;
     
     for (const [sec, sectionWords] of Object.entries(sections)) {
-      if (!section) {
-        message += `<b>${sec}:</b>\n`;
-      }
+      let sectionHeader = !section ? `<b>${sec}:</b>\n` : '';
       
-      sectionWords.forEach(word => {
+      for (const word of sectionWords) {
         const correct = word.correct || 0;
         let status = '';
         if (correct <= 2) status = '🔴';
         else if (correct <= 4) status = '🟡';
         else status = '🟢';
         
-        message += `${status} <code>${word.word}</code> — ${word.translation}\n`;
-      });
+        const wordLine = `${status} <code>${word.word}</code> — ${word.translation}\n`;
+        
+        // Проверяем, поместится ли новая строка (лимит Telegram ~4096 символов)
+        if ((currentMessage + sectionHeader + wordLine).length > 3500) {
+          // Добавляем footer к текущему сообщению
+          currentMessage += '\n<i>🔴 новые (≤2), 🟡 изучаемые (3-4), 🟢 изученные (≥5)</i>';
+          currentMessage += '\n\nДля удаления: /delete [слово]';
+          messages.push(currentMessage);
+          
+          // Начинаем новое сообщение
+          currentMessage = `<b>Ваши слова (продолжение):</b>\n\n`;
+          sectionHeader = !section ? `<b>${sec}:</b>\n` : '';
+        }
+        
+        currentMessage += sectionHeader + wordLine;
+        sectionHeader = ''; // Заголовок раздела добавляем только один раз
+      }
       
-      if (!section) message += '\n';
+      if (!section) currentMessage += '\n';
     }
     
-    message += '\n<i>🔴 новые (≤2), 🟡 изучаемые (3-4), 🟢 изученные (≥5)</i>';
-    message += '\n\nДля удаления: /delete [слово]';
+    // Добавляем footer к последнему сообщению
+    currentMessage += '\n<i>🔴 новые (≤2), 🟡 изучаемые (3-4), 🟢 изученные (≥5)</i>';
+    currentMessage += '\n\nДля удаления: /delete [слово]';
+    messages.push(currentMessage);
     
-    await ctx.reply(message, { parse_mode: 'HTML' });
+    // Отправляем все сообщения
+    for (const msg of messages) {
+      await ctx.reply(msg, { parse_mode: 'HTML' });
+    }
   } catch (error) {
     console.error('Error in /words:', error);
     await ctx.reply('Ошибка при получении списка слов');
@@ -4407,6 +4441,17 @@ bot.on('message:text', async (ctx) => {
       session.smartRepeatStage = 3;
       delete session.writingTopic;
       
+      // Сохраняем несколько случайных слов из Stage 1 для Stage 5
+      if (session.currentQuizSession && session.currentQuizSession.words) {
+        const words = session.currentQuizSession.words.slice(0, 5); // Берем первые 5 слов
+        session.stage2VocabularyWords = words.map(word => ({
+          word: word,
+          translation: `перевод для ${word}`,
+          example: `Пример предложения с ${word}.`
+        }));
+        console.log(`DEBUG: Saved ${session.stage2VocabularyWords.length} words for Stage 5 when skipping Stage 2`);
+      }
+      
       await ctx.reply('⏭️ Этап 2 (письмо) пропущен!\n\n🧠 <b>Умное повторение - Этап 3/5</b>\n<b>Знаю/Не знаю</b>\n\nПереходим к быстрой оценке слов...');
       return await startSmartRepeatStage2(ctx, session); // Это старая функция "Знаю/Не знаю", которая стала этапом 3
       
@@ -4597,16 +4642,7 @@ bot.on('message:text', async (ctx) => {
         reply_markup: Keyboard.from(nextQ.options.map(opt => [opt]), { one_time_keyboard: true, resize_keyboard: true })
       });
     } else {
-      // Показываем дополнительные слова перед завершением
-      if (session.additionalVocabulary && session.additionalVocabulary.length > 0) {
-        let vocabMessage = '📚 <b>Дополнительная лексика из текста:</b>\n\n';
-        session.additionalVocabulary.forEach((item, index) => {
-          vocabMessage += `${index + 1}. <b>${item.word}</b> - ${item.translation}\n`;
-        });
-        
-        await ctx.reply(vocabMessage, { parse_mode: 'HTML' });
-      }
-      
+      // Очищаем состояния этапа 5
       delete session.storyText;
       delete session.storyQuestions;
       delete session.storyQuestionIndex;
@@ -4614,8 +4650,8 @@ bot.on('message:text', async (ctx) => {
       delete session.additionalVocabulary; // Удаляем дополнительные слова
       
       if (session.smartRepeatStage === 5) {
-        // Этап 5 умного повторения завершен - завершаем всё умное повторение
-        await completeSmartRepeat(ctx, session);
+        // Этап 5 умного повторения завершен - используем новую систему завершения
+        await finishSmartRepeat(ctx, session);
       } else {
         // Обычное текстовое задание - показываем поздравление
         session.step = 'main_menu';
@@ -7040,18 +7076,52 @@ async function generateImprovedVersion(ctx, session, originalText) {
       console.log('DEBUG: Has writing_advice:', !!improvementData.writing_advice);
       console.log('DEBUG: Has vocabulary_words:', !!improvementData.vocabulary_words);
     } catch (e1) {
+      console.log('First JSON parse failed, trying fallback methods');
       try {
+        // Попытка 1: Извлечь JSON из текста
         const jsonMatch = improvementResponse.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
-          improvementData = JSON.parse(jsonMatch[0]);
-          console.log('DEBUG: Parsed improvement data (fallback):', JSON.stringify(improvementData, null, 2));
+          let jsonString = jsonMatch[0];
+          
+          // Дополнительная очистка для исправления возможных проблем
+          // Удаляем дублирующиеся запятые
+          jsonString = jsonString.replace(/,\s*,/g, ',');
+          // Удаляем запятые перед закрывающими скобками
+          jsonString = jsonString.replace(/,\s*([}\]])/g, '$1');
+          
+          improvementData = JSON.parse(jsonString);
+          console.log('DEBUG: Parsed improvement data (fallback method 1):', JSON.stringify(improvementData, null, 2));
         } else {
-          throw new Error('JSON not found');
+          throw new Error('JSON not found in response');
         }
       } catch (e2) {
-        console.error('Failed to parse improvement response:', improvementResponse);
-        // Fallback - показываем только оригинальный анализ
-        return;
+        console.log('Fallback method 1 failed, trying method 2');
+        try {
+          // Попытка 2: Попробовать найти и извлечь основные поля вручную
+          const improvedTextMatch = improvementResponse.match(/"improved_text":\s*"([^"]*(?:\\.[^"]*)*)"/);
+          
+          if (improvedTextMatch) {
+            console.log('Extracting basic data manually');
+            improvementData = {
+              improved_text: improvedTextMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"'),
+              writing_advice: [],
+              vocabulary_words: []
+            };
+            console.log('DEBUG: Manually extracted improvement data');
+          } else {
+            throw new Error('Could not extract improved_text manually');
+          }
+        } catch (e3) {
+          console.error('All fallback methods failed. Error details:', e1.message, e2.message, e3.message);
+          console.error('Raw response for debugging:', improvementResponse);
+          // Fallback - создаем минимальные данные для продолжения процесса
+          console.log('Using final fallback improvement data due to parsing error');
+          improvementData = {
+            improved_text: "Sorry, couldn't generate improved version due to technical issues.",
+            writing_advice: [],
+            vocabulary_words: []
+          };
+        }
       }
     }
     
@@ -7096,7 +7166,19 @@ async function generateImprovedVersion(ctx, session, originalText) {
     
   } catch (error) {
     console.error('Error generating improved version:', error);
-    // Не прерываем весь процесс, просто пропускаем улучшенную версию
+    // Не прерываем весь процесс, продолжаем с тестом по ошибкам
+    await ctx.reply('⚠️ Возникла проблема с генерацией улучшенной версии, но продолжаем с тестом по ошибкам.');
+    
+    // Переходим сразу к тесту по ошибкам
+    if (session.stage2_analysis && session.stage2_analysis.errors && session.stage2_analysis.errors.length > 0) {
+      setTimeout(() => {
+        generatePersonalizedQuiz(ctx, session, session.stage2_analysis.errors);
+      }, 1000);
+    } else {
+      // Если нет ошибок для теста, завершаем этап
+      await ctx.reply('✅ Анализ завершен! Переходим к следующему этапу.');
+      // Здесь можно добавить переход к следующему этапу
+    }
   }
 }
 
@@ -7105,6 +7187,13 @@ async function showImprovedVersion(ctx, session) {
   const improved = session.improvedText;
   
   if (!improved || !improved.improved_text) {
+    console.log('No improved text data, proceeding to quiz generation');
+    // Если нет улучшенной версии, переходим сразу к тесту
+    if (session.stage2_analysis && session.stage2_analysis.errors && session.stage2_analysis.errors.length > 0) {
+      setTimeout(() => {
+        generatePersonalizedQuiz(ctx, session, session.stage2_analysis.errors);
+      }, 1000);
+    }
     return;
   }
   
@@ -7227,6 +7316,9 @@ async function showNextVocabularyWord(ctx, session) {
 async function generatePersonalizedQuiz(ctx, session, analysisErrors) {
   try {
     console.log('=== GENERATING PERSONALIZED QUIZ ===');
+    console.log('User ID:', ctx.from.id);
+    console.log('Current step:', session.step);
+    console.log('Smart repeat stage:', session.smartRepeatStage);
     console.log('Analysis errors received:', analysisErrors);
     
     // Проверяем что analysisErrors корректен
@@ -7637,10 +7729,14 @@ async function finishQuiz(ctx, session) {
   setTimeout(() => {
     session.smartRepeatStage = 3;
     delete session.currentQuiz;
+    console.log(`=== SMART REPEAT STAGE 3 START ===`);
+    console.log(`User ID: ${ctx.from.id}`);
+    console.log(`Transitioning from personalized quiz to stage 3`);
+    
     ctx.reply('🧠 <b>Умное повторение - Этап 3/5</b>\n<b>Знаю/Не знаю</b>\n\nПереходим к быстрой оценке слов...', {
       reply_markup: { remove_keyboard: true }
     });
-    startSmartRepeatStage2(ctx, session); // Исправлено: используем правильную функцию для этапа "Знаю/Не знаю"
+    startSmartRepeatStage3(ctx, session); // Исправлено: используем правильную функцию для этапа 3 "Знаю/Не знаю"
   }, 3000);
 }
 
@@ -8778,6 +8874,9 @@ async function finishSmartRepeat(ctx, session) {
     await recordSmartRepeatCompletion(session.profile);
   }
   
+  // Сохраняем слова из 2 этапа перед очисткой
+  const savedVocabularyWords = session.stage2VocabularyWords || [];
+  
   // Очищаем все состояния умного повторения
   delete session.currentQuizSession;
   delete session.smartRepeatWords;
@@ -8787,17 +8886,17 @@ async function finishSmartRepeat(ctx, session) {
   delete session.currentStage3Index;
   delete session.stage3Sentences;
   delete session.stage3Context;
-  delete session.stage2VocabularyWords; // Очищаем сохраненные слова
+  delete session.stage2VocabularyWords;
   
   // Проверяем есть ли сохраненные слова из 2 этапа
-  if (session.stage2VocabularyWords && session.stage2VocabularyWords.length > 0) {
+  if (savedVocabularyWords && savedVocabularyWords.length > 0) {
     await ctx.reply('🎉 <b>Умное повторение завершено!</b>\n\n📚 <b>Повторим слова из 2-го этапа:</b>\n\nВы можете добавить их в свой словарь...', {
       parse_mode: 'HTML'
     });
     
     // Запускаем добавление слов из 2 этапа
     setTimeout(() => {
-      startVocabularyAdditionStage5(ctx, session, session.stage2VocabularyWords);
+      startVocabularyAdditionStage5(ctx, session, savedVocabularyWords);
     }, 1500);
     return;
   }
