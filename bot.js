@@ -6759,8 +6759,7 @@ const systemPrompt = `Ты строгий преподаватель англи�
         errorsType: typeof fallbackAnalysis.errors
       });
       
-      await ctx.reply('✅ Анализ завершен! Показываю основные рекомендации:', { reply_markup: { remove_keyboard: true } });
-      await showWritingAnalysisResult(ctx, session);
+      await ctx.reply('✅ Анализ завершен!', { reply_markup: { remove_keyboard: true } });
       await generateImprovedVersion(ctx, session, userText);
       return;
     }
@@ -6841,10 +6840,7 @@ const systemPrompt = `Ты строгий преподаватель англи�
       errorsType: typeof analysisData.errors
     });
     
-    // Показываем результат анализа
-    await showWritingAnalysisResult(ctx, session);
-    
-    // Генерируем улучшенную версию текста
+    // Генерируем улучшенную версию текста с персональной оценкой
     await generateImprovedVersion(ctx, session, userText);
     
   } catch (error) {
@@ -6897,8 +6893,8 @@ const systemPrompt = `Ты строгий преподаватель англи�
       session.writingAnalysis = simpleFallback;
       session.step = 'writing_analysis_result';
       
-      await ctx.reply('✅ Анализ завершен! Показываю основные рекомендации:', { reply_markup: { remove_keyboard: true } });
-      await showWritingAnalysisResult(ctx, session);
+      await ctx.reply('✅ Анализ завершен!', { reply_markup: { remove_keyboard: true } });
+      await generateImprovedVersion(ctx, session, session.userText || 'Пример текста для анализа');
       return;
     } else {
       errorMsg += `Детали: ${error.message}`;
@@ -7825,47 +7821,6 @@ async function saveQuizQuestion(telegramId, question) {
     `;
   } catch (error) {
     console.error('Error saving quiz question:', error);
-  }
-}
-
-// Функция отображения результатов анализа письма
-async function showWritingAnalysisResult(ctx, session) {
-  const analysis = session.writingAnalysis;
-  
-  let message = `📊 <b>Анализ вашего текста:</b>\n\n`;
-  message += `🎯 <b>Оценка:</b> ${analysis.band_estimate}/9 (IELTS Writing)\n\n`;
-  message += `📝 <b>Общий отзыв:</b>\n${analysis.summary}\n\n`;
-  message += `💡 <b>Рекомендации:</b>\n${analysis.global_advice}`;
-  
-  if (analysis.errors && analysis.errors.length > 0) {
-    message += `\n\n🔍 <b>Найдено ошибок:</b> ${analysis.errors.length}`;
-    
-    analysis.errors.forEach((error, index) => {
-      message += `\n\n<b>${index + 1}. ${error.title}</b>`;
-      message += `\n💡 ${error.rule}`;
-      message += `\n🧠 <i>${error.meme}</i>`;
-      
-      if (error.examples && error.examples.length > 0) {
-        error.examples.forEach(example => {
-          message += `\n❌ "${example.from}" → ✅ "${example.to}"`;
-        });
-      }
-    });
-    
-    await ctx.reply(message, { parse_mode: 'HTML' });
-    
-    // НЕ запускаем квиз здесь - он запустится после добавления слов в словарь
-  } else {
-    message += `\n\n✅ <b>Отличная работа!</b> Серьезных ошибок не найдено.`;
-    
-    await ctx.reply(message, { 
-      parse_mode: 'HTML',
-      reply_markup: new Keyboard()
-        .text('➡️ Продолжить к следующему этапу')
-        .row()
-        .oneTime()
-        .resized()
-    });
   }
 }
 
