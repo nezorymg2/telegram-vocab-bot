@@ -6675,7 +6675,7 @@ const systemPrompt = `Ты строгий преподаватель англи�
   "errors": [
     {
       "title": "Конкретная грамматическая проблема",
-      "rule": "💡 Rule: Детальное правило с примерами",
+      "rule":  "Детальное правило с примерами",
       "meme": "Запоминающаяся подсказка", 
       "examples": [
         {
@@ -7231,7 +7231,7 @@ async function showImprovedVersion(ctx, session) {
       for (let i = 0; i < analysis.errors.length; i++) {
         const error = analysis.errors[i];
         let errorMessage = `<b>${i + 1}. ${error.title}</b>\n`;
-        errorMessage += `💡 💡 Rule: ${error.rule}\n`;
+        errorMessage += `${error.rule}\n`;
         errorMessage += `🧠 <i>${error.meme}</i>\n`;
         
         if (error.examples && error.examples.length > 0) {
@@ -7455,7 +7455,7 @@ async function generatePersonalizedQuiz(ctx, session, analysisErrors) {
             "C) неправильный вариант"
           ],
           "correct_answer": "B",
-          "explanation": "💡 Rule: объяснение правила"
+          "explanation": "объяснение правила"
         }
       ]
     },
@@ -7488,7 +7488,7 @@ async function generatePersonalizedQuiz(ctx, session, analysisErrors) {
             "D) неправильный"
           ],
           "correct_answer": "C",
-          "explanation": "💡 Rule: объяснение правила"
+          "explanation": "объяснение правила"
         }
       ]
     }
@@ -8789,10 +8789,15 @@ async function startSmartRepeatStage5(ctx, session) {
     session.storyTaskWords = words.map(w => w.word);
     session.step = 'story_task';
     
+    // Очищаем состояние персонализированного квиза из этапа 2
+    delete session.waitingForQuizAnswer;
+    delete session.currentQuiz;
+    
     console.log('Set session variables:');
     console.log('- smartRepeatStage:', session.smartRepeatStage);
     console.log('- storyTaskWords:', session.storyTaskWords);
     console.log('- step:', session.step);
+    console.log('- Cleared quiz state from stage 2');
     
     await ctx.reply(
       `🧠 <b>Умное повторение - Этап 5/5</b>\n` +
