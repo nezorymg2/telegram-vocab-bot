@@ -4647,7 +4647,7 @@ bot.on('message:text', async (ctx) => {
       delete session.storyQuestions;
       delete session.storyQuestionIndex;
       delete session.storyTaskWords;
-      delete session.additionalVocabulary; // Удаляем дополнительные слова
+      // НЕ удаляем additionalVocabulary - они понадобятся для показа пользователю
       
       if (session.smartRepeatStage === 5) {
         // Этап 5 умного повторения завершен - используем новую систему завершения
@@ -4730,7 +4730,7 @@ async function generateStoryTaskContent(session, ctx) {
 
 К каждому вопросу обязательно дай ровно 5 вариантов ответов (1 правильный и 4 дистрактора, порядок случайный).
 
-Также выбери 15 интересных и сложных слов из текста (НЕ из списка изучаемых слов: [${storyWords.join(', ')}]), которые могут быть полезны для изучения, и дай их перевод на русский.
+Также выбери 10 самых интересных и сложных слов из текста (НЕ из списка изучаемых слов: [${storyWords.join(', ')}]), которые могут быть полезны для изучения, и дай их перевод на русский и пример использования.
 
 Ответ должен быть строго в формате JSON без дополнительного текста и комментариев:
 {
@@ -4746,7 +4746,8 @@ async function generateStoryTaskContent(session, ctx) {
   "additional_vocabulary": [
     {
       "word": "слово",
-      "translation": "перевод"
+      "translation": "перевод",
+      "example": "Пример предложения с этим словом"
     }, ...
   ]
 }`;
@@ -6599,6 +6600,31 @@ async function startSmartRepeatStageWriting(ctx, session) {
       }
     );
     
+    // Отправляем универсальную структуру эссе как подсказку
+    setTimeout(async () => {
+      await ctx.reply(
+        `💡 <b>Универсальная структура для всех типов эссе:</b>\n\n` +
+        `<b>[Intro]</b>\n` +
+        `I strongly believe that / I firmly agree that / There is no doubt that __________.\n` +
+        `This essay will discuss / aims to examine / will explore __________.\n\n` +
+        
+        `<b>[Body 1: Background or Reason 1]</b>\n` +
+        `Firstly / To begin with / One major reason is that __________.\n` +
+        `This is mainly because / This can be explained by / The main reason for this is that __________.\n` +
+        `For example / For instance / A good illustration of this is __________.\n\n` +
+        
+        `<b>[Body 2: Development or Reason 2]</b>\n` +
+        `Secondly / In addition / Another important factor is that __________.\n` +
+        `As a result / Consequently / This leads to __________.\n` +
+        `Furthermore / Moreover / Additionally __________.\n\n` +
+        
+        `<b>[Conclusion]</b>\n` +
+        `In conclusion / To sum up / Overall __________.\n` +
+        `Therefore, it is clear that / Hence, it can be concluded that / Thus, it is evident that __________.`,
+        { parse_mode: 'HTML' }
+      );
+    }, 1500);
+    
   } catch (error) {
     console.error('Error in startSmartRepeatStageWriting:', error);
     session.step = 'main_menu';
@@ -6891,36 +6917,17 @@ async function generateImprovedVersion(ctx, session, originalText) {
     await ctx.reply('✨ Генерирую улучшенную версию вашего текста...');
     
     const improvementPrompt = `
-ТЫ: Эксперт IELTS Writing, улучшаешь тексты студентов до уровня 7.0
+ТЫ: Эксперт IELTS Writing, улучшаешь тексты студентов и даешь персональную оценку
 
-ЗАДАЧА: Улучшить текст и дать 5 практических советов в новом формате с примерами из реального текста пользователя.
+ЗАДАЧА: Улучшить текст до уровня 7.0+ и дать персональную оценку по 5 критериям на основе конкретного текста пользователя.
 
-КРИТЕРИИ IELTS WRITING 7.0:
-1. Task Response (Ответ на задание):
-   - Полное раскрытие темы
-   - Четкая позиция автора
-   - Развернутые и релевантные идеи
-   - Логичное заключение
+КРИТЕРИИ IELTS WRITING 7.0+:
+1. Task Response - Полное раскрытие темы, четкая позиция, развернутые идеи
+2. Coherence & Cohesion - Логичная структура, эффективные связующие слова
+3. Lexical Resource - Широкий словарный запас, точное использование слов
+4. Grammar - Разнообразные структуры, сложные предложения, высокая точность
 
-2. Coherence & Cohesion (Связность):
-   - Логичная структура
-   - Эффективные связующие слова
-   - Четкие параграфы
-   - Плавные переходы между идеями
-
-3. Lexical Resource (Лексика):
-   - Широкий словарный запас
-   - Точное использование слов
-   - Идиоматические выражения
-   - Минимальные лексические ошибки
-
-4. Grammar (Грамматика):
-   - Разнообразные грамматические структуры
-   - Сложные предложения
-   - Высокая точность
-   - Редкие ошибки
-
-ИНСТРУКЦИИ:
+ИНСТРУКЦИИ ПО УЛУЧШЕНИЮ:
 1. Сохрани основную идею и смысл оригинального текста
 2. Улучши структуру и логику изложения
 3. Обогати лексику более продвинутыми словами и фразами
@@ -6935,118 +6942,61 @@ async function generateImprovedVersion(ctx, session, originalText) {
 - improvements[].description: ТОЛЬКО НА РУССКОМ ЯЗЫКЕ
 - improvements[].example: ТОЛЬКО НА РУССКОМ ЯЗЫКЕ
 - writing_tips: ТОЛЬКО НА РУССКОМ ЯЗЫКЕ
-- vocabulary_boost[].translation: НА РУССКОМ ЯЗЫКЕ
-- vocabulary_boost[].usage: НА АНГЛИЙСКОМ ЯЗЫКЕ (это пример предложения)
-
-ЗАПРЕЩЕНО писать объяснения на английском! Это грубая ошибка!
-
-ПРИМЕР правильного ответа (ОБРАТИ ВНИМАНИЕ НА ЯЗЫКИ!):
+ОБЯЗАТЕЛЬНАЯ СТРУКТУРА JSON:
 {
-  "improved_text": "Climate change represents a critical global challenge...",
-  "key_changes": "Текст был полностью переработан для улучшения связности между идеями и обогащен продвинутой академической лексикой",
-  "improvements": [
-    {
-      "category": "Task Response",
-      "description": "Тема раскрыта более полно с четкой позицией автора и развернутыми аргументами",
-      "example": "Добавлены конкретные примеры и более детальное обоснование позиции"
-    },
-    {
-      "category": "Coherence & Cohesion", 
-      "description": "Улучшена логическая структура текста с помощью связующих слов и четких переходов",
-      "example": "Использованы фразы типа 'Furthermore', 'In addition', 'Consequently'"
-    },
-    {
-      "category": "Lexical Resource",
-      "description": "Заменена простая лексика на более продвинутую и точную", 
-      "example": "Вместо 'big problem' использовано 'significant challenge'"
-    },
-    {
-      "category": "Grammar",
-      "description": "Добавлены сложные грамматические конструкции для разнообразия",
-      "example": "Использованы условные предложения и причастные обороты"
-    }
-  ],
-  "writing_tips": [
-    "Используйте разнообразные связующие слова для плавного перехода между идеями",
-    "Применяйте синонимы и перефразирование чтобы избежать повторений",
-    "Структурируйте каждый параграф с четкой главной мыслью"
-  ],
-  "vocabulary_words": [
-    {
-      "word": "catastrophic",
-      "translation": "катастрофический",
-      "example": "The catastrophic effects of climate change are becoming evident."
-    }
-  ]
-}
-
-КРИТИЧЕСКИ ВАЖНО - ИСПОЛЬЗУЙ ТОЛЬКО ЭТОТ ФОРМАТ JSON:
-{
-  "improved_text": "улучшенный текст на английском",
-  "writing_advice": [
-    {
-      "number": "1️⃣",
-      "title": "Сделай позицию чёткой и возвращайся к ней в конце",
-      "why": "💬 Зачем: IELTS оценивает, насколько ясно ты выражаешь мнение.",
-      "how": "🧠 Как: во вступлении пиши фразу, показывающую твою позицию (I strongly believe / I personally prefer / I am convinced that…).",
-      "example_bad": "цитата из оригинального текста пользователя",
-      "example_good": "исправленная версия этой же цитаты", 
-      "action": "🪄 Что делать: начни первое предложение с позиции, и повтори её в последней строке заключения другими словами."
-    },
-    {
-      "number": "2️⃣", 
-      "title": "Разделяй текст на 3 блока: вступление — аргументы — вывод",
-      "why": "💬 Зачем: Экзаменатор проверяет структуру (Coherence & Cohesion).",
-      "how": "🧠 Как:\\n\\nВступление → идея + мнение.\\n\\nОсновная часть → 2 причины с примерами.\\n\\nЗаключение → обобщение и финальная мысль.",
-      "example_bad": "цитата из оригинального текста пользователя",
-      "example_good": "исправленная версия этой же цитаты",
-      "action": "🪄 Что делать: проверь, что у тебя есть четкие границы между частями текста."
-    },
-    {
-      "number": "3️⃣",
-      "title": "Добавляй связки, чтобы текст \\"тёк\\" естественно",
-      "why": "💬 Зачем: Без связок текст кажется \\"кусочным\\".",  
-      "how": "🧠 Как: Используй разные типы:\\n\\nУступка: Although, Even though\\n\\nПротивопоставление: However, On the other hand\\n\\nПричина/следствие: Because, As a result, Therefore\\n\\nВремя: When, After, Before",
-      "example_bad": "цитата из оригинального текста пользователя",
-      "example_good": "исправленная версия этой же цитаты",
-      "action": "🪄 Что делать: найди места, где можно добавить linking words."
-    },
-    {
-      "number": "4️⃣",
-      "title": "Укрепляй словарь — 3 новых слова по теме",
-      "why": "💬 Зачем: Lexical Resource даёт +0.5–1 балл.",
-      "how": "🧠 Как: выбирай синонимы и устойчивые выражения по теме.",
-      "example_bad": "цитата из оригинального текста пользователя",
-      "example_good": "исправленная версия этой же цитаты",
-      "action": "🪄 Что делать: после каждого текста выписывай 3 новых слова и попробуй использовать их в следующем."
-    },
-    {
-      "number": "5️⃣",
-      "title": "Добавь \\"гибкую грамматику\\" — хотя бы одно сложное предложение",
-      "why": "💬 Зачем: Grammatical Range = обязательный критерий Band 7+.",
-      "how": "🧠 Как:\\n\\nИспользуй Although / While / Because для сложных предложений.\\n\\nДобавь условное или причастное:\\nIf I go to bed early, I can't focus well.\\nFeeling tired, I prefer working at night.",
-      "example_bad": "цитата из оригинального текста пользователя", 
-      "example_good": "исправленная версия этой же цитаты",
-      "action": "🪄 Что делать: найди простые предложения и объедини их в сложные."
-    }
-  ],
+  "improved_text": "улучшенный текст на английском языке",
+  "personalized_feedback": {
+    "clarity_focus": "Анализ ясности и фокуса ЭТОГО конкретного текста с примерами",
+    "flow_rhythm": "Анализ ритма и течения ЭТОГО текста с конкретными предложениями",
+    "tone_engagement": "Анализ тона и вовлеченности с примерами ИЗ ЭТОГО текста",
+    "development_depth": "Анализ развития идей в ЭТОМ тексте с конкретными советами",
+    "precision_ideas": "Анализ точности выражения идей с примерами из текста пользователя"
+  },
   "vocabulary_words": [
     {
       "word": "слово",
-      "translation": "перевод", 
-      "example": "предложение с этим словом на английском"
+      "translation": "перевод",
+      "example": "пример предложения на английском"
     }
   ]
 }
 
-КРИТИЧЕСКИ ВАЖНО:
-- Все примеры example_bad и example_good должны быть ИЗ РЕАЛЬНОГО ТЕКСТА пользователя
-- ОБЯЗАТЕЛЬНО включи vocabulary_words - ровно 5 слов релевантных теме текста пользователя
-- improved_text только на английском
-- Все остальное только на русском
-- НИКОГДА НЕ используй поля: key_changes, improvements, writing_tips, vocabulary_boost
-- ИСПОЛЬЗУЙ ТОЛЬКО: improved_text, writing_advice, vocabulary_words
-- Возвращай ТОЛЬКО JSON!
+КРИТИЧЕСКИ ВАЖНО - СТРОГИЕ ТРЕБОВАНИЯ К JSON:
+- ВОЗВРАЩАЙ ИСКЛЮЧИТЕЛЬНО ВАЛИДНЫЙ JSON БЕЗ ДОПОЛНИТЕЛЬНОГО ТЕКСТА ИЛИ КОММЕНТАРИЕВ
+- НЕ добавляй пояснения, предисловия или текст до/после JSON
+- JSON должен начинаться с { и заканчиваться }
+- Проверяй корректность всех кавычек, запятых и скобок
+- ВСЕ строки в JSON должны быть в двойных кавычках (")
+- НЕ используй одинарные кавычки (') - заменяй их на \"
+- ЭКРАНИРУЙ внутренние кавычки как \" 
+- НЕ используй переносы строк внутри значений - заменяй на \\n
+- ОБЯЗАТЕЛЬНО включи ВСЕ требуемые поля: improved_text, personalized_feedback (с ВСЕМИ 5 подполями), vocabulary_words
+- improved_text: ТОЛЬКО на английском языке (без русских слов!)
+- personalized_feedback: ВСЕ тексты ТОЛЬКО на русском языке
+- vocabulary_words: ОБЯЗАТЕЛЬНО 5 слов с полями word, translation, example
+- В оценке используй КОНКРЕТНЫЕ примеры из текста пользователя
+- Каждый блок оценки: 2-4 предложения, персональный и практичный
+
+ПРИМЕР КОРРЕКТНОГО ФОРМАТА JSON:
+{
+  "improved_text": "Your improved English text here without any Russian words",
+  "personalized_feedback": {
+    "clarity_focus": "Твой анализ на русском с конкретными примерами из текста пользователя",
+    "flow_rhythm": "Твой анализ на русском с конкретными примерами",
+    "tone_engagement": "Твой анализ на русском с конкретными примерами", 
+    "development_depth": "Твой анализ на русском с конкретными примерами",
+    "precision_ideas": "Твой анализ на русском с конкретными примерами"
+  },
+  "vocabulary_words": [
+    {"word": "word1", "translation": "перевод1", "example": "English example sentence 1"},
+    {"word": "word2", "translation": "перевод2", "example": "English example sentence 2"},
+    {"word": "word3", "translation": "перевод3", "example": "English example sentence 3"},
+    {"word": "word4", "translation": "перевод4", "example": "English example sentence 4"},
+    {"word": "word5", "translation": "перевод5", "example": "English example sentence 5"}
+  ]
+}
+
+ПОМНИ: ОТВЕЧАЙ ТОЛЬКО JSON! НИКАКОГО ДРУГОГО ТЕКСТА!
 `;
 
     const gptRes = await axios.post('https://api.openai.com/v1/chat/completions', {
@@ -7069,16 +7019,57 @@ async function generateImprovedVersion(ctx, session, originalText) {
     
     let improvementData;
     
-    // Парсим JSON ответ
+    // Парсим JSON ответ с дополнительными проверками
     try {
+      // Дополнительная очистка ответа
+      improvementResponse = improvementResponse.trim();
+      
+      // Проверяем что ответ начинается и заканчивается правильно
+      if (!improvementResponse.startsWith('{') || !improvementResponse.endsWith('}')) {
+        console.log('Response does not start/end with braces, trying to extract JSON');
+        const jsonMatch = improvementResponse.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          improvementResponse = jsonMatch[0];
+        } else {
+          throw new Error('No valid JSON structure found');
+        }
+      }
+      
       improvementData = JSON.parse(improvementResponse);
-      console.log('DEBUG: Parsed improvement data:', JSON.stringify(improvementData, null, 2));
-      console.log('DEBUG: Has writing_advice:', !!improvementData.writing_advice);
+      
+      // Валидация обязательных полей
+      if (!improvementData.improved_text || typeof improvementData.improved_text !== 'string') {
+        throw new Error('Missing or invalid improved_text field');
+      }
+      
+      if (!improvementData.personalized_feedback || typeof improvementData.personalized_feedback !== 'object') {
+        throw new Error('Missing or invalid personalized_feedback field');
+      }
+      
+      // Проверка всех блоков персональной оценки
+      const requiredFeedbackBlocks = ['clarity_focus', 'flow_rhythm', 'tone_engagement', 'development_depth', 'precision_ideas'];
+      for (const block of requiredFeedbackBlocks) {
+        if (!improvementData.personalized_feedback[block] || typeof improvementData.personalized_feedback[block] !== 'string') {
+          console.log(`WARNING: Missing or invalid ${block} in personalized_feedback`);
+          improvementData.personalized_feedback[block] = "Анализ временно недоступен из-за технических проблем.";
+        }
+      }
+      
+      if (!Array.isArray(improvementData.vocabulary_words)) {
+        console.log('WARNING: vocabulary_words is not an array, creating empty array');
+        improvementData.vocabulary_words = [];
+      }
+      
+      console.log('DEBUG: Successfully parsed and validated improvement data');
+      console.log('DEBUG: Has personalized_feedback:', !!improvementData.personalized_feedback);
       console.log('DEBUG: Has vocabulary_words:', !!improvementData.vocabulary_words);
+      console.log('DEBUG: Vocabulary words count:', improvementData.vocabulary_words.length);
+      console.log('DEBUG: Feedback blocks:', Object.keys(improvementData.personalized_feedback));
     } catch (e1) {
       console.log('First JSON parse failed, trying fallback methods');
+      console.log('Parse error:', e1.message);
       try {
-        // Попытка 1: Извлечь JSON из текста
+        // Попытка 1: Извлечь JSON из текста и очистить проблемы
         const jsonMatch = improvementResponse.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
           let jsonString = jsonMatch[0];
@@ -7088,6 +7079,10 @@ async function generateImprovedVersion(ctx, session, originalText) {
           jsonString = jsonString.replace(/,\s*,/g, ',');
           // Удаляем запятые перед закрывающими скобками
           jsonString = jsonString.replace(/,\s*([}\]])/g, '$1');
+          // Исправляем одинарные кавычки внутри строк
+          jsonString = jsonString.replace(/([^\\])'/g, '$1\\"');
+          // Удаляем переносы строк внутри значений
+          jsonString = jsonString.replace(/"\s*\n\s*"/g, '" "');
           
           improvementData = JSON.parse(jsonString);
           console.log('DEBUG: Parsed improvement data (fallback method 1):', JSON.stringify(improvementData, null, 2));
@@ -7096,6 +7091,7 @@ async function generateImprovedVersion(ctx, session, originalText) {
         }
       } catch (e2) {
         console.log('Fallback method 1 failed, trying method 2');
+        console.log('Parse error 2:', e2.message);
         try {
           // Попытка 2: Попробовать найти и извлечь основные поля вручную
           const improvedTextMatch = improvementResponse.match(/"improved_text":\s*"([^"]*(?:\\.[^"]*)*)"/);
@@ -7104,7 +7100,13 @@ async function generateImprovedVersion(ctx, session, originalText) {
             console.log('Extracting basic data manually');
             improvementData = {
               improved_text: improvedTextMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"'),
-              writing_advice: [],
+              personalized_feedback: {
+                clarity_focus: "Извините, возникла техническая проблема с анализом. Ваш текст понятен, но рекомендую работать над ясностью позиции.",
+                flow_rhythm: "Попробуйте варьировать длину предложений для лучшего ритма текста.",
+                tone_engagement: "Добавьте больше личного мнения для большей вовлеченности читателя.",
+                development_depth: "Развивайте идеи более подробно с конкретными примерами.",
+                precision_ideas: "Используйте более точные и конкретные выражения вместо общих фраз."
+              },
               vocabulary_words: []
             };
             console.log('DEBUG: Manually extracted improvement data');
@@ -7113,38 +7115,57 @@ async function generateImprovedVersion(ctx, session, originalText) {
           }
         } catch (e3) {
           console.error('All fallback methods failed. Error details:', e1.message, e2.message, e3.message);
-          console.error('Raw response for debugging:', improvementResponse);
+          console.error('Raw response for debugging:', improvementResponse.substring(0, 500) + '...');
           // Fallback - создаем минимальные данные для продолжения процесса
           console.log('Using final fallback improvement data due to parsing error');
           improvementData = {
             improved_text: "Sorry, couldn't generate improved version due to technical issues.",
-            writing_advice: [],
+            personalized_feedback: {
+              clarity_focus: "Извините, возникла техническая проблема с анализом. Ваш текст понятен, но рекомендую работать над ясностью позиции.",
+              flow_rhythm: "Попробуйте варьировать длину предложений для лучшего ритма текста.",
+              tone_engagement: "Добавьте больше личного мнения для большей вовлеченности читателя.",
+              development_depth: "Развивайте идеи более подробно с конкретными примерами.",
+              precision_ideas: "Используйте более точные и конкретные выражения вместо общих фраз."
+            },
             vocabulary_words: []
           };
         }
       }
     }
     
-    // Проверяем обязательные поля
+    // Проверяем обязательные поля для нового формата
     if (!improvementData.improved_text) {
       console.error('No improved_text in response');
       return;
     }
     
-    // Добавляем fallback данные если отсутствуют
-    if (!improvementData.writing_advice || improvementData.writing_advice.length === 0) {
-      console.log('WARNING: No writing_advice, adding fallback');
-      improvementData.writing_advice = [
-        {
-          "number": "1️⃣",
-          "title": "Используйте более разнообразную лексику",
-          "why": "💬 Зачем: Богатый словарный запас повышает оценку IELTS.",
-          "how": "🧠 Как: Заменяйте простые слова синонимами. Используйте более точные термины.",
-          "example_bad": "good experience",
-          "example_good": "valuable/enriching experience",
-          "action": "🪄 Что делать: выберите 3-4 простых слова в тексте и замените их на более продвинутые."
+    // Добавляем fallback для персональной оценки если отсутствует
+    if (!improvementData.personalized_feedback) {
+      console.log('WARNING: No personalized_feedback, adding fallback');
+      improvementData.personalized_feedback = {
+        clarity_focus: "Текст понятный, но можно улучшить фокус на главной мысли. Подчеркните ключевые идеи более четко.",
+        flow_rhythm: "Предложения имеют схожую структуру. Попробуйте варьировать длину и сложность предложений для лучшего ритма.",
+        tone_engagement: "Тон подходящий, но можно добавить больше личного мнения и эмоций для большей вовлеченности.",
+        development_depth: "Идеи развиты неплохо, но можно добавить больше конкретных примеров и деталей.",
+        precision_ideas: "Избегайте общих фраз. Используйте более точные и конкретные выражения."
+      };
+    } else {
+      // Проверяем наличие всех блоков оценки и добавляем fallback если нужно
+      const feedbackBlocks = ['clarity_focus', 'flow_rhythm', 'tone_engagement', 'development_depth', 'precision_ideas'];
+      const fallbackTexts = {
+        clarity_focus: "Текст понятный, но можно улучшить фокус на главной мысли.",
+        flow_rhythm: "Попробуйте варьировать длину предложений для лучшего ритма текста.",
+        tone_engagement: "Тон подходящий, но можно добавить больше личного мнения.",
+        development_depth: "Идеи развиты неплохо, но можно добавить больше примеров.",
+        precision_ideas: "Используйте более точные и конкретные выражения."
+      };
+      
+      feedbackBlocks.forEach(block => {
+        if (!improvementData.personalized_feedback[block]) {
+          console.log(`WARNING: Missing ${block}, adding fallback`);
+          improvementData.personalized_feedback[block] = fallbackTexts[block];
         }
-      ];
+      });
     }
     
     if (!improvementData.vocabulary_words || improvementData.vocabulary_words.length === 0) {
@@ -7199,23 +7220,53 @@ async function showImprovedVersion(ctx, session) {
   
   try {
     // Часть 1: Улучшенный текст
-    let message1 = `✨ <b>Улучшенная версия (IELTS 7.0 - 8.0 уровень):</b>\n\n`;
+    let message1 = `✨ <b>Улучшенная версия (IELTS 7.0+ уровень):</b>\n\n`;
     message1 += `<i>${improved.improved_text}</i>`;
     
     await ctx.reply(message1, { parse_mode: 'HTML' });
     
-    // Часть 2: Советы в новом формате
-    if (improved.writing_advice && improved.writing_advice.length > 0) {
-      for (const advice of improved.writing_advice) {
-        let adviceMessage = `${advice.number} <b>${advice.title}</b>\n\n`;
-        adviceMessage += `${advice.why}\n\n`;
-        adviceMessage += `${advice.how}\n\n`;
-        adviceMessage += `✍️ <b>Пример:</b>\n`;
-        adviceMessage += `❌ ${advice.example_bad}\n`;
-        adviceMessage += `✅ ${advice.example_good}\n\n`;
-        adviceMessage += `${advice.action}`;
-        
-        await ctx.reply(adviceMessage, { parse_mode: 'HTML' });
+    // Часть 2: Персональная оценка (5 блоков по отдельности)
+    if (improved.personalized_feedback) {
+      const feedback = improved.personalized_feedback;
+      
+      // 1. Clarity & Focus
+      if (feedback.clarity_focus) {
+        await ctx.reply(
+          `💡 <b>Clarity & Focus:</b>\n\n${feedback.clarity_focus}`,
+          { parse_mode: 'HTML' }
+        );
+      }
+      
+      // 2. Flow & Rhythm  
+      if (feedback.flow_rhythm) {
+        await ctx.reply(
+          `🎢 <b>Flow & Rhythm:</b>\n\n${feedback.flow_rhythm}`,
+          { parse_mode: 'HTML' }
+        );
+      }
+      
+      // 3. Tone & Engagement
+      if (feedback.tone_engagement) {
+        await ctx.reply(
+          `🎯 <b>Tone & Engagement:</b>\n\n${feedback.tone_engagement}`,
+          { parse_mode: 'HTML' }
+        );
+      }
+      
+      // 4. Development & Depth
+      if (feedback.development_depth) {
+        await ctx.reply(
+          `🧠 <b>Development & Depth:</b>\n\n${feedback.development_depth}`,
+          { parse_mode: 'HTML' }
+        );
+      }
+      
+      // 5. Precision of Ideas
+      if (feedback.precision_ideas) {
+        await ctx.reply(
+          `🏗️ <b>Precision of Ideas:</b>\n\n${feedback.precision_ideas}`,
+          { parse_mode: 'HTML' }
+        );
       }
     }
     
@@ -8874,8 +8925,8 @@ async function finishSmartRepeat(ctx, session) {
     await recordSmartRepeatCompletion(session.profile);
   }
   
-  // Сохраняем слова из 2 этапа перед очисткой
-  const savedVocabularyWords = session.stage2VocabularyWords || [];
+  // Сохраняем слова из 4 этапа (дополнительные слова из GPT текста) перед очисткой
+  const savedVocabularyWords = session.additionalVocabulary || [];
   
   // Очищаем все состояния умного повторения
   delete session.currentQuizSession;
@@ -8887,14 +8938,15 @@ async function finishSmartRepeat(ctx, session) {
   delete session.stage3Sentences;
   delete session.stage3Context;
   delete session.stage2VocabularyWords;
+  delete session.additionalVocabulary; // Теперь можем удалить, так как сохранили в savedVocabularyWords
   
-  // Проверяем есть ли сохраненные слова из 2 этапа
+  // Проверяем есть ли сохраненные слова из 4 этапа
   if (savedVocabularyWords && savedVocabularyWords.length > 0) {
-    await ctx.reply('🎉 <b>Умное повторение завершено!</b>\n\n📚 <b>Повторим слова из 2-го этапа:</b>\n\nВы можете добавить их в свой словарь...', {
+    await ctx.reply('🎉 <b>Умное повторение завершено!</b>\n\n📚 <b>Топ-10 сложных слов из текста:</b>\n\nВы можете добавить их в свой словарь...', {
       parse_mode: 'HTML'
     });
     
-    // Запускаем добавление слов из 2 этапа
+    // Запускаем добавление слов из 4 этапа (дополнительных слов)
     setTimeout(() => {
       startVocabularyAdditionStage5(ctx, session, savedVocabularyWords);
     }, 1500);
@@ -9036,7 +9088,7 @@ async function addWordToUserDictionary(profileName, wordData) {
         profile: profileName,
         word: wordData.word.toLowerCase(),
         translation: wordData.translation,
-        section: 'stage2_vocab'
+        section: wordData.section || 'stage4_vocab' // Используем stage4_vocab для слов из текстового задания
       }
     });
     
@@ -9081,10 +9133,17 @@ async function showNextVocabularyWordStage5(ctx, session) {
     const currentIndex = session.stage5CurrentWordIndex + 1;
     const totalWords = session.stage5VocabularyWords.length;
     
-    let message = `📚 <b>Слово ${currentIndex}/${totalWords} из 2-го этапа:</b>\n\n`;
+    let message = `📚 <b>Сложное слово ${currentIndex}/${totalWords} из текста:</b>\n\n`;
     message += `🔤 <b>${currentWord.word}</b>\n`;
     message += `🇷🇺 ${currentWord.translation}\n`;
-    message += `📝 <i>${currentWord.example}</i>\n\n`;
+    
+    // Показываем пример если есть
+    if (currentWord.example) {
+      message += `📝 <i>${currentWord.example}</i>\n\n`;
+    } else {
+      message += `\n`;
+    }
+    
     message += `Добавить в ваш словарь?`;
     
     const keyboard = new InlineKeyboard()
@@ -9117,3 +9176,8 @@ async function finishSmartRepeatFinal(ctx, session) {
     parse_mode: 'HTML'
   });
 }
+
+// Экспорт функций для тестирования
+module.exports = {
+  generateImprovedVersion
+};
