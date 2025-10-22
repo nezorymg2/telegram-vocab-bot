@@ -7215,13 +7215,42 @@ async function showImprovedVersion(ctx, session) {
   }
   
   try {
-    // Часть 1: Улучшенный текст
+    // Часть 1: Детальный анализ ошибок (если есть)
+    if (session.stage2_analysis && session.stage2_analysis.errors && session.stage2_analysis.errors.length > 0) {
+      const analysis = session.stage2_analysis;
+      
+      let analysisMessage = `📊 <b>Анализ вашего текста:</b>\n\n`;
+      analysisMessage += `🎯 <b>Оценка:</b> ${analysis.band_estimate}/9 (IELTS Writing)\n\n`;
+      analysisMessage += `📝 <b>Общий отзыв:</b>\n${analysis.summary}\n\n`;
+      analysisMessage += `💡 <b>Рекомендации:</b>\n${analysis.global_advice}`;
+      analysisMessage += `\n\n🔍 <b>Найдено ошибок:</b> ${analysis.errors.length}`;
+      
+      await ctx.reply(analysisMessage, { parse_mode: 'HTML' });
+      
+      // Показываем каждую ошибку отдельным сообщением
+      for (let i = 0; i < analysis.errors.length; i++) {
+        const error = analysis.errors[i];
+        let errorMessage = `<b>${i + 1}. ${error.title}</b>\n`;
+        errorMessage += `💡 💡 Rule: ${error.rule}\n`;
+        errorMessage += `🧠 <i>${error.meme}</i>\n`;
+        
+        if (error.examples && error.examples.length > 0) {
+          error.examples.forEach(example => {
+            errorMessage += `❌ "${example.from}" → ✅ "${example.to}"\n`;
+          });
+        }
+        
+        await ctx.reply(errorMessage, { parse_mode: 'HTML' });
+      }
+    }
+    
+    // Часть 2: Улучшенный текст
     let message1 = `✨ <b>Улучшенная версия (IELTS 7.0+ уровень):</b>\n\n`;
     message1 += `<i>${improved.improved_text}</i>`;
     
     await ctx.reply(message1, { parse_mode: 'HTML' });
     
-    // Часть 2: Персональная оценка (5 блоков по отдельности)
+    // Часть 3: Персональная оценка (5 блоков по отдельности)
     if (improved.personalized_feedback) {
       const feedback = improved.personalized_feedback;
       
@@ -7266,7 +7295,7 @@ async function showImprovedVersion(ctx, session) {
       }
     }
     
-    // Часть 3: Словарь
+    // Часть 4: Словарь
     if (improved.vocabulary_words && improved.vocabulary_words.length > 0) {
       let vocabMessage = `📚 <b>Топ-5 слов для этой темы:</b>\n\n`;
       improved.vocabulary_words.forEach((vocab, index) => {
