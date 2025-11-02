@@ -88,11 +88,25 @@ function getLocalDateGMT5() {
 }
 
 // Функция для получения локальной даты в ISO формате GMT+5
-function getLocalDateISOGMT5() {
+function getLocalDateGMT5ISO() {
   const now = new Date();
   // Добавляем 5 часов к UTC времени
   const localTime = new Date(now.getTime() + 5 * 60 * 60 * 1000);
-  return localTime.toISOString().split('T')[0];
+  return localTime.toISOString();
+}
+
+// Функция для сравнения дат в GMT+5
+function isSameDateGMT5(date1, date2) {
+  if (!date1 || !date2) return false;
+  
+  // Конвертируем обе даты в GMT+5 и сравниваем только дату (без времени)
+  const d1 = new Date(date1);
+  const d2 = new Date(date2);
+  
+  const gmt5_d1 = new Date(d1.getTime() + 5 * 60 * 60 * 1000);
+  const gmt5_d2 = new Date(d2.getTime() + 5 * 60 * 60 * 1000);
+  
+  return gmt5_d1.toDateString() === gmt5_d2.toDateString();
 }
 
 // Функция очистки неактивных сессий для экономии памяти
@@ -534,6 +548,7 @@ async function createMoneySystemTable() {
         "profileName" VARCHAR(255) UNIQUE NOT NULL,
         "totalEarned" INTEGER DEFAULT 0,
         "totalOwed" INTEGER DEFAULT 0,
+        "totalSent" INTEGER DEFAULT 0,
         "dailyCompletions" INTEGER DEFAULT 0,
         "dailyMissed" INTEGER DEFAULT 0,
         "bothMissedDays" INTEGER DEFAULT 0,
@@ -542,6 +557,19 @@ async function createMoneySystemTable() {
         "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `;
+    
+    // Добавляем поле totalSent если его еще нет
+    try {
+      await prisma.$executeRaw`
+        ALTER TABLE "money_system" ADD COLUMN "totalSent" INTEGER DEFAULT 0
+      `;
+      console.log('💰 Added totalSent column to money_system table');
+    } catch (error) {
+      // Колонка уже существует - это нормально
+      if (!error.message.includes('already exists')) {
+        console.log('💰 totalSent column already exists or other error:', error.message);
+      }
+    }
     
     // Создаем отдельную таблицу для общего банка
     await prisma.$executeRaw`
@@ -595,9 +623,6 @@ async function initializeMoneySystem() {
         console.log(`💰 Amina Telegram ID: ${MONEY_SYSTEM.AMINA_TELEGRAM_ID}`);
       }
     }
-    
-    // Инициализируем исторические данные
-    await initializeHistoricalBankData();
     
     console.log('💰 Money system initialized!');
   } catch (error) {
@@ -714,8 +739,8 @@ async function getOrCreateMoneyRecord(profileName) {
     // Создаем новую запись
     await prisma.$executeRaw`
       INSERT INTO "money_system" 
-      ("profileName", "totalEarned", "totalOwed", "dailyCompletions", "dailyMissed", "lastCompletionDate")
-      VALUES (${profileName}, 0, 0, 0, 0, NULL)
+      ("profileName", "totalEarned", "totalOwed", "dailyCompletions", "dailyMissed", "lastCompletionDate", "totalSent")
+      VALUES (${profileName}, 0, 0, 0, 0, NULL, 0)
     `;
     
     // Возвращаем созданную запись
@@ -768,6 +793,18 @@ async function recordSmartRepeatCompletion(profileName) {
     } else {
       console.error(`💰 COMPLETION ERROR: No user profiles updated for ${profileName} - notification not sent`);
     }
+    
+    // 4. Проверяем нужно ли автоматически отправить деньги (кратность 5000)
+    const updatedUserData = await prisma.$queryRaw`
+      SELECT "totalEarned" FROM "money_system" 
+      WHERE "profileName" = ${profileName}
+      LIMIT 1
+    `;
+    
+    if (updatedUserData.length > 0) {
+      await checkAndProcessPayments(profileName, updatedUserData[0].totalEarned);
+    }
+    
   } catch (error) {
     console.error('💰 COMPLETION ERROR: Error recording smart repeat completion:', error);
   }
@@ -784,15 +821,15 @@ async function sendCompletionNotification(completedBy) {
     if (completedBy === MONEY_SYSTEM.NURBOLAT_ID) {
       // Нурболат прошёл - уведомляем Амину
       recipientTelegramId = MONEY_SYSTEM.AMINA_TELEGRAM_ID;
-      message = `💰 <b>Денежное уведомление</b>\n\n` +
+      message = `🎯 <b>Уведомление о прогрессе</b>\n\n` +
                 `✅ Нурболат только что прошел умное повторение!\n` +
-                `💸 Пришли ему 1000 тенге на Каспи`;
+                `� Он заработал 1000 тенге`;
     } else if (completedBy === MONEY_SYSTEM.AMINA_ID) {
       // Амина прошла - уведомляем Нурболата  
       recipientTelegramId = MONEY_SYSTEM.NURBOLAT_TELEGRAM_ID;
-      message = `💰 <b>Денежное уведомление</b>\n\n` +
+      message = `🎯 <b>Уведомление о прогрессе</b>\n\n` +
                 `✅ Амина только что прошла умное повторение!\n` +
-                `💸 Она забирает 1000 тенге себе`;
+                `� Она заработала 1000 тенге`;
     }
     
     if (recipientTelegramId && message) {
@@ -810,7 +847,7 @@ async function sendCompletionNotification(completedBy) {
 // Функция получения или создания записи банка для текущего месяца
 async function getOrCreateSharedBank() {
   try {
-    const currentMonth = new Date().toISOString().substring(0, 7); // YYYY-MM формат
+    const currentMonth = getLocalDateGMT5ISO().substring(0, 7); // YYYY-MM формат в GMT+5
     
     // Проверяем есть ли запись для текущего месяца
     const existingBank = await prisma.$queryRaw`
@@ -899,38 +936,373 @@ async function recordBothMissedDay() {
   }
 }
 
-// Функция инициализации исторических данных (вызывается один раз)
-async function initializeHistoricalBankData() {
+// Функция показа итогов предыдущего месяца
+async function showMonthlyReport(ctx) {
   try {
-    const bank = await getOrCreateSharedBank();
+    const fs = require('fs').promises;
+    const path = require('path');
     
-    // Проверяем не инициализированы ли уже исторические данные
-    if (bank.totalAmount > 0) {
-      console.log(`💰 INIT: Historical data already exists, bank has ${bank.totalAmount} tg`);
-      return;
+    // Находим последний снимок
+    const snapshotsDir = path.join(__dirname, 'monthly-snapshots');
+    let latestSnapshot = null;
+    
+    try {
+      const files = await fs.readdir(snapshotsDir);
+      const snapshotFiles = files.filter(file => file.startsWith('snapshot-') && file.endsWith('.json'));
+      
+      if (snapshotFiles.length > 0) {
+        // Сортируем по дате (самый новый первый)
+        snapshotFiles.sort().reverse();
+        const latestFile = snapshotFiles[0];
+        const filepath = path.join(snapshotsDir, latestFile);
+        const data = await fs.readFile(filepath, 'utf8');
+        latestSnapshot = JSON.parse(data);
+      }
+    } catch (error) {
+      console.log('No snapshots found or error reading:', error.message);
     }
     
-    console.log('💰 INIT: Initializing historical bank data for October 4-5...');
+    if (!latestSnapshot) {
+      return; // Нет данных для показа
+    }
     
-    // Добавляем 4000 тг за 4,5 октября (по 2000 за каждый день когда оба пропустили)
-    await addToSharedBank(4000);
+    // Формируем сообщение с итогами
+    let message = `📊 <b>Итоги месяца: ${latestSnapshot.month}</b>\n\n`;
     
-    // Обновляем счетчики bothMissedDays для обоих участников (по 2 дня каждый)
-    await prisma.$executeRaw`
-      UPDATE "money_system" SET 
-        "bothMissedDays" = "bothMissedDays" + 2,
-        "updatedAt" = CURRENT_TIMESTAMP
-      WHERE "profileName" IN (${MONEY_SYSTEM.NURBOLAT_ID}, ${MONEY_SYSTEM.AMINA_ID})
-    `;
+    // Определяем лидера
+    const participants = Object.entries(latestSnapshot.participants);
+    if (participants.length > 0) {
+      message += `🏆 <b>Лидер месяца:</b> ${latestSnapshot.leader}\n\n`;
+      
+      // Показываем статистику каждого участника
+      participants.forEach(([name, data]) => {
+        const icon = name === 'Нурболат' ? '👨‍💼' : '👩‍💼';
+        const isLeader = name === latestSnapshot.leader ? ' 🏆' : '';
+        
+        message += `${icon} <b>${name}${isLeader}</b>\n`;
+        message += `💰 Заработал: ${data.totalEarned.toLocaleString()} тенге\n`;
+        message += `✅ Выполнил: ${data.dailyCompletions} дней\n`;
+        message += `❌ Пропустил: ${data.dailyMissed} дней\n`;
+        message += `👥 Оба пропустили: ${data.bothMissedDays} дней\n\n`;
+      });
+    }
     
-    console.log('💰 INIT: Added 4000 tg to bank and updated bothMissedDays counters');
+    // Банк накоплений
+    if (latestSnapshot.bankAccumulation > 0) {
+      const amountPerPerson = Math.floor(latestSnapshot.bankAccumulation / 2);
+      message += `🏦 <b>Банк накоплений:</b> ${latestSnapshot.bankAccumulation.toLocaleString()} тг\n`;
+      message += `💸 Каждый получил: ${amountPerPerson.toLocaleString()} тг\n\n`;
+    }
+    
+    // Общие итоги
+    message += `📈 <b>Общие итоги:</b>\n`;
+    message += `💰 Всего переведено: ${latestSnapshot.totalTransferred.toLocaleString()} тг\n`;
+    message += `🏦 Из банка накоплений: ${latestSnapshot.bankAccumulation.toLocaleString()} тг\n`;
+    message += `📊 Итого за месяц: ${(latestSnapshot.totalTransferred + latestSnapshot.bankAccumulation).toLocaleString()} тг\n\n`;
+    
+    message += `🎯 <b>Новый месяц начался!</b>\n`;
+    message += `💪 Удачи в новых достижениях!`;
+    
+    await ctx.reply(message, { parse_mode: 'HTML' });
     
   } catch (error) {
-    console.error('Error in initializeHistoricalBankData:', error);
+    console.error('Error showing monthly report:', error);
   }
 }
 
-// Функция деления банка накоплений в конце месяца
+// Функция проверки и автоматической отправки денег при достижении кратной 5000 тенге
+async function checkAndProcessPayments(profileName, currentEarnings) {
+  try {
+    // Получаем текущие данные пользователя
+    const userData = await prisma.$queryRaw`
+      SELECT * FROM "money_system" 
+      WHERE "profileName" = ${profileName}
+      LIMIT 1
+    `;
+    
+    if (userData.length === 0) {
+      return;
+    }
+    
+    const user = userData[0];
+    const currentSent = user.totalSent || 0;
+    
+    // Вычисляем сколько полных 5000 должно быть отправлено
+    const shouldBeSent = Math.floor(currentEarnings / 5000) * 5000;
+    
+    // Если нужно отправить больше чем уже отправлено
+    if (shouldBeSent > currentSent) {
+      const toSend = shouldBeSent - currentSent;
+      
+      console.log(`💸 PAYMENT: ${profileName} reached ${currentEarnings} tg, sending ${toSend} tg`);
+      
+      // Обновляем базу данных
+      await prisma.$executeRaw`
+        UPDATE "money_system" SET 
+          "totalSent" = ${shouldBeSent},
+          "updatedAt" = CURRENT_TIMESTAMP
+        WHERE "profileName" = ${profileName}
+      `;
+      
+      // Формируем сообщение
+      const recipientName = profileName === MONEY_SYSTEM.NURBOLAT_ID ? 'Нурболат' : 'Амина';
+      const message = `💰 <b>Время получать деньги!</b>\n\n` +
+                      `🎉 ${recipientName}, ты заработал${recipientName === 'Амина' ? 'а' : ''} ${toSend.toLocaleString()} тенге!\n\n` +
+                      `💸 Переведи себе эти деньги и наслаждайся покупками! 🛍️\n\n` +
+                      `📊 Общий заработок: ${currentEarnings.toLocaleString()} тг\n` +
+                      `✅ К отправке: ${(currentEarnings - shouldBeSent).toLocaleString()} тг`;
+      
+      // Отправляем уведомления обоим участникам
+      if (MONEY_SYSTEM.NURBOLAT_TELEGRAM_ID) {
+        await bot.api.sendMessage(MONEY_SYSTEM.NURBOLAT_TELEGRAM_ID, message, { parse_mode: 'HTML' });
+      }
+      if (MONEY_SYSTEM.AMINA_TELEGRAM_ID) {
+        await bot.api.sendMessage(MONEY_SYSTEM.AMINA_TELEGRAM_ID, message, { parse_mode: 'HTML' });
+      }
+      
+      console.log(`💸 PAYMENT: Sent ${toSend} tg to ${profileName}, total sent: ${shouldBeSent} tg`);
+    }
+    
+  } catch (error) {
+    console.error('Error in checkAndProcessPayments:', error);
+  }
+}
+
+// Функция проверки необходимости показа отчета
+async function checkAndShowMonthlyReport(ctx) {
+  try {
+    const userId = ctx.from.id;
+    const session = sessions[userId];
+    
+    if (!session || !session.profile) {
+      return false; // Нет сессии - не показываем отчет
+    }
+    
+    // Получаем данные пользователя
+    const userProfile = await prisma.$queryRaw`
+      SELECT * FROM "user_profiles" 
+      WHERE "telegramId" = ${userId.toString()}
+      LIMIT 1
+    `;
+    
+    if (userProfile.length === 0) {
+      return false;
+    }
+    
+    const profile = userProfile[0];
+    const lastActivity = profile.lastSmartRepeatDate;
+    
+    // Определяем дату последнего обнуления (2 число текущего месяца) в GMT+5
+    const now = new Date();
+    const gmtPlus5Time = new Date(now.getTime() + 5 * 60 * 60 * 1000);
+    const lastResetDate = new Date(gmtPlus5Time.getFullYear(), gmtPlus5Time.getMonth(), 2);
+    
+    // Если мы еще не дошли до 2 числа этого месяца, берем прошлый месяц
+    if (gmtPlus5Time.getDate() < 2) {
+      lastResetDate.setMonth(lastResetDate.getMonth() - 1);
+    }
+    
+    // Проверяем, была ли активность после последнего обнуления
+    let shouldShowReport = false;
+    
+    if (!lastActivity) {
+      // Никогда не было активности - показываем отчет
+      shouldShowReport = true;
+    } else {
+      const lastActivityDate = new Date(lastActivity);
+      // Если последняя активность была до обнуления - показываем отчет
+      shouldShowReport = lastActivityDate < lastResetDate;
+    }
+    
+    if (shouldShowReport) {
+      await showMonthlyReport(ctx);
+      return true;
+    }
+    
+    return false;
+    
+  } catch (error) {
+    console.error('Error checking monthly report:', error);
+    return false;
+  }
+}
+
+// Функция сохранения снимка месячных данных
+async function saveMonthlySnapshot() {
+  try {
+    const fs = require('fs').promises;
+    const path = require('path');
+    
+    // Получаем текущие данные перед обнулением
+    const moneyData = await prisma.$queryRaw`
+      SELECT * FROM "money_system" ORDER BY "profileName"
+    `;
+    
+    const bankData = await prisma.$queryRaw`
+      SELECT * FROM "shared_bank" LIMIT 1
+    `;
+    const bankAmount = bankData.length > 0 ? bankData[0].totalAmount : 0;
+    
+    // Определяем прошлый месяц в GMT+5
+    const now = new Date();
+    const gmtPlus5Time = new Date(now.getTime() + 5 * 60 * 60 * 1000);
+    const lastMonth = new Date(gmtPlus5Time.getFullYear(), gmtPlus5Time.getMonth() - 1, 1);
+    const monthName = lastMonth.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' });
+    
+    // Создаем снимок данных
+    const snapshot = {
+      month: monthName,
+      date: gmtPlus5Time.toISOString(), // GMT+5 время
+      participants: {},
+      bankAccumulation: bankAmount,
+      totalTransferred: 0,
+      leader: null,
+      summary: {}
+    };
+    
+    // Обрабатываем данные участников
+    let maxEarned = 0;
+    moneyData.forEach(record => {
+      snapshot.participants[record.profileName] = {
+        totalEarned: record.totalEarned,
+        dailyCompletions: record.dailyCompletions,
+        dailyMissed: record.dailyMissed,
+        bothMissedDays: record.bothMissedDays,
+        lastCompletionDate: record.lastCompletionDate
+      };
+      
+      snapshot.totalTransferred += record.totalEarned;
+      
+      if (record.totalEarned > maxEarned) {
+        maxEarned = record.totalEarned;
+        snapshot.leader = record.profileName;
+      }
+    });
+    
+    // Добавляем банк накоплений к общей сумме если он был разделен
+    const totalFromBank = bankAmount > 0 ? bankAmount : 0;
+    
+    // Создаем папку для снимков если её нет
+    const snapshotsDir = path.join(__dirname, 'monthly-snapshots');
+    try {
+      await fs.access(snapshotsDir);
+    } catch {
+      await fs.mkdir(snapshotsDir);
+    }
+    
+    // Сохраняем снимок
+    const filename = `snapshot-${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}.json`;
+    const filepath = path.join(snapshotsDir, filename);
+    
+    await fs.writeFile(filepath, JSON.stringify(snapshot, null, 2));
+    
+    console.log(`📸 MONTHLY SNAPSHOT: Saved to ${filename}`);
+    console.log(`📊 SNAPSHOT DATA: ${snapshot.totalTransferred} tg transferred, ${totalFromBank} tg in bank`);
+    
+    return snapshot;
+    
+  } catch (error) {
+    console.error('Error saving monthly snapshot:', error);
+    throw error;
+  }
+}
+
+// Функция обнуления системы в начале каждого месяца (2 число)
+async function resetMonthlySystem() {
+  try {
+    console.log('🗓️ MONTHLY RESET: Starting monthly system reset...');
+    
+    // Получаем текущее состояние банка накоплений
+    const bank = await getOrCreateSharedBank();
+    const bankAmount = bank.totalAmount;
+    
+    // Если есть деньги в банке накоплений - делим их
+    if (bankAmount > 0) {
+      console.log(`💰 MONTHLY RESET: Dividing bank of ${bankAmount} tg`);
+      const amountPerPerson = Math.floor(bankAmount / 2);
+      
+      // Добавляем деньги каждому участнику
+      await prisma.$executeRaw`
+        UPDATE "money_system" SET 
+          "totalEarned" = "totalEarned" + ${amountPerPerson},
+          "updatedAt" = CURRENT_TIMESTAMP
+        WHERE "profileName" IN (${MONEY_SYSTEM.NURBOLAT_ID}, ${MONEY_SYSTEM.AMINA_ID})
+      `;
+      
+      // Отправляем уведомление о делении банка
+      const bankMessage = `💰 <b>Деление банка накоплений!</b>\n\n` +
+                          `🏦 Банк накоплений разделен\n` +
+                          `💸 Каждый получает: ${amountPerPerson.toLocaleString()} тг\n` +
+                          `📊 Общая сумма была: ${bankAmount.toLocaleString()} тг`;
+
+      if (MONEY_SYSTEM.NURBOLAT_TELEGRAM_ID) {
+        await bot.api.sendMessage(MONEY_SYSTEM.NURBOLAT_TELEGRAM_ID, bankMessage, { parse_mode: 'HTML' });
+      }
+      if (MONEY_SYSTEM.AMINA_TELEGRAM_ID) {
+        await bot.api.sendMessage(MONEY_SYSTEM.AMINA_TELEGRAM_ID, bankMessage, { parse_mode: 'HTML' });
+      }
+    }
+    
+    // СОХРАНЯЕМ СНИМОК ДАННЫХ ПЕРЕД ОБНУЛЕНИЕМ
+    console.log('📸 MONTHLY RESET: Saving monthly snapshot...');
+    await saveMonthlySnapshot();
+    
+    // ОБНУЛЯЕМ ВСЮ СИСТЕМУ
+    console.log('🔄 MONTHLY RESET: Resetting all data...');
+    
+    // 1. Обнуляем основные заработки и статистику
+    await prisma.$executeRaw`
+      UPDATE "money_system" SET 
+        "totalEarned" = 0,
+        "totalOwed" = 0,
+        "dailyCompletions" = 0,
+        "dailyMissed" = 0,
+        "bothMissedDays" = 0,
+        "totalSent" = 0,
+        "lastCompletionDate" = NULL,
+        "updatedAt" = CURRENT_TIMESTAMP
+    `;
+    
+    // 2. Обнуляем банк накоплений
+    await prisma.$executeRaw`
+      UPDATE "shared_bank" SET 
+        "totalAmount" = 0,
+        "lastUpdated" = CURRENT_TIMESTAMP
+    `;
+    
+    // 3. Очищаем даты в профилях
+    await prisma.$executeRaw`
+      UPDATE "user_profiles" SET 
+        "lastSmartRepeatDate" = NULL
+    `;
+    
+    // Отправляем уведомление о новом месяце
+    const resetMessage = `🗓️ <b>Новый месяц начался!</b>\n\n` +
+                         `✅ Система обнулена\n` +
+                         `🎯 Цель: 30 дней умных повторений\n` +
+                         `💰 Банк: 60,000 тенге готовы к заработку!\n\n` +
+                         `📋 Правила:\n` +
+                         `• Прошёл → +1000 тенге\n` +
+                         `• Один пропустил → 1000 тг другому\n` +
+                         `• Оба пропустили → 2000 тг в банк\n` +
+                         `• Банк делится в конце месяца`;
+
+    if (MONEY_SYSTEM.NURBOLAT_TELEGRAM_ID) {
+      await bot.api.sendMessage(MONEY_SYSTEM.NURBOLAT_TELEGRAM_ID, resetMessage, { parse_mode: 'HTML' });
+    }
+    if (MONEY_SYSTEM.AMINA_TELEGRAM_ID) {
+      await bot.api.sendMessage(MONEY_SYSTEM.AMINA_TELEGRAM_ID, resetMessage, { parse_mode: 'HTML' });
+    }
+    
+    console.log('🎉 MONTHLY RESET: Monthly system reset completed successfully');
+    
+  } catch (error) {
+    console.error('Error in resetMonthlySystem:', error);
+    throw error;
+  }
+}
+
+// Функция деления банка накоплений в конце месяца (DEPRECATED - теперь часть resetMonthlySystem)
 async function divideBankAtMonthEnd() {
   try {
     const bank = await getOrCreateSharedBank();
@@ -1009,11 +1381,11 @@ async function checkMissedSmartRepeats() {
       }
       
       // Более надежное сравнение дат - проверяем и строковый и ISO формат
+      // Проверяем, прошел ли пользователь умное повторение сегодня (GMT+5)
       const didSmartRepeatToday = 
         userProfile.lastSmartRepeatDate === today || 
         userProfile.lastSmartRepeatDate === todayISO ||  
-        (userProfile.lastSmartRepeatDate && 
-         new Date(userProfile.lastSmartRepeatDate).toDateString() === today);
+        isSameDateGMT5(userProfile.lastSmartRepeatDate, new Date());
       
       console.log(`💰 ${profileName}: lastSmartRepeatDate="${userProfile.lastSmartRepeatDate}", today="${today}", todayISO="${todayISO}", completed=${didSmartRepeatToday}`);
       
@@ -1139,8 +1511,10 @@ async function checkDailyBonus(session, ctx) {
   if (!session.loginStreak) session.loginStreak = 0;
   if (!session.xp) session.xp = 0;
   
-  // Проверяем непрерывность входов
-  const yesterday = new Date();
+  // Проверяем непрерывность входов (используем GMT+5)
+  const now = new Date();
+  const gmtPlus5Time = new Date(now.getTime() + 5 * 60 * 60 * 1000);
+  const yesterday = new Date(gmtPlus5Time);
   yesterday.setDate(yesterday.getDate() - 1);
   const yesterdayStr = yesterday.toDateString();
   
@@ -2894,61 +3268,6 @@ bot.command('achievements', async (ctx) => {
   await ctx.reply(msg, { parse_mode: 'HTML' });
 });
 
-// Команда для просмотра таблицы денежной системы в базе
-bot.command('moneytable', async (ctx) => {
-  const userId = ctx.from.id;
-  const session = sessions[userId];
-  if (!session || !session.profile) {
-    return ctx.reply('Сначала выполните /start');
-  }
-  
-  try {
-    // Получаем все записи из таблицы
-    const records = await prisma.$queryRaw`SELECT * FROM "money_system" ORDER BY "createdAt" DESC`;
-    
-    let msg = `📊 <b>Таблица денежной системы</b>\n\n`;
-    
-    if (records.length === 0) {
-      msg += 'ℹ️ Таблица пуста - данные появятся после первого умного повторения';
-    } else {
-      for (let index = 0; index < records.length; index++) {
-        const record = records[index];
-        msg += `<b>${index + 1}. ${record.profileName}</b>\n`;
-        msg += `✅ Заработал: ${record.totalEarned.toLocaleString()} тг\n`;
-        msg += `❌ Должен: ${record.totalOwed.toLocaleString()} тг\n`;
-        msg += `📅 Завершил: ${record.dailyCompletions} дней\n`;
-        msg += `⏭️ Пропустил: ${record.dailyMissed} дней\n`;
-        msg += `👥 Оба пропустили: ${record.bothMissedDays || 0} дней\n`;
-        
-        if (record.lastCompletionDate) {
-          const today = getLocalDateGMT5();
-          const isToday = record.lastCompletionDate === today;
-          msg += `🕗 Последнее: ${isToday ? 'Сегодня' : record.lastCompletionDate}\n`;
-        }
-        
-        const createdDate = new Date(record.createdAt);
-        msg += `📄 Создан: ${createdDate.toLocaleDateString('ru-RU')}\n\n`;
-      }
-      
-      // Добавляем информацию о банке накоплений
-      try {
-        const sharedBank = await getOrCreateSharedBank();
-        msg += `🏦 <b>Банк накоплений:</b> ${sharedBank.totalAmount.toLocaleString()} тг\n`;
-        msg += `📅 Месяц: ${sharedBank.month}\n\n`;
-      } catch (error) {
-        console.error('Error getting shared bank info:', error);
-      }
-    }
-    
-    msg += `ℹ️ <i>Обновляется автоматически после каждого умного повторения</i>`;
-    
-    await ctx.reply(msg, { parse_mode: 'HTML' });
-  } catch (error) {
-    console.error('Error in moneytable command:', error);
-    await ctx.reply('❌ Ошибка при получении данных из таблицы');
-  }
-});
-
 // Команда для просмотра статистики денежной системы
 bot.command('money', async (ctx) => {
   const userId = ctx.from.id;
@@ -2972,8 +3291,9 @@ bot.command('money', async (ctx) => {
     
     // Статистика Нурболата
     msg += `👨‍💼 <b>Нурболат:</b>\n`;
-    msg += `✅ Заработал: ${stats.nurbolat.totalEarned.toLocaleString()} тенге\n`;
-    msg += `❌ Должен: ${stats.nurbolat.totalOwed.toLocaleString()} тенге\n`;
+    msg += `💰 Заработал: ${stats.nurbolat.totalEarned.toLocaleString()} тенге\n`;
+    msg += `📤 Отправлено: ${(stats.nurbolat.totalSent || 0).toLocaleString()} тенге\n`;
+    msg += `💸 К отправке: ${(stats.nurbolat.totalEarned - (stats.nurbolat.totalSent || 0)).toLocaleString()} тенге\n`;
     msg += `📅 Завершено: ${stats.nurbolat.dailyCompletions} дней\n`;
     msg += `⏭️ Пропущено: ${stats.nurbolat.dailyMissed} дней\n`;
     msg += `👥 Оба пропустили: ${stats.nurbolat.bothMissedDays || 0} дней\n`;
@@ -2988,8 +3308,9 @@ bot.command('money', async (ctx) => {
     
     // Статистика Амины
     msg += `👩‍💼 <b>Амина:</b>\n`;
-    msg += `✅ Заработала: ${stats.amina.totalEarned.toLocaleString()} тенге\n`;
-    msg += `❌ Должна: ${stats.amina.totalOwed.toLocaleString()} тенге\n`;
+    msg += `💰 Заработала: ${stats.amina.totalEarned.toLocaleString()} тенге\n`;
+    msg += `📤 Отправлено: ${(stats.amina.totalSent || 0).toLocaleString()} тенге\n`;
+    msg += `💸 К отправке: ${(stats.amina.totalEarned - (stats.amina.totalSent || 0)).toLocaleString()} тенге\n`;
     msg += `📅 Завершено: ${stats.amina.dailyCompletions} дней\n`;
     msg += `⏭️ Пропущено: ${stats.amina.dailyMissed} дней\n`;
     msg += `👥 Оба пропустили: ${stats.amina.bothMissedDays || 0} дней\n`;
@@ -3034,6 +3355,9 @@ bot.on('message:text', async (ctx) => {
     const userId = ctx.from.id;
     const text = ctx.message.text.trim();
     const normalized = text.toLowerCase();
+    
+    // Проверяем нужно ли показать отчет за предыдущий месяц
+    const reportShown = await checkAndShowMonthlyReport(ctx);
     
     // Обновляем время последней активности
     updateSessionActivity(userId);
@@ -4647,7 +4971,7 @@ bot.on('message:text', async (ctx) => {
       delete session.storyQuestions;
       delete session.storyQuestionIndex;
       delete session.storyTaskWords;
-      // НЕ удаляем additionalVocabulary - они понадобятся для показа пользователю
+      delete session.additionalVocabulary; // Удаляем дополнительные слова
       
       if (session.smartRepeatStage === 5) {
         // Этап 5 умного повторения завершен - используем новую систему завершения
@@ -4730,7 +5054,7 @@ async function generateStoryTaskContent(session, ctx) {
 
 К каждому вопросу обязательно дай ровно 5 вариантов ответов (1 правильный и 4 дистрактора, порядок случайный).
 
-Также выбери 10 самых интересных и сложных слов из текста (НЕ из списка изучаемых слов: [${storyWords.join(', ')}]), которые могут быть полезны для изучения, и дай их перевод на русский и пример использования.
+Также выбери 15 интересных и сложных слов из текста (НЕ из списка изучаемых слов: [${storyWords.join(', ')}]), которые могут быть полезны для изучения, и дай их перевод на русский.
 
 Ответ должен быть строго в формате JSON без дополнительного текста и комментариев:
 {
@@ -4746,8 +5070,7 @@ async function generateStoryTaskContent(session, ctx) {
   "additional_vocabulary": [
     {
       "word": "слово",
-      "translation": "перевод",
-      "example": "Пример предложения с этим словом"
+      "translation": "перевод"
     }, ...
   ]
 }`;
@@ -4986,7 +5309,6 @@ bot.api.setMyCommands([
   { command: 'sections', description: 'Показать разделы' },
   { command: 'achievements', description: 'Личный прогресс и достижения' },
   { command: 'money', description: '💰 Денежная мотивация и статистика' },
-  { command: 'moneytable', description: '📊 Просмотр таблицы денежной системы' },
   { command: 'reminder', description: 'Настроить ежедневные напоминания' },
   { command: 'delete', description: 'Удалить слово' },
   { command: 'clear', description: 'Удалить все слова' },
@@ -5360,10 +5682,10 @@ if (!global.cronTasksInitialized) {
     timezone: "Asia/Yekaterinburg" // GMT+5
   });
 
-  // Деление банка накоплений 1 числа каждого месяца в 00:01
-  cron.schedule('1 0 1 * *', () => {
-    console.log('🏦 Dividing shared bank at month end...');
-    divideBankAtMonthEnd();
+  // Обнуление денежной системы 2 числа каждого месяца в 00:01
+  cron.schedule('1 0 2 * *', () => {
+    console.log('🗓️ Monthly system reset starting...');
+    resetMonthlySystem();
   }, {
     timezone: "Asia/Yekaterinburg" // GMT+5
   });
@@ -6600,31 +6922,6 @@ async function startSmartRepeatStageWriting(ctx, session) {
       }
     );
     
-    // Отправляем универсальную структуру эссе как подсказку
-    setTimeout(async () => {
-      await ctx.reply(
-        `💡 <b>Универсальная структура для всех типов эссе:</b>\n\n` +
-        `<b>[Intro]</b>\n` +
-        `I strongly believe that / I firmly agree that / There is no doubt that __________.\n` +
-        `This essay will discuss / aims to examine / will explore __________.\n\n` +
-        
-        `<b>[Body 1: Background or Reason 1]</b>\n` +
-        `Firstly / To begin with / One major reason is that __________.\n` +
-        `This is mainly because / This can be explained by / The main reason for this is that __________.\n` +
-        `For example / For instance / A good illustration of this is __________.\n\n` +
-        
-        `<b>[Body 2: Development or Reason 2]</b>\n` +
-        `Secondly / In addition / Another important factor is that __________.\n` +
-        `As a result / Consequently / This leads to __________.\n` +
-        `Furthermore / Moreover / Additionally __________.\n\n` +
-        
-        `<b>[Conclusion]</b>\n` +
-        `In conclusion / To sum up / Overall __________.\n` +
-        `Therefore, it is clear that / Hence, it can be concluded that / Thus, it is evident that __________.`,
-        { parse_mode: 'HTML' }
-      );
-    }, 1500);
-    
   } catch (error) {
     console.error('Error in startSmartRepeatStageWriting:', error);
     session.step = 'main_menu';
@@ -6675,7 +6972,7 @@ const systemPrompt = `Ты строгий преподаватель англи�
   "errors": [
     {
       "title": "Конкретная грамматическая проблема",
-      "rule":  "Детальное правило с примерами",
+      "rule": "💡 Rule: Детальное правило с примерами",
       "meme": "Запоминающаяся подсказка", 
       "examples": [
         {
@@ -6759,7 +7056,8 @@ const systemPrompt = `Ты строгий преподаватель англи�
         errorsType: typeof fallbackAnalysis.errors
       });
       
-      await ctx.reply('✅ Анализ завершен!', { reply_markup: { remove_keyboard: true } });
+      await ctx.reply('✅ Анализ завершен! Показываю основные рекомендации:', { reply_markup: { remove_keyboard: true } });
+      await showWritingAnalysisResult(ctx, session);
       await generateImprovedVersion(ctx, session, userText);
       return;
     }
@@ -6840,7 +7138,10 @@ const systemPrompt = `Ты строгий преподаватель англи�
       errorsType: typeof analysisData.errors
     });
     
-    // Генерируем улучшенную версию текста с персональной оценкой
+    // Показываем результат анализа
+    await showWritingAnalysisResult(ctx, session);
+    
+    // Генерируем улучшенную версию текста
     await generateImprovedVersion(ctx, session, userText);
     
   } catch (error) {
@@ -6893,8 +7194,8 @@ const systemPrompt = `Ты строгий преподаватель англи�
       session.writingAnalysis = simpleFallback;
       session.step = 'writing_analysis_result';
       
-      await ctx.reply('✅ Анализ завершен!', { reply_markup: { remove_keyboard: true } });
-      await generateImprovedVersion(ctx, session, session.userText || 'Пример текста для анализа');
+      await ctx.reply('✅ Анализ завершен! Показываю основные рекомендации:', { reply_markup: { remove_keyboard: true } });
+      await showWritingAnalysisResult(ctx, session);
       return;
     } else {
       errorMsg += `Детали: ${error.message}`;
@@ -6913,17 +7214,36 @@ async function generateImprovedVersion(ctx, session, originalText) {
     await ctx.reply('✨ Генерирую улучшенную версию вашего текста...');
     
     const improvementPrompt = `
-ТЫ: Эксперт IELTS Writing, улучшаешь тексты студентов и даешь персональную оценку
+ТЫ: Эксперт IELTS Writing, улучшаешь тексты студентов до уровня 7.0
 
-ЗАДАЧА: Улучшить текст до уровня 7.0+ и дать персональную оценку по 5 критериям на основе конкретного текста пользователя.
+ЗАДАЧА: Улучшить текст и дать 5 практических советов в новом формате с примерами из реального текста пользователя.
 
-КРИТЕРИИ IELTS WRITING 7.0+:
-1. Task Response - Полное раскрытие темы, четкая позиция, развернутые идеи
-2. Coherence & Cohesion - Логичная структура, эффективные связующие слова
-3. Lexical Resource - Широкий словарный запас, точное использование слов
-4. Grammar - Разнообразные структуры, сложные предложения, высокая точность
+КРИТЕРИИ IELTS WRITING 7.0:
+1. Task Response (Ответ на задание):
+   - Полное раскрытие темы
+   - Четкая позиция автора
+   - Развернутые и релевантные идеи
+   - Логичное заключение
 
-ИНСТРУКЦИИ ПО УЛУЧШЕНИЮ:
+2. Coherence & Cohesion (Связность):
+   - Логичная структура
+   - Эффективные связующие слова
+   - Четкие параграфы
+   - Плавные переходы между идеями
+
+3. Lexical Resource (Лексика):
+   - Широкий словарный запас
+   - Точное использование слов
+   - Идиоматические выражения
+   - Минимальные лексические ошибки
+
+4. Grammar (Грамматика):
+   - Разнообразные грамматические структуры
+   - Сложные предложения
+   - Высокая точность
+   - Редкие ошибки
+
+ИНСТРУКЦИИ:
 1. Сохрани основную идею и смысл оригинального текста
 2. Улучши структуру и логику изложения
 3. Обогати лексику более продвинутыми словами и фразами
@@ -6938,61 +7258,118 @@ async function generateImprovedVersion(ctx, session, originalText) {
 - improvements[].description: ТОЛЬКО НА РУССКОМ ЯЗЫКЕ
 - improvements[].example: ТОЛЬКО НА РУССКОМ ЯЗЫКЕ
 - writing_tips: ТОЛЬКО НА РУССКОМ ЯЗЫКЕ
-ОБЯЗАТЕЛЬНАЯ СТРУКТУРА JSON:
+- vocabulary_boost[].translation: НА РУССКОМ ЯЗЫКЕ
+- vocabulary_boost[].usage: НА АНГЛИЙСКОМ ЯЗЫКЕ (это пример предложения)
+
+ЗАПРЕЩЕНО писать объяснения на английском! Это грубая ошибка!
+
+ПРИМЕР правильного ответа (ОБРАТИ ВНИМАНИЕ НА ЯЗЫКИ!):
 {
-  "improved_text": "улучшенный текст на английском языке",
-  "personalized_feedback": {
-    "clarity_focus": "Анализ ясности и фокуса ЭТОГО конкретного текста с примерами",
-    "flow_rhythm": "Анализ ритма и течения ЭТОГО текста с конкретными предложениями",
-    "tone_engagement": "Анализ тона и вовлеченности с примерами ИЗ ЭТОГО текста",
-    "development_depth": "Анализ развития идей в ЭТОМ тексте с конкретными советами",
-    "precision_ideas": "Анализ точности выражения идей с примерами из текста пользователя"
-  },
+  "improved_text": "Climate change represents a critical global challenge...",
+  "key_changes": "Текст был полностью переработан для улучшения связности между идеями и обогащен продвинутой академической лексикой",
+  "improvements": [
+    {
+      "category": "Task Response",
+      "description": "Тема раскрыта более полно с четкой позицией автора и развернутыми аргументами",
+      "example": "Добавлены конкретные примеры и более детальное обоснование позиции"
+    },
+    {
+      "category": "Coherence & Cohesion", 
+      "description": "Улучшена логическая структура текста с помощью связующих слов и четких переходов",
+      "example": "Использованы фразы типа 'Furthermore', 'In addition', 'Consequently'"
+    },
+    {
+      "category": "Lexical Resource",
+      "description": "Заменена простая лексика на более продвинутую и точную", 
+      "example": "Вместо 'big problem' использовано 'significant challenge'"
+    },
+    {
+      "category": "Grammar",
+      "description": "Добавлены сложные грамматические конструкции для разнообразия",
+      "example": "Использованы условные предложения и причастные обороты"
+    }
+  ],
+  "writing_tips": [
+    "Используйте разнообразные связующие слова для плавного перехода между идеями",
+    "Применяйте синонимы и перефразирование чтобы избежать повторений",
+    "Структурируйте каждый параграф с четкой главной мыслью"
+  ],
   "vocabulary_words": [
     {
-      "word": "слово",
-      "translation": "перевод",
-      "example": "пример предложения на английском"
+      "word": "catastrophic",
+      "translation": "катастрофический",
+      "example": "The catastrophic effects of climate change are becoming evident."
     }
   ]
 }
 
-КРИТИЧЕСКИ ВАЖНО - СТРОГИЕ ТРЕБОВАНИЯ К JSON:
-- ВОЗВРАЩАЙ ИСКЛЮЧИТЕЛЬНО ВАЛИДНЫЙ JSON БЕЗ ДОПОЛНИТЕЛЬНОГО ТЕКСТА ИЛИ КОММЕНТАРИЕВ
-- НЕ добавляй пояснения, предисловия или текст до/после JSON
-- JSON должен начинаться с { и заканчиваться }
-- Проверяй корректность всех кавычек, запятых и скобок
-- ВСЕ строки в JSON должны быть в двойных кавычках (")
-- НЕ используй одинарные кавычки (') - заменяй их на \"
-- ЭКРАНИРУЙ внутренние кавычки как \" 
-- НЕ используй переносы строк внутри значений - заменяй на \\n
-- ОБЯЗАТЕЛЬНО включи ВСЕ требуемые поля: improved_text, personalized_feedback (с ВСЕМИ 5 подполями), vocabulary_words
-- improved_text: ТОЛЬКО на английском языке (без русских слов!)
-- personalized_feedback: ВСЕ тексты ТОЛЬКО на русском языке
-- vocabulary_words: ОБЯЗАТЕЛЬНО 5 слов с полями word, translation, example
-- В оценке используй КОНКРЕТНЫЕ примеры из текста пользователя
-- Каждый блок оценки: 2-4 предложения, персональный и практичный
-
-ПРИМЕР КОРРЕКТНОГО ФОРМАТА JSON:
+КРИТИЧЕСКИ ВАЖНО - ИСПОЛЬЗУЙ ТОЛЬКО ЭТОТ ФОРМАТ JSON:
 {
-  "improved_text": "Your improved English text here without any Russian words",
-  "personalized_feedback": {
-    "clarity_focus": "Твой анализ на русском с конкретными примерами из текста пользователя",
-    "flow_rhythm": "Твой анализ на русском с конкретными примерами",
-    "tone_engagement": "Твой анализ на русском с конкретными примерами", 
-    "development_depth": "Твой анализ на русском с конкретными примерами",
-    "precision_ideas": "Твой анализ на русском с конкретными примерами"
-  },
+  "improved_text": "улучшенный текст на английском",
+  "writing_advice": [
+    {
+      "number": "1️⃣",
+      "title": "Сделай позицию чёткой и возвращайся к ней в конце",
+      "why": "💬 Зачем: IELTS оценивает, насколько ясно ты выражаешь мнение.",
+      "how": "🧠 Как: во вступлении пиши фразу, показывающую твою позицию (I strongly believe / I personally prefer / I am convinced that…).",
+      "example_bad": "цитата из оригинального текста пользователя",
+      "example_good": "исправленная версия этой же цитаты", 
+      "action": "🪄 Что делать: начни первое предложение с позиции, и повтори её в последней строке заключения другими словами."
+    },
+    {
+      "number": "2️⃣", 
+      "title": "Разделяй текст на 3 блока: вступление — аргументы — вывод",
+      "why": "💬 Зачем: Экзаменатор проверяет структуру (Coherence & Cohesion).",
+      "how": "🧠 Как:\\n\\nВступление → идея + мнение.\\n\\nОсновная часть → 2 причины с примерами.\\n\\nЗаключение → обобщение и финальная мысль.",
+      "example_bad": "цитата из оригинального текста пользователя",
+      "example_good": "исправленная версия этой же цитаты",
+      "action": "🪄 Что делать: проверь, что у тебя есть четкие границы между частями текста."
+    },
+    {
+      "number": "3️⃣",
+      "title": "Добавляй связки, чтобы текст \\"тёк\\" естественно",
+      "why": "💬 Зачем: Без связок текст кажется \\"кусочным\\".",  
+      "how": "🧠 Как: Используй разные типы:\\n\\nУступка: Although, Even though\\n\\nПротивопоставление: However, On the other hand\\n\\nПричина/следствие: Because, As a result, Therefore\\n\\nВремя: When, After, Before",
+      "example_bad": "цитата из оригинального текста пользователя",
+      "example_good": "исправленная версия этой же цитаты",
+      "action": "🪄 Что делать: найди места, где можно добавить linking words."
+    },
+    {
+      "number": "4️⃣",
+      "title": "Укрепляй словарь — 3 новых слова по теме",
+      "why": "💬 Зачем: Lexical Resource даёт +0.5–1 балл.",
+      "how": "🧠 Как: выбирай синонимы и устойчивые выражения по теме.",
+      "example_bad": "цитата из оригинального текста пользователя",
+      "example_good": "исправленная версия этой же цитаты",
+      "action": "🪄 Что делать: после каждого текста выписывай 3 новых слова и попробуй использовать их в следующем."
+    },
+    {
+      "number": "5️⃣",
+      "title": "Добавь \\"гибкую грамматику\\" — хотя бы одно сложное предложение",
+      "why": "💬 Зачем: Grammatical Range = обязательный критерий Band 7+.",
+      "how": "🧠 Как:\\n\\nИспользуй Although / While / Because для сложных предложений.\\n\\nДобавь условное или причастное:\\nIf I go to bed early, I can't focus well.\\nFeeling tired, I prefer working at night.",
+      "example_bad": "цитата из оригинального текста пользователя", 
+      "example_good": "исправленная версия этой же цитаты",
+      "action": "🪄 Что делать: найди простые предложения и объедини их в сложные."
+    }
+  ],
   "vocabulary_words": [
-    {"word": "word1", "translation": "перевод1", "example": "English example sentence 1"},
-    {"word": "word2", "translation": "перевод2", "example": "English example sentence 2"},
-    {"word": "word3", "translation": "перевод3", "example": "English example sentence 3"},
-    {"word": "word4", "translation": "перевод4", "example": "English example sentence 4"},
-    {"word": "word5", "translation": "перевод5", "example": "English example sentence 5"}
+    {
+      "word": "слово",
+      "translation": "перевод", 
+      "example": "предложение с этим словом на английском"
+    }
   ]
 }
 
-ПОМНИ: ОТВЕЧАЙ ТОЛЬКО JSON! НИКАКОГО ДРУГОГО ТЕКСТА!
+КРИТИЧЕСКИ ВАЖНО:
+- Все примеры example_bad и example_good должны быть ИЗ РЕАЛЬНОГО ТЕКСТА пользователя
+- ОБЯЗАТЕЛЬНО включи vocabulary_words - ровно 5 слов релевантных теме текста пользователя
+- improved_text только на английском
+- Все остальное только на русском
+- НИКОГДА НЕ используй поля: key_changes, improvements, writing_tips, vocabulary_boost
+- ИСПОЛЬЗУЙ ТОЛЬКО: improved_text, writing_advice, vocabulary_words
+- Возвращай ТОЛЬКО JSON!
 `;
 
     const gptRes = await axios.post('https://api.openai.com/v1/chat/completions', {
@@ -7015,153 +7392,48 @@ async function generateImprovedVersion(ctx, session, originalText) {
     
     let improvementData;
     
-    // Парсим JSON ответ с дополнительными проверками
+    // Парсим JSON ответ
     try {
-      // Дополнительная очистка ответа
-      improvementResponse = improvementResponse.trim();
-      
-      // Проверяем что ответ начинается и заканчивается правильно
-      if (!improvementResponse.startsWith('{') || !improvementResponse.endsWith('}')) {
-        console.log('Response does not start/end with braces, trying to extract JSON');
-        const jsonMatch = improvementResponse.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          improvementResponse = jsonMatch[0];
-        } else {
-          throw new Error('No valid JSON structure found');
-        }
-      }
-      
       improvementData = JSON.parse(improvementResponse);
-      
-      // Валидация обязательных полей
-      if (!improvementData.improved_text || typeof improvementData.improved_text !== 'string') {
-        throw new Error('Missing or invalid improved_text field');
-      }
-      
-      if (!improvementData.personalized_feedback || typeof improvementData.personalized_feedback !== 'object') {
-        throw new Error('Missing or invalid personalized_feedback field');
-      }
-      
-      // Проверка всех блоков персональной оценки
-      const requiredFeedbackBlocks = ['clarity_focus', 'flow_rhythm', 'tone_engagement', 'development_depth', 'precision_ideas'];
-      for (const block of requiredFeedbackBlocks) {
-        if (!improvementData.personalized_feedback[block] || typeof improvementData.personalized_feedback[block] !== 'string') {
-          console.log(`WARNING: Missing or invalid ${block} in personalized_feedback`);
-          improvementData.personalized_feedback[block] = "Анализ временно недоступен из-за технических проблем.";
-        }
-      }
-      
-      if (!Array.isArray(improvementData.vocabulary_words)) {
-        console.log('WARNING: vocabulary_words is not an array, creating empty array');
-        improvementData.vocabulary_words = [];
-      }
-      
-      console.log('DEBUG: Successfully parsed and validated improvement data');
-      console.log('DEBUG: Has personalized_feedback:', !!improvementData.personalized_feedback);
+      console.log('DEBUG: Parsed improvement data:', JSON.stringify(improvementData, null, 2));
+      console.log('DEBUG: Has writing_advice:', !!improvementData.writing_advice);
       console.log('DEBUG: Has vocabulary_words:', !!improvementData.vocabulary_words);
-      console.log('DEBUG: Vocabulary words count:', improvementData.vocabulary_words.length);
-      console.log('DEBUG: Feedback blocks:', Object.keys(improvementData.personalized_feedback));
     } catch (e1) {
-      console.log('First JSON parse failed, trying fallback methods');
-      console.log('Parse error:', e1.message);
       try {
-        // Попытка 1: Извлечь JSON из текста и очистить проблемы
         const jsonMatch = improvementResponse.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
-          let jsonString = jsonMatch[0];
-          
-          // Дополнительная очистка для исправления возможных проблем
-          // Удаляем дублирующиеся запятые
-          jsonString = jsonString.replace(/,\s*,/g, ',');
-          // Удаляем запятые перед закрывающими скобками
-          jsonString = jsonString.replace(/,\s*([}\]])/g, '$1');
-          // Исправляем одинарные кавычки внутри строк
-          jsonString = jsonString.replace(/([^\\])'/g, '$1\\"');
-          // Удаляем переносы строк внутри значений
-          jsonString = jsonString.replace(/"\s*\n\s*"/g, '" "');
-          
-          improvementData = JSON.parse(jsonString);
-          console.log('DEBUG: Parsed improvement data (fallback method 1):', JSON.stringify(improvementData, null, 2));
+          improvementData = JSON.parse(jsonMatch[0]);
+          console.log('DEBUG: Parsed improvement data (fallback):', JSON.stringify(improvementData, null, 2));
         } else {
-          throw new Error('JSON not found in response');
+          throw new Error('JSON not found');
         }
       } catch (e2) {
-        console.log('Fallback method 1 failed, trying method 2');
-        console.log('Parse error 2:', e2.message);
-        try {
-          // Попытка 2: Попробовать найти и извлечь основные поля вручную
-          const improvedTextMatch = improvementResponse.match(/"improved_text":\s*"([^"]*(?:\\.[^"]*)*)"/);
-          
-          if (improvedTextMatch) {
-            console.log('Extracting basic data manually');
-            improvementData = {
-              improved_text: improvedTextMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"'),
-              personalized_feedback: {
-                clarity_focus: "Извините, возникла техническая проблема с анализом. Ваш текст понятен, но рекомендую работать над ясностью позиции.",
-                flow_rhythm: "Попробуйте варьировать длину предложений для лучшего ритма текста.",
-                tone_engagement: "Добавьте больше личного мнения для большей вовлеченности читателя.",
-                development_depth: "Развивайте идеи более подробно с конкретными примерами.",
-                precision_ideas: "Используйте более точные и конкретные выражения вместо общих фраз."
-              },
-              vocabulary_words: []
-            };
-            console.log('DEBUG: Manually extracted improvement data');
-          } else {
-            throw new Error('Could not extract improved_text manually');
-          }
-        } catch (e3) {
-          console.error('All fallback methods failed. Error details:', e1.message, e2.message, e3.message);
-          console.error('Raw response for debugging:', improvementResponse.substring(0, 500) + '...');
-          // Fallback - создаем минимальные данные для продолжения процесса
-          console.log('Using final fallback improvement data due to parsing error');
-          improvementData = {
-            improved_text: "Sorry, couldn't generate improved version due to technical issues.",
-            personalized_feedback: {
-              clarity_focus: "Извините, возникла техническая проблема с анализом. Ваш текст понятен, но рекомендую работать над ясностью позиции.",
-              flow_rhythm: "Попробуйте варьировать длину предложений для лучшего ритма текста.",
-              tone_engagement: "Добавьте больше личного мнения для большей вовлеченности читателя.",
-              development_depth: "Развивайте идеи более подробно с конкретными примерами.",
-              precision_ideas: "Используйте более точные и конкретные выражения вместо общих фраз."
-            },
-            vocabulary_words: []
-          };
-        }
+        console.error('Failed to parse improvement response:', improvementResponse);
+        // Fallback - показываем только оригинальный анализ
+        return;
       }
     }
     
-    // Проверяем обязательные поля для нового формата
+    // Проверяем обязательные поля
     if (!improvementData.improved_text) {
       console.error('No improved_text in response');
       return;
     }
     
-    // Добавляем fallback для персональной оценки если отсутствует
-    if (!improvementData.personalized_feedback) {
-      console.log('WARNING: No personalized_feedback, adding fallback');
-      improvementData.personalized_feedback = {
-        clarity_focus: "Текст понятный, но можно улучшить фокус на главной мысли. Подчеркните ключевые идеи более четко.",
-        flow_rhythm: "Предложения имеют схожую структуру. Попробуйте варьировать длину и сложность предложений для лучшего ритма.",
-        tone_engagement: "Тон подходящий, но можно добавить больше личного мнения и эмоций для большей вовлеченности.",
-        development_depth: "Идеи развиты неплохо, но можно добавить больше конкретных примеров и деталей.",
-        precision_ideas: "Избегайте общих фраз. Используйте более точные и конкретные выражения."
-      };
-    } else {
-      // Проверяем наличие всех блоков оценки и добавляем fallback если нужно
-      const feedbackBlocks = ['clarity_focus', 'flow_rhythm', 'tone_engagement', 'development_depth', 'precision_ideas'];
-      const fallbackTexts = {
-        clarity_focus: "Текст понятный, но можно улучшить фокус на главной мысли.",
-        flow_rhythm: "Попробуйте варьировать длину предложений для лучшего ритма текста.",
-        tone_engagement: "Тон подходящий, но можно добавить больше личного мнения.",
-        development_depth: "Идеи развиты неплохо, но можно добавить больше примеров.",
-        precision_ideas: "Используйте более точные и конкретные выражения."
-      };
-      
-      feedbackBlocks.forEach(block => {
-        if (!improvementData.personalized_feedback[block]) {
-          console.log(`WARNING: Missing ${block}, adding fallback`);
-          improvementData.personalized_feedback[block] = fallbackTexts[block];
+    // Добавляем fallback данные если отсутствуют
+    if (!improvementData.writing_advice || improvementData.writing_advice.length === 0) {
+      console.log('WARNING: No writing_advice, adding fallback');
+      improvementData.writing_advice = [
+        {
+          "number": "1️⃣",
+          "title": "Используйте более разнообразную лексику",
+          "why": "💬 Зачем: Богатый словарный запас повышает оценку IELTS.",
+          "how": "🧠 Как: Заменяйте простые слова синонимами. Используйте более точные термины.",
+          "example_bad": "good experience",
+          "example_good": "valuable/enriching experience",
+          "action": "🪄 Что делать: выберите 3-4 простых слова в тексте и замените их на более продвинутые."
         }
-      });
+      ];
     }
     
     if (!improvementData.vocabulary_words || improvementData.vocabulary_words.length === 0) {
@@ -7183,19 +7455,7 @@ async function generateImprovedVersion(ctx, session, originalText) {
     
   } catch (error) {
     console.error('Error generating improved version:', error);
-    // Не прерываем весь процесс, продолжаем с тестом по ошибкам
-    await ctx.reply('⚠️ Возникла проблема с генерацией улучшенной версии, но продолжаем с тестом по ошибкам.');
-    
-    // Переходим сразу к тесту по ошибкам
-    if (session.stage2_analysis && session.stage2_analysis.errors && session.stage2_analysis.errors.length > 0) {
-      setTimeout(() => {
-        generatePersonalizedQuiz(ctx, session, session.stage2_analysis.errors);
-      }, 1000);
-    } else {
-      // Если нет ошибок для теста, завершаем этап
-      await ctx.reply('✅ Анализ завершен! Переходим к следующему этапу.');
-      // Здесь можно добавить переход к следующему этапу
-    }
+    // Не прерываем весь процесс, просто пропускаем улучшенную версию
   }
 }
 
@@ -7204,98 +7464,32 @@ async function showImprovedVersion(ctx, session) {
   const improved = session.improvedText;
   
   if (!improved || !improved.improved_text) {
-    console.log('No improved text data, proceeding to quiz generation');
-    // Если нет улучшенной версии, переходим сразу к тесту
-    if (session.stage2_analysis && session.stage2_analysis.errors && session.stage2_analysis.errors.length > 0) {
-      setTimeout(() => {
-        generatePersonalizedQuiz(ctx, session, session.stage2_analysis.errors);
-      }, 1000);
-    }
     return;
   }
   
   try {
-    // Часть 1: Детальный анализ ошибок (если есть)
-    if (session.stage2_analysis && session.stage2_analysis.errors && session.stage2_analysis.errors.length > 0) {
-      const analysis = session.stage2_analysis;
-      
-      let analysisMessage = `📊 <b>Анализ вашего текста:</b>\n\n`;
-      analysisMessage += `🎯 <b>Оценка:</b> ${analysis.band_estimate}/9 (IELTS Writing)\n\n`;
-      analysisMessage += `📝 <b>Общий отзыв:</b>\n${analysis.summary}\n\n`;
-      analysisMessage += `💡 <b>Рекомендации:</b>\n${analysis.global_advice}`;
-      analysisMessage += `\n\n🔍 <b>Найдено ошибок:</b> ${analysis.errors.length}`;
-      
-      await ctx.reply(analysisMessage, { parse_mode: 'HTML' });
-      
-      // Показываем каждую ошибку отдельным сообщением
-      for (let i = 0; i < analysis.errors.length; i++) {
-        const error = analysis.errors[i];
-        let errorMessage = `<b>${i + 1}. ${error.title}</b>\n`;
-        errorMessage += `${error.rule}\n`;
-        errorMessage += `🧠 <i>${error.meme}</i>\n`;
-        
-        if (error.examples && error.examples.length > 0) {
-          error.examples.forEach(example => {
-            errorMessage += `❌ "${example.from}" → ✅ "${example.to}"\n`;
-          });
-        }
-        
-        await ctx.reply(errorMessage, { parse_mode: 'HTML' });
-      }
-    }
-    
-    // Часть 2: Улучшенный текст
-    let message1 = `✨ <b>Улучшенная версия (IELTS 7.0+ уровень):</b>\n\n`;
+    // Часть 1: Улучшенный текст
+    let message1 = `✨ <b>Улучшенная версия (IELTS 7.0 - 8.0 уровень):</b>\n\n`;
     message1 += `<i>${improved.improved_text}</i>`;
     
     await ctx.reply(message1, { parse_mode: 'HTML' });
     
-    // Часть 3: Персональная оценка (5 блоков по отдельности)
-    if (improved.personalized_feedback) {
-      const feedback = improved.personalized_feedback;
-      
-      // 1. Clarity & Focus
-      if (feedback.clarity_focus) {
-        await ctx.reply(
-          `💡 <b>Clarity & Focus:</b>\n\n${feedback.clarity_focus}`,
-          { parse_mode: 'HTML' }
-        );
-      }
-      
-      // 2. Flow & Rhythm  
-      if (feedback.flow_rhythm) {
-        await ctx.reply(
-          `🎢 <b>Flow & Rhythm:</b>\n\n${feedback.flow_rhythm}`,
-          { parse_mode: 'HTML' }
-        );
-      }
-      
-      // 3. Tone & Engagement
-      if (feedback.tone_engagement) {
-        await ctx.reply(
-          `🎯 <b>Tone & Engagement:</b>\n\n${feedback.tone_engagement}`,
-          { parse_mode: 'HTML' }
-        );
-      }
-      
-      // 4. Development & Depth
-      if (feedback.development_depth) {
-        await ctx.reply(
-          `🧠 <b>Development & Depth:</b>\n\n${feedback.development_depth}`,
-          { parse_mode: 'HTML' }
-        );
-      }
-      
-      // 5. Precision of Ideas
-      if (feedback.precision_ideas) {
-        await ctx.reply(
-          `🏗️ <b>Precision of Ideas:</b>\n\n${feedback.precision_ideas}`,
-          { parse_mode: 'HTML' }
-        );
+    // Часть 2: Советы в новом формате
+    if (improved.writing_advice && improved.writing_advice.length > 0) {
+      for (const advice of improved.writing_advice) {
+        let adviceMessage = `${advice.number} <b>${advice.title}</b>\n\n`;
+        adviceMessage += `${advice.why}\n\n`;
+        adviceMessage += `${advice.how}\n\n`;
+        adviceMessage += `✍️ <b>Пример:</b>\n`;
+        adviceMessage += `❌ ${advice.example_bad}\n`;
+        adviceMessage += `✅ ${advice.example_good}\n\n`;
+        adviceMessage += `${advice.action}`;
+        
+        await ctx.reply(adviceMessage, { parse_mode: 'HTML' });
       }
     }
     
-    // Часть 4: Словарь
+    // Часть 3: Словарь
     if (improved.vocabulary_words && improved.vocabulary_words.length > 0) {
       let vocabMessage = `📚 <b>Топ-5 слов для этой темы:</b>\n\n`;
       improved.vocabulary_words.forEach((vocab, index) => {
@@ -7392,9 +7586,6 @@ async function showNextVocabularyWord(ctx, session) {
 async function generatePersonalizedQuiz(ctx, session, analysisErrors) {
   try {
     console.log('=== GENERATING PERSONALIZED QUIZ ===');
-    console.log('User ID:', ctx.from.id);
-    console.log('Current step:', session.step);
-    console.log('Smart repeat stage:', session.smartRepeatStage);
     console.log('Analysis errors received:', analysisErrors);
     
     // Проверяем что analysisErrors корректен
@@ -7428,9 +7619,8 @@ async function generatePersonalizedQuiz(ctx, session, analysisErrors) {
 ЗАДАЧА: Создать интерактивный тест из 10 вопросов на основе найденных ошибок пользователя
 
 ОБЯЗАТЕЛЬНАЯ СТРУКТУРА ТЕСТА:
-- 3 вопроса "Find the Hidden Error" (выбор правильного варианта A/B/C/D)  
-- 3 вопроса "Spot & Fix" (исправить предложение, ввод текста)
-- 4 вопроса "Mini-dialogs" (выбор правильного варианта A/B/C/D в диалоге)
+- 5 вопросов "Find the Hidden Error" (выбор правильного варианта A/B/C/D)  
+- 5 вопросов "Mini-dialogs" (выбор правильного варианта A/B/C/D в диалоге)
 
 СТРОГИЕ ТРЕБОВАНИЯ К JSON:
 1. Возвращай ТОЛЬКО валидный JSON объект без markdown, без лишнего текста
@@ -7455,27 +7645,12 @@ async function generatePersonalizedQuiz(ctx, session, analysisErrors) {
             "C) неправильный вариант"
           ],
           "correct_answer": "B",
-          "explanation": "объяснение правила"
+          "explanation": "💡 Rule: объяснение правила"
         }
       ]
     },
     {
-      "section_title": "✍️ Часть 2 — Spot & Fix (Исправь как носитель)",
-      "section_description": "(Развивает активное воспроизведение)",
-      "questions": [
-        {
-          "type": "text_input",
-          "question_text": "Fix the sentence:",
-          "wrong_example": "❌ неправильное предложение",
-          "input_prompt": "✅ ______________________________",
-          "tip": "💬 Tip: краткая подсказка",
-          "correct_answer": "правильное предложение",
-          "explanation": "🧩 Answer: правильное предложение ✅"
-        }
-      ]
-    },
-    {
-      "section_title": "💬 Часть 3 — Mini-dialogs (Диалоги в действии)",
+      "section_title": "💬 Часть 2 — Mini-dialogs (Диалоги в действии)",
       "section_description": "(Закрепляет грамматику в контексте общения — как в IELTS Speaking)",
       "questions": [
         {
@@ -7488,7 +7663,7 @@ async function generatePersonalizedQuiz(ctx, session, analysisErrors) {
             "D) неправильный"
           ],
           "correct_answer": "C",
-          "explanation": "объяснение правила"
+          "explanation": "💡 Rule: объяснение правила"
         }
       ]
     }
@@ -7499,9 +7674,6 @@ async function generatePersonalizedQuiz(ctx, session, analysisErrors) {
 - Все вопросы должны быть основаны на РЕАЛЬНЫХ ошибках из анализа пользователя
 - Используй точные фрагменты из текста пользователя в вопросах
 - В Find Hidden Error: правильный вариант помечай ✅
-- В Spot & Fix: ТОЛЬКО конкретные грамматические ошибки (артикли, времена, предлоги). НЕ стилистические улучшения!
-- В Spot & Fix: исправление должно быть ОДНО И ОЧЕВИДНОЕ (добавить артикль, изменить форму глагола)
-- В Spot & Fix: показывай ❌ неправильный пример из текста пользователя
 - В Mini-dialogs: создавай короткие диалоги с ГРАММАТИЧЕСКИМИ пропусками (времена, артикли, предлоги)
 - В Mini-dialogs: НЕ синонимы! Только четкие грамматические различия (was/were, much/many, a/an)
 - Объяснения ОБЯЗАТЕЛЬНО начинай с "💡 Rule:" и делай детальными с конкретными примерами
@@ -7509,8 +7681,6 @@ async function generatePersonalizedQuiz(ctx, session, analysisErrors) {
 - КАЖДЫЙ вопрос должен иметь ЛОГИЧНЫЕ варианты ответов с ОЧЕВИДНЫМИ различиями
 - Объяснение должно четко показывать ПОЧЕМУ выбранный ответ правильный
 - Примеры хороших объяснений: "💡 Rule: Before singular countable nouns → always a/an." или "💡 Rule: Many/much/a few — many + plural countable (many books), much + uncountable (much water), a few + plural countable (a few books)."
-- Примеры ПРАВИЛЬНЫХ Spot & Fix: "go for walk" → "go for a walk", "I have learn" → "I have learned", "he don't like" → "he doesn't like"
-- Примеры НЕПРАВИЛЬНЫХ Spot & Fix: "funny videos" → "humorous clips" (это стилистика, не грамматика!)
 - Примеры ПРАВИЛЬНЫХ Mini-dialogs: "I _____ yesterday" A)go B)went C)going (грамматика времен)
 - Примеры НЕПРАВИЛЬНЫХ Mini-dialogs: "_____ videos" A)Funny B)Humorous C)Enjoyable (это лексика, не грамматика!)
 - НЕ создавай вопросы где все варианты выглядят правильными или неправильными
@@ -7805,14 +7975,10 @@ async function finishQuiz(ctx, session) {
   setTimeout(() => {
     session.smartRepeatStage = 3;
     delete session.currentQuiz;
-    console.log(`=== SMART REPEAT STAGE 3 START ===`);
-    console.log(`User ID: ${ctx.from.id}`);
-    console.log(`Transitioning from personalized quiz to stage 3`);
-    
     ctx.reply('🧠 <b>Умное повторение - Этап 3/5</b>\n<b>Знаю/Не знаю</b>\n\nПереходим к быстрой оценке слов...', {
       reply_markup: { remove_keyboard: true }
     });
-    startSmartRepeatStage3(ctx, session); // Исправлено: используем правильную функцию для этапа 3 "Знаю/Не знаю"
+    startSmartRepeatStage2(ctx, session); // Исправлено: используем правильную функцию для этапа "Знаю/Не знаю"
   }, 3000);
 }
 
@@ -7850,6 +8016,47 @@ async function saveQuizQuestion(telegramId, question) {
     `;
   } catch (error) {
     console.error('Error saving quiz question:', error);
+  }
+}
+
+// Функция отображения результатов анализа письма
+async function showWritingAnalysisResult(ctx, session) {
+  const analysis = session.writingAnalysis;
+  
+  let message = `📊 <b>Анализ вашего текста:</b>\n\n`;
+  message += `🎯 <b>Оценка:</b> ${analysis.band_estimate}/9 (IELTS Writing)\n\n`;
+  message += `📝 <b>Общий отзыв:</b>\n${analysis.summary}\n\n`;
+  message += `💡 <b>Рекомендации:</b>\n${analysis.global_advice}`;
+  
+  if (analysis.errors && analysis.errors.length > 0) {
+    message += `\n\n🔍 <b>Найдено ошибок:</b> ${analysis.errors.length}`;
+    
+    analysis.errors.forEach((error, index) => {
+      message += `\n\n<b>${index + 1}. ${error.title}</b>`;
+      message += `\n💡 ${error.rule}`;
+      message += `\n🧠 <i>${error.meme}</i>`;
+      
+      if (error.examples && error.examples.length > 0) {
+        error.examples.forEach(example => {
+          message += `\n❌ "${example.from}" → ✅ "${example.to}"`;
+        });
+      }
+    });
+    
+    await ctx.reply(message, { parse_mode: 'HTML' });
+    
+    // НЕ запускаем квиз здесь - он запустится после добавления слов в словарь
+  } else {
+    message += `\n\n✅ <b>Отличная работа!</b> Серьезных ошибок не найдено.`;
+    
+    await ctx.reply(message, { 
+      parse_mode: 'HTML',
+      reply_markup: new Keyboard()
+        .text('➡️ Продолжить к следующему этапу')
+        .row()
+        .oneTime()
+        .resized()
+    });
   }
 }
 
@@ -8163,7 +8370,7 @@ async function startManualSentenceInput(ctx, session) {
   
   await ctx.reply(
     `✍️ <b>Ручной ввод предложений</b>\n\n` +
-    `Напиши предложения с словами (${wordsForSentences.length}): по одному предложению на слово. Пиши по одному предложению на английском.`,
+    `Напиши предложения с словами (${wordsForSentences.length}): по одному предложению на слово. Писать надо на английском.`,
     { parse_mode: 'HTML' }
   );
   
@@ -8789,15 +8996,10 @@ async function startSmartRepeatStage5(ctx, session) {
     session.storyTaskWords = words.map(w => w.word);
     session.step = 'story_task';
     
-    // Очищаем состояние персонализированного квиза из этапа 2
-    delete session.waitingForQuizAnswer;
-    delete session.currentQuiz;
-    
     console.log('Set session variables:');
     console.log('- smartRepeatStage:', session.smartRepeatStage);
     console.log('- storyTaskWords:', session.storyTaskWords);
     console.log('- step:', session.step);
-    console.log('- Cleared quiz state from stage 2');
     
     await ctx.reply(
       `🧠 <b>Умное повторение - Этап 5/5</b>\n` +
@@ -8914,8 +9116,8 @@ async function finishSmartRepeat(ctx, session) {
     await recordSmartRepeatCompletion(session.profile);
   }
   
-  // Сохраняем слова из 4 этапа (дополнительные слова из GPT текста) перед очисткой
-  const savedVocabularyWords = session.additionalVocabulary || [];
+  // Сохраняем слова из 2 этапа перед очисткой
+  const savedVocabularyWords = session.stage2VocabularyWords || [];
   
   // Очищаем все состояния умного повторения
   delete session.currentQuizSession;
@@ -8927,15 +9129,14 @@ async function finishSmartRepeat(ctx, session) {
   delete session.stage3Sentences;
   delete session.stage3Context;
   delete session.stage2VocabularyWords;
-  delete session.additionalVocabulary; // Теперь можем удалить, так как сохранили в savedVocabularyWords
   
-  // Проверяем есть ли сохраненные слова из 4 этапа
+  // Проверяем есть ли сохраненные слова из 2 этапа
   if (savedVocabularyWords && savedVocabularyWords.length > 0) {
-    await ctx.reply('🎉 <b>Умное повторение завершено!</b>\n\n📚 <b>Топ-10 сложных слов из текста:</b>\n\nВы можете добавить их в свой словарь...', {
+    await ctx.reply('🎉 <b>Умное повторение завершено!</b>\n\n📚 <b>Повторим слова из 2-го этапа:</b>\n\nВы можете добавить их в свой словарь...', {
       parse_mode: 'HTML'
     });
     
-    // Запускаем добавление слов из 4 этапа (дополнительных слов)
+    // Запускаем добавление слов из 2 этапа
     setTimeout(() => {
       startVocabularyAdditionStage5(ctx, session, savedVocabularyWords);
     }, 1500);
@@ -9077,7 +9278,7 @@ async function addWordToUserDictionary(profileName, wordData) {
         profile: profileName,
         word: wordData.word.toLowerCase(),
         translation: wordData.translation,
-        section: wordData.section || 'stage4_vocab' // Используем stage4_vocab для слов из текстового задания
+        section: 'stage2_vocab'
       }
     });
     
@@ -9122,17 +9323,10 @@ async function showNextVocabularyWordStage5(ctx, session) {
     const currentIndex = session.stage5CurrentWordIndex + 1;
     const totalWords = session.stage5VocabularyWords.length;
     
-    let message = `📚 <b>Сложное слово ${currentIndex}/${totalWords} из текста:</b>\n\n`;
+    let message = `📚 <b>Слово ${currentIndex}/${totalWords} из 2-го этапа:</b>\n\n`;
     message += `🔤 <b>${currentWord.word}</b>\n`;
     message += `🇷🇺 ${currentWord.translation}\n`;
-    
-    // Показываем пример если есть
-    if (currentWord.example) {
-      message += `📝 <i>${currentWord.example}</i>\n\n`;
-    } else {
-      message += `\n`;
-    }
-    
+    message += `📝 <i>${currentWord.example}</i>\n\n`;
     message += `Добавить в ваш словарь?`;
     
     const keyboard = new InlineKeyboard()
@@ -9165,8 +9359,3 @@ async function finishSmartRepeatFinal(ctx, session) {
     parse_mode: 'HTML'
   });
 }
-
-// Экспорт функций для тестирования
-module.exports = {
-  generateImprovedVersion
-};

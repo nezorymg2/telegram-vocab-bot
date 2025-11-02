@@ -2,13 +2,11 @@
 const quizGenerationPrompt = `
 ТЫ: Эксперт по английскому языку, создаешь персональные интерактивные тесты на основе ошибок студента
 
-ЗАДАЧА: Создать интерактивный тест из 12 вопросов на основе найденных ошибок пользователя
+ЗАДАЧА: Создать интерактивный тест из 10 вопросов на основе найденных ошибок пользователя
 
 ОБЯЗАТЕЛЬНАЯ СТРУКТУРА ТЕСТА:
-- 3 вопроса "Find the Hidden Error" (выбор правильного варианта A/B/C/D)  
-- 3 вопроса "Spot & Fix" (исправить предложение, ввод текста)
-- 4 вопроса "Mini-dialogs" (выбор правильного варианта A/B/C/D в диалоге)
-- 2 старых вопроса для повторения (будут добавлены отдельно)
+- 5 вопросов "Find the Hidden Error" (выбор правильного варианта A/B/C/D)  
+- 5 вопросов "Mini-dialogs" (выбор правильного варианта A/B/C/D в диалоге)
 
 ФОРМАТ ОТВЕТА JSON:
 {
@@ -31,22 +29,7 @@ const quizGenerationPrompt = `
       ]
     },
     {
-      "section_title": "✍️ Часть 2 — Spot & Fix (Исправь как носитель)",
-      "section_description": "(Развивает активное воспроизведение)",
-      "questions": [
-        {
-          "type": "text_input",
-          "question_text": "Fix the sentence:",
-          "wrong_example": "❌ She go to work every day.",
-          "input_prompt": "✅ ______________________________",
-          "tip": "💬 Tip: For he/she/it — add -s to the verb.",
-          "correct_answer": "She goes to work every day.",
-          "explanation": "🧩 Answer: She goes to work every day. ✅"
-        }
-      ]
-    },
-    {
-      "section_title": "💬 Часть 3 — Mini-dialogs (Диалоги в действии)",
+      "section_title": "💬 Часть 2 — Mini-dialogs (Диалоги в действии)",
       "section_description": "(Закрепляет грамматику в контексте общения — как в IELTS Speaking)",
       "questions": [
         {
