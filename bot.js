@@ -95,6 +95,16 @@ function getLocalDateGMT5ISO() {
   return localTime.toISOString();
 }
 
+// Функция для получения даты в простом формате YYYY-MM-DD (GMT+5)
+function getSimpleDateGMT5() {
+  const now = new Date();
+  const localTime = new Date(now.getTime() + 5 * 60 * 60 * 1000);
+  const year = localTime.getFullYear();
+  const month = String(localTime.getMonth() + 1).padStart(2, '0');
+  const day = String(localTime.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 // Функция для сравнения дат в GMT+5
 function isSameDateGMT5(date1, date2) {
   if (!date1 || !date2) return false;
@@ -759,9 +769,9 @@ async function getOrCreateMoneyRecord(profileName) {
 async function recordSmartRepeatCompletion(profileName) {
   try {
     const today = getLocalDateGMT5();
-    const todayISO = getLocalDateISOGMT5();
+    const todaySimple = getSimpleDateGMT5(); // Используем простой формат для базы данных
     
-    console.log(`💰 COMPLETION: Recording completion for ${profileName} on ${today} (${todayISO})`);
+    console.log(`💰 COMPLETION: Recording completion for ${profileName} on ${today} (DB format: ${todaySimple})`);
     
     // 1. Обновляем основную таблицу user_profiles (для проверки в 23:59)
     const userProfileResult = await prisma.userProfile.updateMany({
@@ -776,14 +786,14 @@ async function recordSmartRepeatCompletion(profileName) {
 
     await prisma.$executeRaw`
       UPDATE "money_system" SET 
-        "lastCompletionDate" = ${today},
+        "lastCompletionDate" = ${todaySimple},
         "dailyCompletions" = "dailyCompletions" + 1,
         "totalEarned" = "totalEarned" + ${MONEY_SYSTEM.DAILY_REWARD},
         "updatedAt" = CURRENT_TIMESTAMP
       WHERE "profileName" = ${profileName}
     `;
     
-    console.log(`💰 COMPLETION: Money system database updated for ${profileName}`);
+    console.log(`💰 COMPLETION: Money system database updated for ${profileName} with date ${todaySimple}`);
     
     // 3. Отправляем уведомление только если основное обновление прошло успешно
     if (userProfileResult.count > 0) {
@@ -1359,8 +1369,8 @@ async function divideBankAtMonthEnd() {
 async function checkMissedSmartRepeats() {
   try {
     const today = getLocalDateGMT5();
-    const todayISO = getLocalDateISOGMT5(); // YYYY-MM-DD формат
-    console.log(`💰 MONEY SYSTEM: Checking missed smart repeats for ${today} (${todayISO})`);
+    const todaySimple = getSimpleDateGMT5(); // YYYY-MM-DD формат для сравнения с базой
+    console.log(`💰 MONEY SYSTEM: Checking missed smart repeats for ${today} (DB format: ${todaySimple})`);
     
     // Сначала проверяем статус обоих участников
     const participants = [MONEY_SYSTEM.NURBOLAT_ID, MONEY_SYSTEM.AMINA_ID];
@@ -1380,14 +1390,14 @@ async function checkMissedSmartRepeats() {
         continue;
       }
       
-      // Более надежное сравнение дат - проверяем и строковый и ISO формат
+      // Более надежное сравнение дат - проверяем и строковый и простой формат
       // Проверяем, прошел ли пользователь умное повторение сегодня (GMT+5)
       const didSmartRepeatToday = 
         userProfile.lastSmartRepeatDate === today || 
-        userProfile.lastSmartRepeatDate === todayISO ||  
+        userProfile.lastSmartRepeatDate === todaySimple ||  
         isSameDateGMT5(userProfile.lastSmartRepeatDate, new Date());
       
-      console.log(`💰 ${profileName}: lastSmartRepeatDate="${userProfile.lastSmartRepeatDate}", today="${today}", todayISO="${todayISO}", completed=${didSmartRepeatToday}`);
+      console.log(`💰 ${profileName}: lastSmartRepeatDate="${userProfile.lastSmartRepeatDate}", today="${today}", todaySimple="${todaySimple}", completed=${didSmartRepeatToday}`);
       
       completionStatus[profileName] = didSmartRepeatToday;
     }
@@ -1423,7 +1433,20 @@ async function recordMissedSmartRepeat(profileName) {
     // Создаём запись если её нет
     await getOrCreateMoneyRecord(profileName);
     
-    // Обновляем статистику пропуска
+    // Определяем кто получает деньги
+    let recipientName;
+    if (profileName === MONEY_SYSTEM.NURBOLAT_ID) {
+      recipientName = MONEY_SYSTEM.AMINA_ID;
+    } else if (profileName === MONEY_SYSTEM.AMINA_ID) {
+      recipientName = MONEY_SYSTEM.NURBOLAT_ID;
+    }
+    
+    // Создаём запись для получателя если её нет
+    if (recipientName) {
+      await getOrCreateMoneyRecord(recipientName);
+    }
+    
+    // Обновляем статистику пропуска у того кто пропустил
     await prisma.$executeRaw`
       UPDATE "money_system" SET 
         "dailyMissed" = "dailyMissed" + 1,
@@ -1431,6 +1454,17 @@ async function recordMissedSmartRepeat(profileName) {
         "updatedAt" = CURRENT_TIMESTAMP
       WHERE "profileName" = ${profileName}
     `;
+    
+    // Добавляем деньги тому кто НЕ пропустил (по правилам: один пропустил → 1000 тенге другому)
+    if (recipientName) {
+      await prisma.$executeRaw`
+        UPDATE "money_system" SET 
+          "totalEarned" = "totalEarned" + ${MONEY_SYSTEM.DAILY_REWARD},
+          "updatedAt" = CURRENT_TIMESTAMP
+        WHERE "profileName" = ${recipientName}
+      `;
+      console.log(`💰 ${profileName} missed → ${recipientName} gets +${MONEY_SYSTEM.DAILY_REWARD} tenge`);
+    }
     
     console.log(`Money system: ${profileName} missed smart repeat`);
   } catch (error) {
