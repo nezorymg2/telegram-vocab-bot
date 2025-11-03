@@ -9116,8 +9116,8 @@ async function finishSmartRepeat(ctx, session) {
     await recordSmartRepeatCompletion(session.profile);
   }
   
-  // Сохраняем слова из 2 этапа перед очисткой
-  const savedVocabularyWords = session.stage2VocabularyWords || [];
+  // Сохраняем новые слова из сгенерированного текста (5-й этап) перед очисткой
+  const savedVocabularyWords = session.additionalVocabulary || [];
   
   // Очищаем все состояния умного повторения
   delete session.currentQuizSession;
@@ -9129,14 +9129,15 @@ async function finishSmartRepeat(ctx, session) {
   delete session.stage3Sentences;
   delete session.stage3Context;
   delete session.stage2VocabularyWords;
+  delete session.additionalVocabulary; // Очищаем после сохранения
   
-  // Проверяем есть ли сохраненные слова из 2 этапа
+  // Проверяем есть ли сохраненные новые слова из сгенерированного текста
   if (savedVocabularyWords && savedVocabularyWords.length > 0) {
-    await ctx.reply('🎉 <b>Умное повторение завершено!</b>\n\n📚 <b>Повторим слова из 2-го этапа:</b>\n\nВы можете добавить их в свой словарь...', {
+    await ctx.reply('🎉 <b>Умное повторение завершено!</b>\n\n📚 <b>Новые слова из сгенерированного текста:</b>\n\nВы можете добавить их в свой словарь...', {
       parse_mode: 'HTML'
     });
     
-    // Запускаем добавление слов из 2 этапа
+    // Запускаем добавление слов из сгенерированного текста
     setTimeout(() => {
       startVocabularyAdditionStage5(ctx, session, savedVocabularyWords);
     }, 1500);
@@ -9323,10 +9324,9 @@ async function showNextVocabularyWordStage5(ctx, session) {
     const currentIndex = session.stage5CurrentWordIndex + 1;
     const totalWords = session.stage5VocabularyWords.length;
     
-    let message = `📚 <b>Слово ${currentIndex}/${totalWords} из 2-го этапа:</b>\n\n`;
+    let message = `📚 <b>Слово ${currentIndex}/${totalWords} из сгенерированного текста:</b>\n\n`;
     message += `🔤 <b>${currentWord.word}</b>\n`;
-    message += `🇷🇺 ${currentWord.translation}\n`;
-    message += `📝 <i>${currentWord.example}</i>\n\n`;
+    message += `🇷🇺 ${currentWord.translation}\n\n`;
     message += `Добавить в ваш словарь?`;
     
     const keyboard = new InlineKeyboard()
