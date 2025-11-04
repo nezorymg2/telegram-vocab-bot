@@ -11,6 +11,7 @@ const fs = require('fs');
 const cron = require('node-cron');
 const { execSync } = require('child_process');
 const prisma = require('./database');
+const { makeGPTRequest, gptQueue } = require('./gpt-queue');
 
 // Функция для инициализации базы данных
 async function initializeDatabase() {
@@ -3084,6 +3085,64 @@ bot.command('backup', async (ctx) => {
   }
 });
 
+// Команда статистики GPT очереди (только для администратора)
+bot.command('gptstats', async (ctx) => {
+  const userId = ctx.from.id;
+  const session = sessions[userId];
+  
+  if (!session || !session.profile) {
+    return ctx.reply('Сначала выполните /start');
+  }
+  
+  if (session.profile !== 'Нурболат') {
+    return ctx.reply('❌ Эта команда доступна только для администратора');
+  }
+  
+  const stats = gptQueue.getStats();
+  
+  let message = `📊 <b>Статистика GPT очереди</b>\n\n`;
+  message += `🔄 Активные запросы: ${stats.activeRequests}/${stats.maxConcurrent}\n`;
+  message += `📋 В очереди: ${stats.queueSize}\n`;
+  message += `⚙️ Максимум параллельных: ${stats.maxConcurrent}\n\n`;
+  
+  if (stats.queueSize === 0 && stats.activeRequests === 0) {
+    message += `✅ Все запросы обработаны\n`;
+  } else if (stats.activeRequests > 0) {
+    message += `🚀 Система обрабатывает запросы параллельно\n`;
+  }
+  
+  message += `\n💡 /gptlimit <число> - изменить лимит параллельных запросов`;
+  
+  await ctx.reply(message, { parse_mode: 'HTML' });
+});
+
+// Команда изменения лимита GPT очереди (только для администратора) 
+bot.command('gptlimit', async (ctx) => {
+  const userId = ctx.from.id;
+  const session = sessions[userId];
+  
+  if (!session || !session.profile) {
+    return ctx.reply('Сначала выполните /start');
+  }
+  
+  if (session.profile !== 'Нурболат') {
+    return ctx.reply('❌ Эта команда доступна только для администратора');
+  }
+  
+  const args = ctx.message.text.split(' ');
+  if (args.length < 2) {
+    return ctx.reply('📊 Укажите новый лимит параллельных запросов.\nПример: /gptlimit 6\n\nТекущий лимит: ' + gptQueue.getStats().maxConcurrent);
+  }
+  
+  const newLimit = parseInt(args[1]);
+  if (isNaN(newLimit) || newLimit < 1 || newLimit > 10) {
+    return ctx.reply('❌ Лимит должен быть числом от 1 до 10');
+  }
+  
+  gptQueue.setMaxConcurrent(newLimit);
+  await ctx.reply(`✅ Лимит параллельных GPT запросов изменен на ${newLimit}`);
+});
+
 // Команда восстановления (только для админов)
 bot.command('restore', async (ctx) => {
   const userId = ctx.from.id;
@@ -4025,20 +4084,17 @@ bot.on('message:text', async (ctx) => {
       const toAdd = pick(newWords, session.selectedWordsCount).map(w => ({ ...w, word: getFirstTwoWords(w.word) }));
       
       const prompt = `Для каждого из этих английских слов: [${toAdd.map(w => w.word).join(', ')}] укажи перевод на русский, очень короткое объяснение (на русском, не более 10 слов), пример на английском и перевод примера. Верни только массив JSON вида [{\"word\": \"example\", \"translation\": \"пример\", \"explanation\": \"краткое объяснение\", \"example\": \"This is an example.\", \"example_translation\": \"Это пример.\"}, ...]. Не добавляй ничего лишнего, только массив.`;
-      await ctx.reply('Запрашиваю объяснения и примеры у AI, подождите...');
+      
+      const stats = gptQueue.getStats();
+      await ctx.reply(`Запрашиваю объяснения и примеры у AI... (в очереди: ${stats.queueSize}, обрабатывается: ${stats.activeRequests})`);
       
       try {
-        const gptRes = await axios.post('https://api.openai.com/v1/chat/completions', {
+        const gptRes = await makeGPTRequest({
           model: 'gpt-3.5-turbo',
           messages: [{ role: 'user', content: prompt }],
           temperature: 0.7,
           max_tokens: 2000
-        }, {
-          headers: {
-            'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-            'Content-Type': 'application/json'
-          }
-        });
+        }, ctx.from.id, 'IELTS words explanation');
         
         let words = [];
         const match = gptRes.data.choices[0].message.content.match(/\[.*\]/s);
@@ -4630,21 +4686,19 @@ bot.on('message:text', async (ctx) => {
     const toAdd = pick(newWords, wordsCount).map(w => ({ ...w, word: getMainForm(w.word) }));
     // Запрос к ChatGPT для объяснений и примеров
     const prompt = `Для каждого из этих английских слов: [${toAdd.map(w => w.word).join(', ')}] укажи перевод на русский, очень короткое объяснение (на русском, не более 10 слов), пример на английском и перевод примера. Верни только массив JSON вида [{"word": "example", "translation": "пример", "explanation": "краткое объяснение", "example": "This is an example.", "example_translation": "Это пример."}, ...]. Не добавляй ничего лишнего, только массив.`;
-    await ctx.reply('Запрашиваю объяснения и примеры у AI, подождите...');
+    
+    const stats = gptQueue.getStats();
+    await ctx.reply(`Запрашиваю объяснения и примеры у AI... (в очереди: ${stats.queueSize}, обрабатывается: ${stats.activeRequests})`);
+    
     try {
       console.log('DEBUG: prompt to ChatGPT:', prompt);
-      console.log('DEBUG: OPENAI_API_KEY in axios:', process.env.OPENAI_API_KEY);
-      const gptRes = await axios.post('https://api.openai.com/v1/chat/completions', {
+      const gptRes = await makeGPTRequest({
         model: 'gpt-3.5-turbo',
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.7,
         max_tokens: 2000
-      }, {
-        headers: {
-          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      }, ctx.from.id, 'Oxford words explanation');
+      
       console.log('DEBUG: gptRes.data:', gptRes.data);
       let words = [];
       const match = gptRes.data.choices[0].message.content.match(/\[.*\]/s);
@@ -5078,17 +5132,12 @@ async function generateStoryTaskContent(session, ctx) {
   ]
 }`;
 
-    const gptRes = await axios.post('https://api.openai.com/v1/chat/completions', {
+    const gptRes = await makeGPTRequest({
       model: 'gpt-3.5-turbo',
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.8,  // Увеличиваем для большего разнообразия
       max_tokens: 4000  // Увеличиваем для 10 вопросов и 15 дополнительных слов
-    }, {
-      headers: {
-        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-        'Content-Type': 'application/json'
-      }
-    });
+    }, ctx.from.id, 'Story task generation');
     
     let answer = gptRes.data.choices[0].message.content;
     const match = answer.match(/\{[\s\S]*\}/);
@@ -6972,7 +7021,8 @@ async function handleWritingAnalysis(ctx, session, userText) {
       return;
     }
     
-    await ctx.reply('🔍 Анализирую ваш текст... Это займет несколько секунд.');
+    const stats = gptQueue.getStats();
+    await ctx.reply(`🔍 Анализирую ваш текст... (в очереди: ${stats.queueSize}, обрабатывается: ${stats.activeRequests})`);
     
     // Детальный системный промпт для анализа
 const systemPrompt = `Ты строгий преподаватель английского языка и эксперт по IELTS Writing. Проанализируй текст студента КРИТИЧЕСКИ и найди ВСЕ грамматические ошибки, стилистические проблемы и неточности.
@@ -7003,7 +7053,7 @@ const systemPrompt = `Ты строгий преподаватель англи�
   ]
 }`;
 
-    const gptRes = await axios.post('https://api.openai.com/v1/chat/completions', {
+    const gptRes = await makeGPTRequest({
       model: 'gpt-4o-mini',
       messages: [
         { role: 'system', content: systemPrompt },
@@ -7011,12 +7061,7 @@ const systemPrompt = `Ты строгий преподаватель англи�
       ],
       temperature: 0.7,
       max_completion_tokens: 10000
-    }, {
-      headers: {
-        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-        'Content-Type': 'application/json'
-      }
-    });
+    }, ctx.from.id, 'Text analysis');
     
     let analysisResponse = gptRes.data.choices[0].message.content.trim();
     
