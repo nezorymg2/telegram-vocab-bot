@@ -3,3 +3,33 @@ node_modules
 .env
 
 /generated/prisma
+
+# Test and debug files
+test-*.js
+debug-*.js
+check-*.js
+analyze-*.js
+diagnose-*.js
+fix-*.js
+restore-*.js
+correct-*.js
+cleanup-*.js
+final-*.js
+verify-*.js
+simple-*.js
+
+# Temporary files
+temp/
+backup-*.json
+restore-data.js
+
+# Monthly snapshots and reports
+monthly-snapshots/
+monthly-reports-*.js
+
+# Russian documentation files (temporary)
+ДЕНЕЖНАЯ-СИСТЕМА-ИСПРАВЛЕНА.md
+
+# Add specific files we want to keep (override patterns above)
+!database.js
+!bot.js
