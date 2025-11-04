@@ -3194,39 +3194,8 @@ bot.command('achievements', async (ctx) => {
   const loginStreak = session.loginStreak || 0;
   
   // --- Streak ---
-  // Получаем даты повторения (используем поле updatedAt, если есть, иначе createdAt)
-  const dates = words
-    .map(w => w.updatedAt || w.createdAt)
-    .filter(Boolean)
-    .map(d => new Date(d).toDateString());
-  const uniqueDays = Array.from(new Set(dates)).sort();
+  // Используем сохраненный streak из базы данных (НЕ пересчитываем каждый раз!)
   let studyStreak = session.studyStreak || 0;
-  if (!session.slothOfTheDay) {
-    // Считаем streak (дней подряд с активностью)
-    if (uniqueDays.length) {
-      let prev = new Date(uniqueDays[uniqueDays.length - 1]);
-      studyStreak = 1;
-      for (let i = uniqueDays.length - 2; i >= 0; i--) {
-        const curr = new Date(uniqueDays[i]);
-        const diff = (prev - curr) / (1000 * 60 * 60 * 24);
-        if (diff === 1) {
-          studyStreak++;
-          prev = curr;
-        } else if (diff > 1) {
-          break;
-        }
-      }
-    }
-    session.studyStreak = studyStreak;
-    session.lastStudyDate = new Date().toISOString().split('T')[0];
-    // Сохраняем обновленный streak в базу данных
-    await saveUserSession(ctx.from.id, session.profile, session);
-  } else {
-    studyStreak = 0;
-    session.studyStreak = 0;
-    // Сохраняем обновленный streak в базу данных
-    await saveUserSession(ctx.from.id, session.profile, session);
-  }
   
   // --- Мультипликатор XP ---
   const xpMultiplier = getStreakMultiplier(studyStreak);
@@ -5460,26 +5429,41 @@ async function createBackup() {
     console.log(`✅ Backup created: ${backupFileName} (${allWords.length} words)`);
     
     // Отправляем админу уведомление
-    const adminUserId = Object.keys(sessions).find(id => 
-      sessions[id].profile === 'Нурболат' || sessions[id].profile === 'Амина'
-    );
-    
-    if (adminUserId) {
-      console.log(`📨 Sending backup to admin: ${adminUserId}`);
-      try {
-        // Читаем файл как Buffer
-        const fileBuffer = fs.readFileSync(backupFileName);
+    try {
+      // Ищем админов в базе данных, а не в активных сессиях
+      const adminProfiles = await prisma.user_profiles.findMany({
+        where: {
+          OR: [
+            { profileName: 'Нурболат' },
+            { profileName: 'Амина' }
+          ]
+        }
+      });
+      
+      // Отправляем бэкап всем найденным админам
+      for (const adminProfile of adminProfiles) {
+        const adminUserId = adminProfile.telegramId.toString();
+        console.log(`📨 Sending backup to admin: ${adminProfile.profileName} (${adminUserId})`);
         
-        await bot.api.sendDocument(adminUserId, new InputFile(fileBuffer, backupFileName), {
-          caption: `📦 Ежедневный бэкап базы данных\n🕐 ${new Date().toLocaleString('ru')}\n📊 Слов в базе: ${allWords.length}`
-        });
-        console.log('✅ Backup sent to admin successfully');
-      } catch (sendError) {
-        console.error('❌ Failed to send backup to admin:', sendError);
-        // Не прерываем выполнение, если не удалось отправить
+        try {
+          // Читаем файл как Buffer
+          const fileBuffer = fs.readFileSync(backupFileName);
+          
+          await bot.api.sendDocument(adminUserId, new InputFile(fileBuffer, backupFileName), {
+            caption: `📦 Ежедневный бэкап базы данных\n🕐 ${new Date().toLocaleString('ru')}\n📊 Слов в базе: ${allWords.length}`
+          });
+          console.log(`✅ Backup sent to ${adminProfile.profileName} successfully`);
+        } catch (sendError) {
+          console.error(`❌ Failed to send backup to ${adminProfile.profileName}:`, sendError);
+          // Продолжаем отправку другим админам
+        }
       }
-    } else {
-      console.log('⚠️ No admin user found to send backup');
+      
+      if (adminProfiles.length === 0) {
+        console.log('⚠️ No admin users found in database');
+      }
+    } catch (dbError) {
+      console.error('❌ Failed to fetch admin users from database:', dbError);
     }
     
     return backupFileName;
