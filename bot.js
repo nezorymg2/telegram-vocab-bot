@@ -2105,34 +2105,84 @@ bot.command('start', async (ctx) => {
   const userId = ctx.from.id;
   
   try {
-    // Проверяем есть ли активированный пользователь в базе данных
-    const userProfile = await prisma.userProfile.findFirst({
-      where: { 
-        telegramId: userId.toString(),
-        isActivated: true 
-      }
-    });
+    // Проверяем есть ли использованный код активации для этого пользователя
+    const activationRecord = await prisma.$queryRaw`
+      SELECT * FROM "activation_codes" 
+      WHERE "usedByTelegramId" = ${BigInt(userId)} AND "isUsed" = true
+    `;
     
-    if (userProfile) {
-      // Пользователь найден и активирован, автологиним его
-      const session = await getOrCreateSession(userId);
-      session.step = 'main_menu';
-      session.xp = userProfile.xp;
-      session.level = userProfile.level;
-      session.loginStreak = userProfile.loginStreak;
-      session.studyStreak = userProfile.studyStreak;
-      session.lastBonusDate = userProfile.lastBonusDate;
-      session.lastSmartRepeatDate = userProfile.lastSmartRepeatDate;
-      session.reminderTime = userProfile.reminderTime;
-      session.lastStudyDate = userProfile.lastStudyDate;
+    if (activationRecord.length > 0) {
+      // Пользователь активирован, ищем его профиль
+      let userProfile = await prisma.userProfile.findFirst({
+        where: { 
+          telegramId: userId.toString()
+        }
+      });
       
-      // Сохраняем сессию
-      await saveSession(userId, session);
+      // Если профиль не найден по telegramId, ищем по известным именам профилей для этого пользователя
+      if (!userProfile && userId === 930858056) {
+        userProfile = await prisma.userProfile.findFirst({
+          where: { 
+            profileName: 'Нурболат'
+          }
+        });
+        
+        // Если нашли профиль Нурболат, обновляем telegramId
+        if (userProfile) {
+          await prisma.userProfile.update({
+            where: { id: userProfile.id },
+            data: { telegramId: userId.toString() }
+          });
+          console.log(`✅ Linked existing profile ${userProfile.profileName} to user ${userId}`);
+        }
+      }
       
-      // Проверяем ежедневный бонус
-      await checkDailyBonus(session, ctx);
-      const menuMessage = getMainMenuMessage(session);
-      await ctx.reply(menuMessage, { reply_markup: mainMenu, parse_mode: 'HTML' });
+      if (userProfile) {
+        // Пользователь найден и активирован, автологиним его
+        const session = await getOrCreateSession(userId);
+        session.step = 'main_menu';
+        session.profile = userProfile.profileName;
+        session.xp = userProfile.xp;
+        session.level = userProfile.level;
+        session.loginStreak = userProfile.loginStreak;
+        session.studyStreak = userProfile.studyStreak;
+        session.lastBonusDate = userProfile.lastBonusDate;
+        session.lastSmartRepeatDate = userProfile.lastSmartRepeatDate;
+        session.reminderTime = userProfile.reminderTime;
+        session.lastStudyDate = userProfile.lastStudyDate;
+        
+        // Сохраняем сессию
+        await saveSession(userId, session);
+        
+        // Проверяем ежедневный бонус
+        await checkDailyBonus(session, ctx);
+        const menuMessage = getMainMenuMessage(session);
+        await ctx.reply(menuMessage, { reply_markup: mainMenu, parse_mode: 'HTML' });
+      } else {
+        // Активирован но профиль не найден - создаем профиль
+        const newProfile = await prisma.userProfile.create({
+          data: {
+            telegramId: userId.toString(),
+            profileName: ctx.from.first_name || 'User',
+            xp: 0,
+            level: 1,
+            loginStreak: 0,
+            studyStreak: 0,
+            writingTopicIndex: 0
+          }
+        });
+        
+        const session = await getOrCreateSession(userId);
+        session.step = 'main_menu';
+        session.profile = newProfile.profileName;
+        session.xp = 0;
+        session.level = 1;
+        
+        await saveSession(userId, session);
+        
+        const menuMessage = getMainMenuMessage(session);
+        await ctx.reply(`Добро пожаловать, ${newProfile.profileName}!\n\n${menuMessage}`, { reply_markup: mainMenu, parse_mode: 'HTML' });
+      }
       
     } else {
       // Пользователь не активирован или новый
@@ -2156,8 +2206,8 @@ bot.command('menu', async (ctx) => {
   const session = await getOrCreateSession(userId);
   
   // Проверяем активацию
-  const userProfile = await db.user.findUnique({ where: { telegramId: userId } });
-  if (!userProfile || !userProfile.isActivated) {
+  const isActivated = await checkUserActivation(userId);
+  if (!isActivated) {
     return ctx.reply('🔐 Бот не активирован. Используйте /start для активации.');
   }
   
@@ -2177,8 +2227,8 @@ bot.command('words', async (ctx) => {
   const session = await getOrCreateSession(userId);
   
   // Проверяем активацию
-  const userProfile = await db.user.findUnique({ where: { telegramId: userId } });
-  if (!userProfile || !userProfile.isActivated) {
+  const isActivated = await checkUserActivation(userId);
+  if (!isActivated) {
     return ctx.reply('🔐 Бот не активирован. Используйте /start для активации.');
   }
   
@@ -3031,13 +3081,45 @@ bot.command('backup', async (ctx) => {
       try {
         // Читаем файл как Buffer
         const fileBuffer = fs.readFileSync(backupFile);
+        const fileSizeMB = fileBuffer.length / (1024 * 1024);
         
         // Извлекаем только имя файла без пути для отправки
         const fileName = backupFile.split('/').pop();
         
-        await ctx.replyWithDocument(new InputFile(fileBuffer, fileName), {
-          caption: `✅ Бэкап успешно создан!\n🕐 ${new Date().toLocaleString('ru')}`
-        });
+        // Telegram лимит файла ~50MB
+        if (fileSizeMB > 45) {
+          // Создаем сжатый архив
+          const zlib = require('zlib');
+          const compressedData = zlib.gzipSync(fileBuffer);
+          const compressedSizeMB = compressedData.length / (1024 * 1024);
+          
+          if (compressedSizeMB <= 45) {
+            // Сжатый файл помещается в лимит
+            const compressedFileName = fileName.replace('.json', '.json.gz');
+            await ctx.replyWithDocument(new InputFile(compressedData, compressedFileName), {
+              caption: `✅ Бэкап (сжатый)\n💾 Размер: ${compressedSizeMB.toFixed(2)}MB (было ${fileSizeMB.toFixed(2)}MB)\n🕐 ${new Date().toLocaleString('ru')}`
+            });
+          } else {
+            // Даже сжатый файл слишком большой - создаем только базовую версию
+            const basicBackup = {
+              created_at: new Date().toISOString(),
+              user_profiles: await prisma.userProfile.findMany(),
+              word_count: await prisma.word.count()
+            };
+            
+            const basicData = JSON.stringify(basicBackup, null, 2);
+            const basicFileName = fileName.replace('.json', '-basic.json');
+            
+            await ctx.replyWithDocument(new InputFile(Buffer.from(basicData), basicFileName), {
+              caption: `✅ Базовый бэкап (полный слишком большой)\n💾 Размер: ${(basicData.length / (1024 * 1024)).toFixed(2)}MB\n📊 Слов в БД: ${basicBackup.word_count}\n🕐 ${new Date().toLocaleString('ru')}`
+            });
+          }
+        } else {
+          // Файл нормального размера
+          await ctx.replyWithDocument(new InputFile(fileBuffer, fileName), {
+            caption: `✅ Бэкап успешно создан!\n🕐 ${new Date().toLocaleString('ru')}`
+          });
+        }
         
         // НЕ удаляем файл - оставляем в папке backups для истории
       } catch (error) {
@@ -3061,12 +3143,21 @@ function isAdmin(telegramId) {
 
 // === PERSISTENT SESSION MANAGEMENT ===
 
+// Функция проверки активации пользователя
+async function checkUserActivation(userId) {
+  const activationRecord = await prisma.$queryRaw`
+    SELECT * FROM "activation_codes" 
+    WHERE "usedByTelegramId" = ${BigInt(userId)} AND "isUsed" = true
+  `;
+  return activationRecord.length > 0;
+}
+
 // Функция загрузки сессии из базы данных
 async function loadSession(telegramId) {
   try {
     const sessionRecord = await prisma.$queryRaw`
       SELECT "sessionData" FROM "user_sessions" 
-      WHERE "userId" = ${telegramId}
+      WHERE "userId" = ${telegramId.toString()}
     `;
     
     if (sessionRecord.length > 0) {
@@ -3087,7 +3178,7 @@ async function saveSession(telegramId, sessionData) {
   try {
     await prisma.$executeRaw`
       INSERT INTO "user_sessions" ("userId", "sessionData", "lastActivity")
-      VALUES (${telegramId}, ${JSON.stringify(sessionData)}, NOW())
+      VALUES (${telegramId.toString()}, ${JSON.stringify(sessionData)}, NOW())
       ON CONFLICT ("userId") 
       DO UPDATE SET 
         "sessionData" = ${JSON.stringify(sessionData)},
@@ -5439,11 +5530,24 @@ async function createBackup() {
         try {
           // Читаем файл как Buffer
           const fileBuffer = fs.readFileSync(backupFileName);
+          const fileSizeMB = fileBuffer.length / (1024 * 1024);
           
-          await bot.api.sendDocument(adminUserId, new InputFile(fileBuffer, backupFileName), {
-            caption: `📦 Ежедневный бэкап базы данных\n🕐 ${new Date().toLocaleString('ru')}\n📊 Слов в базе: ${allWords.length}`
-          });
-          console.log(`✅ Backup sent to ${adminProfile.profileName} successfully`);
+          // Telegram лимит файла ~50MB, но лучше быть консервативными
+          if (fileSizeMB > 40) {
+            console.log(`⚠️ Backup file too large (${fileSizeMB.toFixed(2)}MB), sending notification instead`);
+            await bot.api.sendMessage(adminUserId, 
+              `📦 Ежедневный бэкап создан но слишком большой для отправки\n` +
+              `💾 Размер: ${fileSizeMB.toFixed(2)}MB\n` +
+              `📁 Файл: ${backupFileName}\n` +
+              `📊 Слов в базе: ${allWords.length}\n` +
+              `🕐 ${new Date().toLocaleString('ru')}`
+            );
+          } else {
+            await bot.api.sendDocument(adminUserId, new InputFile(fileBuffer, backupFileName), {
+              caption: `📦 Ежедневный бэкап базы данных\n🕐 ${new Date().toLocaleString('ru')}\n📊 Слов в базе: ${allWords.length}`
+            });
+          }
+          console.log(`✅ Backup notification sent to ${adminProfile.profileName} successfully`);
         } catch (sendError) {
           console.error(`❌ Failed to send backup to ${adminProfile.profileName}:`, sendError);
           // Продолжаем отправку другим админам
