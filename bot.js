@@ -529,22 +529,6 @@ const WRITING_TOPICS = [
   "A lesson I learned: Share something important you discovered"
 ];
 
-// === СИСТЕМА ДЕНЕЖНОЙ МОТИВАЦИИ ===
-// Настройки денежной системы
-const MONEY_SYSTEM = {
-  TOTAL_BANK: 60000,           // Общий банк в тенге
-  DAILY_REWARD: 1000,          // Награда за день в тенге
-  TOTAL_DAYS: 30,              // Количество дней в месяце
-  
-  // ID участников
-  NURBOLAT_ID: 'Нурболат',     // ID профиля Нурболата
-  AMINA_ID: 'Амина',           // ID профиля Амины
-  
-  // Telegram ID для уведомлений (нужно будет заполнить реальными)
-  NURBOLAT_TELEGRAM_ID: null,   // Заполнить при инициализации
-  AMINA_TELEGRAM_ID: null       // Заполнить при инициализации
-};
-
 // Функция для получения случайного совета для отдыха
 function getRandomRelaxTip() {
   return RELAX_TIPS[Math.floor(Math.random() * RELAX_TIPS.length)];
@@ -553,45 +537,6 @@ function getRandomRelaxTip() {
 // Функция создания таблицы денежной системы
 async function createMoneySystemTable() {
   try {
-    await prisma.$executeRaw`
-      CREATE TABLE IF NOT EXISTS "money_system" (
-        "id" SERIAL PRIMARY KEY,
-        "profileName" VARCHAR(255) UNIQUE NOT NULL,
-        "totalEarned" INTEGER DEFAULT 0,
-        "totalOwed" INTEGER DEFAULT 0,
-        "totalSent" INTEGER DEFAULT 0,
-        "dailyCompletions" INTEGER DEFAULT 0,
-        "dailyMissed" INTEGER DEFAULT 0,
-        "bothMissedDays" INTEGER DEFAULT 0,
-        "lastCompletionDate" VARCHAR(255),
-        "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `;
-    
-    // Добавляем поле totalSent если его еще нет
-    try {
-      await prisma.$executeRaw`
-        ALTER TABLE "money_system" ADD COLUMN "totalSent" INTEGER DEFAULT 0
-      `;
-      console.log('💰 Added totalSent column to money_system table');
-    } catch (error) {
-      // Колонка уже существует - это нормально
-      if (!error.message.includes('already exists')) {
-        console.log('💰 totalSent column already exists or other error:', error.message);
-      }
-    }
-    
-    // Создаем отдельную таблицу для общего банка
-    await prisma.$executeRaw`
-      CREATE TABLE IF NOT EXISTS "shared_bank" (
-        "id" SERIAL PRIMARY KEY,
-        "totalAmount" INTEGER DEFAULT 0,
-        "lastUpdated" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        "month" VARCHAR(7) NOT NULL DEFAULT (TO_CHAR(CURRENT_DATE, 'YYYY-MM'))
-      )
-    `;
-    
     // Создаем таблицу для вопросов интерактивного теста
     await prisma.$executeRaw`
       CREATE TABLE IF NOT EXISTS "quiz_questions" (
@@ -609,35 +554,45 @@ async function createMoneySystemTable() {
         "timesCorrect" INTEGER DEFAULT 0
       )
     `;
-    console.log('💰 Money system table created/verified');
-    console.log('🧠 Quiz questions table created/verified');
-  } catch (error) {
-    console.error('Error creating money system table:', error);
-  }
-}
 
-// Функция инициализации денежной системы с настройкой Telegram ID
-async function initializeMoneySystem() {
-  try {
-    // Создаём таблицу денежной системы если её нет
-    await createMoneySystemTable();
-    
-    // Получаем всех пользователей из базы для настройки ID
-    const userProfiles = await prisma.userProfile.findMany();
-    
-    for (const profile of userProfiles) {
-      if (profile.profileName === MONEY_SYSTEM.NURBOLAT_ID) {
-        MONEY_SYSTEM.NURBOLAT_TELEGRAM_ID = parseInt(profile.telegramId);
-        console.log(`💰 Nurbolat Telegram ID: ${MONEY_SYSTEM.NURBOLAT_TELEGRAM_ID}`);
-      } else if (profile.profileName === MONEY_SYSTEM.AMINA_ID) {
-        MONEY_SYSTEM.AMINA_TELEGRAM_ID = parseInt(profile.telegramId);
-        console.log(`💰 Amina Telegram ID: ${MONEY_SYSTEM.AMINA_TELEGRAM_ID}`);
-      }
+    // Создаем таблицу для активационных кодов
+    await prisma.$executeRaw`
+      CREATE TABLE IF NOT EXISTS "activation_codes" (
+        "id" SERIAL PRIMARY KEY,
+        "code" VARCHAR(32) UNIQUE NOT NULL,
+        "isUsed" BOOLEAN DEFAULT FALSE,
+        "usedByTelegramId" BIGINT,
+        "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        "usedAt" TIMESTAMP
+      )
+    `;
+
+    // Создаем таблицу для хранения сессий пользователей
+    await prisma.$executeRaw`
+      CREATE TABLE IF NOT EXISTS "user_sessions" (
+        "telegramId" BIGINT PRIMARY KEY,
+        "sessionData" JSONB NOT NULL,
+        "lastActivity" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `;
+
+    // Добавляем поле isActivated в UserProfile если его нет
+    try {
+      await prisma.$executeRaw`
+        ALTER TABLE "UserProfile" 
+        ADD COLUMN IF NOT EXISTS "isActivated" BOOLEAN DEFAULT FALSE
+      `;
+    } catch (error) {
+      // Поле уже существует, игнорируем ошибку
     }
-    
-    console.log('💰 Money system initialized!');
+
+    console.log('🧠 Quiz questions table created/verified');
+    console.log('🔑 Activation codes table created/verified');
+    console.log('💾 User sessions table created/verified');
   } catch (error) {
-    console.error('Error initializing money system:', error);
+    console.error('Error creating database tables:', error);
   }
 }
 
@@ -1502,38 +1457,6 @@ async function sendMissedNotification(missedBy) {
   }
 }
 
-// Функция получения статистики денежной системы
-async function getMoneySystemStats() {
-  try {
-    const nurbolatRecord = await getOrCreateMoneyRecord(MONEY_SYSTEM.NURBOLAT_ID);
-    const aminaRecord = await getOrCreateMoneyRecord(MONEY_SYSTEM.AMINA_ID);
-    
-    // Получаем сумму в банке накоплений
-    let sharedBankAmount = 0;
-    try {
-      const sharedBank = await getOrCreateSharedBank();
-      sharedBankAmount = sharedBank.totalAmount;
-    } catch (error) {
-      console.error('Error getting shared bank amount:', error);
-    }
-    
-    const totalTransferred = nurbolatRecord.totalEarned + aminaRecord.totalEarned + sharedBankAmount;
-    const remainingBank = MONEY_SYSTEM.TOTAL_BANK - totalTransferred;
-    
-    return {
-      nurbolat: nurbolatRecord,
-      amina: aminaRecord,
-      totalBank: MONEY_SYSTEM.TOTAL_BANK,
-      remainingBank: remainingBank,
-      totalTransferred: totalTransferred,
-      sharedBankAmount: sharedBankAmount
-    };
-  } catch (error) {
-    console.error('Error getting money system stats:', error);
-    return null;
-  }
-}
-
 // Функция проверки и начисления ежедневных бонусов
 async function checkDailyBonus(session, ctx) {
   const today = getLocalDateGMT5();
@@ -1606,67 +1529,6 @@ async function checkDailyBonus(session, ctx) {
     await saveUserSession(ctx.from.id, session.profile, session);
   }
 }
-
-// --- Напоминания: выбор времени и отправка ---
-// sessions[userId].reminderTime = 'HH:MM' (24h)
-bot.command('reminder', async (ctx) => {
-  const userId = ctx.from.id;
-  const session = sessions[userId] || {};
-  sessions[userId] = session;
-  session.step = 'set_reminder_time';
-  await ctx.reply('Во сколько напоминать каждый день? Напиши время в формате ЧЧ:ММ (например, 09:00 или 21:30)');
-});
-
-// Обработка выбора времени напоминания
-async function handleReminderTimeInput(ctx, text, session) {
-  const match = text.match(/^(\d{1,2}):(\d{2})$/);
-  if (!match) {
-    await ctx.reply('Некорректный формат времени. Введите, например: 09:00 или 21:30');
-    return;
-  }
-  let [_, h, m] = match;
-  h = parseInt(h, 10);
-  m = parseInt(m, 10);
-  if (h < 0 || h > 23 || m < 0 || m > 59) {
-    await ctx.reply('Некорректное время. Часы 0-23, минуты 0-59.');
-    return;
-  }
-  session.reminderTime = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
-  session.step = 'main_menu';
-  
-  // Сохраняем изменения в базу данных
-  if (session.profile) {
-    await saveUserSession(ctx.from.id, session.profile, session);
-  }
-  
-  await ctx.reply(`Напоминание установлено на ${session.reminderTime} каждый день!`);
-}
-
-// --- Фоновая отправка напоминаний ---
-async function sendReminders() {
-  const now = new Date();
-  const hh = now.getHours().toString().padStart(2, '0');
-  const mm = now.getMinutes().toString().padStart(2, '0');
-  for (const userId in sessions) {
-    const session = sessions[userId];
-    if (!session.reminderTime) continue;
-    if (`${hh}:${mm}` !== session.reminderTime) continue;
-    // Проверяем активность
-    const words = session.profile ? await getWords(session.profile) : [];
-    const lastActive = words.length ? new Date(Math.max(...words.map(w => new Date(w.updatedAt || w.createdAt)))) : null;
-    if (isToday(lastActive)) continue; // Уже был активен сегодня
-    // Отправляем мотивационное напоминание
-    const quote = motivationalQuotes[Math.floor(Math.random() * motivationalQuotes.length)];
-    try {
-      await bot.api.sendMessage(userId, `⏰ Напоминание: ${quote}`);
-    } catch (e) {
-      // ignore errors (user blocked bot, etc)
-    }
-  }
-}
-
-// Запускать sendReminders каждую минуту
-setInterval(sendReminders, 60 * 1000);
 
 // Главное меню
 const mainMenu = new Keyboard()
@@ -1785,24 +1647,20 @@ const getOxfordSectionsMenu = () => {
 };
 
 // --- Функция загрузки/создания профиля пользователя ---
-async function getOrCreateUserProfile(telegramId, profileName) {
-  const profileKey = `${telegramId}_${profileName}`;
-  
+async function getOrCreateUserProfile(telegramId) {
   try {
-    // Пытаемся найти существующий профиль
+    // Пытаемся найти существующий профиль по telegramId
     let userProfile = await prisma.userProfile.findFirst({
       where: { 
-        telegramId: telegramId.toString(),
-        profileName: profileName 
+        telegramId: telegramId.toString()
       }
     });
     
-    // Если профиль не найден, создаем новый
+    // Если профиль не найден, создаем новый (но не активированный)
     if (!userProfile) {
       userProfile = await prisma.userProfile.create({
         data: {
           telegramId: telegramId.toString(),
-          profileName: profileName,
           xp: 0,
           level: 1,
           loginStreak: 0,
@@ -1811,7 +1669,8 @@ async function getOrCreateUserProfile(telegramId, profileName) {
           lastBonusDate: null,
           lastSmartRepeatDate: null,
           reminderTime: null,
-          writingTopicIndex: 0
+          writingTopicIndex: 0,
+          isActivated: false
         }
       });
     }
@@ -1826,7 +1685,8 @@ async function getOrCreateUserProfile(telegramId, profileName) {
       loginStreak: 0,
       lastBonusDate: null,
       lastSmartRepeatDate: null,
-      reminderTime: null
+      reminderTime: null,
+      isActivated: false
     };
   }
 }
@@ -2160,77 +2020,167 @@ async function generateAudioForUserWordsInDB(profile) {
   }
 }
 
+// /activate — активация доступа к боту по коду
+bot.command('activate', async (ctx) => {
+  const userId = ctx.from.id;
+  const activationCode = ctx.message.text.split(' ')[1];
+  
+  try {
+    if (!activationCode) {
+      return ctx.reply('❌ Укажите код активации.\n\nИспользование: /activate ВАШ_КОД');
+    }
+
+    // Проверяем валидность кода
+    if (!/^[A-Za-z0-9]{24,32}$/.test(activationCode)) {
+      return ctx.reply('❌ Неверный формат кода активации.');
+    }
+
+    // Ищем код в базе данных
+    const codeRecord = await prisma.$queryRaw`
+      SELECT * FROM "activation_codes" 
+      WHERE "code" = ${activationCode}
+    `;
+
+    if (codeRecord.length === 0) {
+      return ctx.reply('❌ Код активации не найден или недействителен.');
+    }
+
+    const code = codeRecord[0];
+
+    if (code.isUsed) {
+      return ctx.reply('❌ Этот код уже был использован.');
+    }
+
+    // Проверяем есть ли уже активированный профиль у пользователя
+    const existingProfile = await prisma.userProfile.findFirst({
+      where: { 
+        telegramId: userId.toString(),
+        isActivated: true
+      }
+    });
+
+    if (existingProfile) {
+      return ctx.reply('✅ У вас уже есть активированный доступ к боту!');
+    }
+
+    // Активируем код и создаем/обновляем профиль пользователя
+    await prisma.$transaction(async (tx) => {
+      // Помечаем код как использованный
+      await tx.$executeRaw`
+        UPDATE "activation_codes" 
+        SET "isUsed" = true, "usedByTelegramId" = ${BigInt(userId)}, "usedAt" = NOW()
+        WHERE "code" = ${activationCode}
+      `;
+
+      // Создаем или обновляем профиль пользователя
+      await tx.userProfile.upsert({
+        where: { telegramId: userId.toString() },
+        update: { isActivated: true },
+        create: {
+          telegramId: userId.toString(),
+          xp: 0,
+          level: 1,
+          loginStreak: 0,
+          studyStreak: 0,
+          lastStudyDate: null,
+          lastBonusDate: null,
+          lastSmartRepeatDate: null,
+          reminderTime: null,
+          writingTopicIndex: 0,
+          isActivated: true
+        }
+      });
+    });
+
+    ctx.reply('🎉 Поздравляем! Бот активирован!\n\nТеперь вы можете использовать все функции бота. Введите /start для начала работы.');
+
+  } catch (error) {
+    console.error('Error in activate command:', error);
+    ctx.reply('❌ Произошла ошибка при активации. Попробуйте позже.');
+  }
+});
+
 // /start — начало сеанса
 bot.command('start', async (ctx) => {
   const userId = ctx.from.id;
   
   try {
-    // Проверяем есть ли пользователь в базе данных
-    const existingProfiles = await prisma.userProfile.findMany({
-      where: { telegramId: userId.toString() }
+    // Проверяем есть ли активированный пользователь в базе данных
+    const userProfile = await prisma.userProfile.findFirst({
+      where: { 
+        telegramId: userId.toString(),
+        isActivated: true 
+      }
     });
     
-    if (existingProfiles.length > 0) {
-      // Если у пользователя несколько профилей, предлагаем выбрать
-      if (existingProfiles.length > 1) {
-        sessions[userId] = { step: 'awaiting_profile' };
-        return ctx.reply('Выберите профиль:', {
-          reply_markup: {
-            keyboard: [['Амина', 'Нурболат']],
-            resize_keyboard: true,
-            one_time_keyboard: true,
-          },
-        });
-      }
+    if (userProfile) {
+      // Пользователь найден и активирован, автологиним его
+      const session = await getOrCreateSession(userId);
+      session.step = 'main_menu';
+      session.xp = userProfile.xp;
+      session.level = userProfile.level;
+      session.loginStreak = userProfile.loginStreak;
+      session.studyStreak = userProfile.studyStreak;
+      session.lastBonusDate = userProfile.lastBonusDate;
+      session.lastSmartRepeatDate = userProfile.lastSmartRepeatDate;
+      session.reminderTime = userProfile.reminderTime;
+      session.lastStudyDate = userProfile.lastStudyDate;
       
-      // Пользователь найден в базе, автологиним его
-      const profile = existingProfiles[0];
-      
-      sessions[userId] = {
-        profile: profile.profileName,
-        step: 'main_menu',
-        xp: profile.xp,
-        level: profile.level,
-        loginStreak: profile.loginStreak,
-        lastBonusDate: profile.lastBonusDate,
-        lastSmartRepeatDate: profile.lastSmartRepeatDate,
-        reminderTime: profile.reminderTime
-      };
+      // Сохраняем сессию
+      await saveSession(userId, session);
       
       // Проверяем ежедневный бонус
-      await checkDailyBonus(sessions[userId], ctx);
-      const menuMessage = getMainMenuMessage(sessions[userId]);
+      await checkDailyBonus(session, ctx);
+      const menuMessage = getMainMenuMessage(session);
       await ctx.reply(menuMessage, { reply_markup: mainMenu, parse_mode: 'HTML' });
+      
     } else {
-      // Новый пользователь
-      sessions[userId] = { step: 'awaiting_password' };
-      await ctx.reply('Введите пароль:');
+      // Пользователь не активирован или новый
+      await ctx.reply(
+        '🔐 Для использования бота необходима активация.\n\n' +
+        '💳 Чтобы получить доступ:\n' +
+        '1. Приобретите код активации\n' +
+        '2. Введите команду: /activate ВАШ_КОД\n\n' +
+        '📧 Для покупки кода свяжитесь с администратором.'
+      );
     }
   } catch (error) {
     console.error('Error in /start command:', error);
-    // Если ошибка с БД, создаем обычную сессию
-    sessions[userId] = { step: 'awaiting_password' };
-    await ctx.reply('Введите пароль:');
+    ctx.reply('❌ Произошла ошибка. Попробуйте позже.');
   }
 });
 
 // /menu — возвращает в главное меню из любого шага после логина
 bot.command('menu', async (ctx) => {
   const userId = ctx.from.id;
-  const session = sessions[userId];
-  if (!session || session.step === 'awaiting_password' || !session.profile) {
+  const session = await getOrCreateSession(userId);
+  
+  // Проверяем активацию
+  const userProfile = await db.user.findUnique({ where: { telegramId: userId } });
+  if (!userProfile || !userProfile.isActivated) {
+    return ctx.reply('🔐 Бот не активирован. Используйте /start для активации.');
+  }
+  
+  if (!session || !session.profile) {
     return ctx.reply('Сначала выполните /start');
   }
   const profile = session.profile;
-  sessions[userId] = { ...session, step: 'main_menu', profile };
-  const menuMessage = getMainMenuMessage(sessions[userId]);
+  session.step = 'main_menu';
+  await saveSession(userId, session);
+  const menuMessage = getMainMenuMessage(session);
   return ctx.reply(menuMessage, { reply_markup: mainMenu, parse_mode: 'HTML' });
 });
 
 // --- Команда /words: показать слова пользователя ---
 bot.command('words', async (ctx) => {
   const userId = ctx.from.id;
-  const session = sessions[userId];
+  const session = await getOrCreateSession(userId);
+  
+  // Проверяем активацию
+  const userProfile = await db.user.findUnique({ where: { telegramId: userId } });
+  if (!userProfile || !userProfile.isActivated) {
+    return ctx.reply('🔐 Бот не активирован. Используйте /start для активации.');
+  }
   
   console.log(`DEBUG /words: userId=${userId}, profile=${session?.profile}`);
   
@@ -2322,7 +2272,13 @@ bot.command('words', async (ctx) => {
 // --- Команда /delete: удалить слово ---
 bot.command('delete', async (ctx) => {
   const userId = ctx.from.id;
-  const session = sessions[userId];
+  const session = await getOrCreateSession(userId);
+  
+  // Проверяем активацию
+  const userProfile = await db.user.findUnique({ where: { telegramId: userId } });
+  if (!userProfile || !userProfile.isActivated) {
+    return ctx.reply('🔐 Бот не активирован. Используйте /start для активации.');
+  }
   
   if (!session || !session.profile) {
     return ctx.reply('Сначала выполните /start');
@@ -2357,7 +2313,13 @@ bot.command('delete', async (ctx) => {
 // --- Команда /clear: очистить все слова ---
 bot.command('clear', async (ctx) => {
   const userId = ctx.from.id;
-  const session = sessions[userId];
+  const session = await getOrCreateSession(userId);
+  
+  // Проверяем активацию
+  const userProfile = await db.user.findUnique({ where: { telegramId: userId } });
+  if (!userProfile || !userProfile.isActivated) {
+    return ctx.reply('🔐 Бот не активирован. Используйте /start для активации.');
+  }
   
   if (!session || !session.profile) {
     return ctx.reply('Сначала выполните /start');
@@ -2383,7 +2345,13 @@ bot.command('clear', async (ctx) => {
 // --- Команда /clear_audio: очистить аудиоданные из БД ---
 bot.command('clear_audio', async (ctx) => {
   const userId = ctx.from.id;
-  const session = sessions[userId];
+  const session = await getOrCreateSession(userId);
+  
+  // Проверяем активацию
+  const userProfile = await db.user.findUnique({ where: { telegramId: userId } });
+  if (!userProfile || !userProfile.isActivated) {
+    return ctx.reply('🔐 Бот не активирован. Используйте /start для активации.');
+  }
   
   if (!session || !session.profile) {
     return ctx.reply('Сначала выполните /start');
@@ -2408,7 +2376,13 @@ bot.command('clear_audio', async (ctx) => {
 // --- Скрытая команда для массовой генерации аудио ---
 bot.command('generate_all_audio', async (ctx) => {
   const userId = ctx.from.id;
-  const session = sessions[userId];
+  const session = await getOrCreateSession(userId);
+  
+  // Проверяем активацию
+  const userProfile = await db.user.findUnique({ where: { telegramId: userId } });
+  if (!userProfile || !userProfile.isActivated) {
+    return ctx.reply('🔐 Бот не активирован. Используйте /start для активации.');
+  }
   
   if (!session || !session.profile) {
     return ctx.reply('Сначала выполните /start');
@@ -2435,7 +2409,13 @@ bot.command('generate_all_audio', async (ctx) => {
 // --- Команда /sections: показать все разделы ---
 bot.command('sections', async (ctx) => {
   const userId = ctx.from.id;
-  const session = sessions[userId];
+  const session = await getOrCreateSession(userId);
+  
+  // Проверяем активацию
+  const userProfile = await db.user.findUnique({ where: { telegramId: userId } });
+  if (!userProfile || !userProfile.isActivated) {
+    return ctx.reply('🔐 Бот не активирован. Используйте /start для активации.');
+  }
   
   if (!session || !session.profile) {
     return ctx.reply('Сначала выполните /start');
@@ -2740,9 +2720,8 @@ Use different genre styles: drama, comedy, sci-fi, action, etc.`;
 // Временная команда для диагностики базы данных (только для админов)
 bot.command('checkdb', async (ctx) => {
   const userId = ctx.from.id;
-  const session = sessions[userId];
   
-  if (!session || session.profile !== 'Нурболат') {
+  if (!isAdmin(userId)) {
     return ctx.reply('❌ Доступ запрещен');
   }
   
@@ -2847,13 +2826,17 @@ bot.command('checkdb', async (ctx) => {
   }
 });
 
-// Админская команда пропуска этапов (только для Нурболат)
+// Админская команда пропуска этапов (только для администраторов)
 bot.command('skip', async (ctx) => {
   const userId = ctx.from.id;
-  const session = sessions[userId];
   
-  if (!session || session.profile !== 'Нурболат') {
+  if (!isAdmin(userId)) {
     return ctx.reply('❌ Доступ запрещен');
+  }
+  
+  const session = await getOrCreateSession(userId);
+  if (!session) {
+    return ctx.reply('❌ Сессия не найдена. Выполните /start');
   }
   
   console.log(`🚀 Admin SKIP command used. Current step: ${session.step}`);
@@ -2936,16 +2919,11 @@ bot.command('skip', async (ctx) => {
   }
 });
 
-// Команда просмотра доступных бэкапов (только для Нурболат)
+// Команда просмотра доступных бэкапов (только для администраторов)
 bot.command('backups', async (ctx) => {
   const userId = ctx.from.id;
-  const session = sessions[userId];
   
-  if (!session || !session.profile) {
-    return ctx.reply('Сначала выполните /start');
-  }
-  
-  if (session.profile !== 'Нурболат') {
+  if (!isAdmin(userId)) {
     return ctx.reply('❌ Эта команда доступна только для администратора');
   }
   
@@ -2999,16 +2977,11 @@ bot.command('backups', async (ctx) => {
   }
 });
 
-// Команда скачивания конкретного бэкапа (только для Нурболат)
+// Команда скачивания конкретного бэкапа (только для администраторов)
 bot.command('getbackup', async (ctx) => {
   const userId = ctx.from.id;
-  const session = sessions[userId];
   
-  if (!session || !session.profile) {
-    return ctx.reply('Сначала выполните /start');
-  }
-  
-  if (session.profile !== 'Нурболат') {
+  if (!isAdmin(userId)) {
     return ctx.reply('❌ Эта команда доступна только для администратора');
   }
   
@@ -3042,16 +3015,11 @@ bot.command('getbackup', async (ctx) => {
   }
 });
 
-// Команда создания бэкапа (только для Нурболат)
+// Команда создания бэкапа (только для администраторов)
 bot.command('backup', async (ctx) => {
   const userId = ctx.from.id;
-  const session = sessions[userId];
   
-  if (!session || !session.profile) {
-    return ctx.reply('Сначала выполните /start');
-  }
-  
-  if (session.profile !== 'Нурболат') {
+  if (!isAdmin(userId)) {
     return ctx.reply('❌ Эта команда доступна только для администратора');
   }
   
@@ -3085,16 +3053,141 @@ bot.command('backup', async (ctx) => {
   }
 });
 
+// Функция проверки админских прав
+function isAdmin(telegramId) {
+  const adminIds = [380502678, 930858056, 1131806675]; // Ваши ID и Амины
+  return adminIds.includes(telegramId);
+}
+
+// === PERSISTENT SESSION MANAGEMENT ===
+
+// Функция загрузки сессии из базы данных
+async function loadSession(telegramId) {
+  try {
+    const sessionRecord = await prisma.$queryRaw`
+      SELECT "sessionData" FROM "user_sessions" 
+      WHERE "userId" = ${telegramId}
+    `;
+    
+    if (sessionRecord.length > 0) {
+      const sessionData = JSON.parse(sessionRecord[0].sessionData);
+      console.log(`💾 Session loaded for user ${telegramId}`);
+      return sessionData;
+    }
+    
+    return null;
+  } catch (error) {
+    console.error(`Error loading session for user ${telegramId}:`, error);
+    return null;
+  }
+}
+
+// Функция сохранения сессии в базу данных
+async function saveSession(telegramId, sessionData) {
+  try {
+    await prisma.$executeRaw`
+      INSERT INTO "user_sessions" ("userId", "sessionData", "lastActivity")
+      VALUES (${telegramId}, ${JSON.stringify(sessionData)}, NOW())
+      ON CONFLICT ("userId") 
+      DO UPDATE SET 
+        "sessionData" = ${JSON.stringify(sessionData)},
+        "lastActivity" = NOW()
+    `;
+    
+    console.log(`💾 Session saved for user ${telegramId}`);
+  } catch (error) {
+    console.error(`Error saving session for user ${telegramId}:`, error);
+  }
+}
+
+// Функция получения или создания сессии (hybrid подход)
+async function getOrCreateSession(telegramId) {
+  // Сначала проверяем память
+  if (sessions[telegramId]) {
+    return sessions[telegramId];
+  }
+  
+  // Загружаем из базы данных
+  const savedSession = await loadSession(telegramId);
+  if (savedSession) {
+    sessions[telegramId] = savedSession;
+    return savedSession;
+  }
+  
+  // Создаем новую сессию
+  const newSession = {};
+  sessions[telegramId] = newSession;
+  return newSession;
+}
+
+// Функция обновления активности и автосохранения
+async function updateSessionActivity(telegramId) {
+  const session = sessions[telegramId];
+  if (session) {
+    session.lastActivity = new Date().toISOString();
+    
+    // Автосохранение каждые 5 минут или при важных изменениях
+    const now = Date.now();
+    if (!session.lastSaved || now - session.lastSaved > 5 * 60 * 1000) {
+      await saveSession(telegramId, session);
+      session.lastSaved = now;
+    }
+  }
+}
+
+// Функция очистки старых сессий из памяти (запускается периодически)
+async function cleanupMemorySessions() {
+  const now = Date.now();
+  const maxInactiveTime = 30 * 60 * 1000; // 30 минут
+  
+  for (const [telegramId, session] of Object.entries(sessions)) {
+    const lastActivity = session.lastActivity ? new Date(session.lastActivity).getTime() : 0;
+    
+    if (now - lastActivity > maxInactiveTime) {
+      // Сохраняем перед удалением из памяти
+      await saveSession(parseInt(telegramId), session);
+      delete sessions[telegramId];
+      console.log(`💾 Session moved to storage for inactive user ${telegramId}`);
+    }
+  }
+}
+
+// Запускаем очистку памяти каждые 10 минут
+setInterval(cleanupMemorySessions, 10 * 60 * 1000);
+
+// Функция загрузки всех активных сессий при запуске
+async function loadActiveSessions() {
+  try {
+    const activeSessionsCount = await prisma.$queryRaw`
+      SELECT COUNT(*) as count FROM "user_sessions" 
+      WHERE "lastActivity" > NOW() - INTERVAL '1 day'
+    `;
+    
+    console.log(`💾 Found ${activeSessionsCount[0].count} active sessions in storage`);
+    
+    // Загружаем только недавно активные сессии (последние 2 часа)
+    const recentSessions = await prisma.$queryRaw`
+      SELECT "userId", "sessionData" FROM "user_sessions"
+      WHERE "lastActivity" > NOW() - INTERVAL '2 hours'
+      LIMIT 50
+    `;
+    
+    for (const sessionRecord of recentSessions) {
+      const userId = sessionRecord.userId.toString();
+      sessions[userId] = JSON.parse(sessionRecord.sessionData);
+    }
+    
+    console.log(`💾 Loaded ${recentSessions.length} recent sessions into memory`);
+  } catch (error) {
+    console.error('Error loading active sessions:', error);
+  }
+}
+
 // Команда статистики GPT очереди (только для администратора)
 bot.command('gptstats', async (ctx) => {
   const userId = ctx.from.id;
-  const session = sessions[userId];
   
-  if (!session || !session.profile) {
-    return ctx.reply('Сначала выполните /start');
-  }
-  
-  if (session.profile !== 'Нурболат') {
+  if (!isAdmin(userId)) {
     return ctx.reply('❌ Эта команда доступна только для администратора');
   }
   
@@ -3119,13 +3212,8 @@ bot.command('gptstats', async (ctx) => {
 // Команда изменения лимита GPT очереди (только для администратора) 
 bot.command('gptlimit', async (ctx) => {
   const userId = ctx.from.id;
-  const session = sessions[userId];
   
-  if (!session || !session.profile) {
-    return ctx.reply('Сначала выполните /start');
-  }
-  
-  if (session.profile !== 'Нурболат') {
+  if (!isAdmin(userId)) {
     return ctx.reply('❌ Эта команда доступна только для администратора');
   }
   
@@ -3146,16 +3234,18 @@ bot.command('gptlimit', async (ctx) => {
 // Команда восстановления (только для админов)
 bot.command('restore', async (ctx) => {
   const userId = ctx.from.id;
-  const session = sessions[userId];
   
-  if (!session || (session.profile !== 'Нурболат' && session.profile !== 'Амина')) {
+  if (!isAdmin(userId)) {
     return ctx.reply('❌ Доступ запрещен');
   }
+  
+  const session = await getOrCreateSession(userId);
   
   await ctx.reply('📁 Отправьте файл бэкапа (.json) для восстановления');
   
   // Устанавливаем состояние ожидания файла
   session.step = 'awaiting_backup_file';
+  await saveSession(userId, session);
 });
 
 // Обработка файлов бэкапа
@@ -3206,7 +3296,14 @@ bot.on('message:document', async (ctx) => {
 
 bot.command('daily', async (ctx) => {
   const userId = ctx.from.id;
-  const session = sessions[userId];
+  const session = await getOrCreateSession(userId);
+  
+  // Проверяем активацию
+  const userProfile = await db.user.findUnique({ where: { telegramId: userId } });
+  if (!userProfile || !userProfile.isActivated) {
+    return ctx.reply('🔐 Бот не активирован. Используйте /start для активации.');
+  }
+  
   if (!session || !session.profile) {
     return ctx.reply('❌ Сначала выполните /start');
   }
@@ -3229,7 +3326,14 @@ bot.command('daily', async (ctx) => {
 
 bot.command('achievements', async (ctx) => {
   const userId = ctx.from.id;
-  const session = sessions[userId];
+  const session = await getOrCreateSession(userId);
+  
+  // Проверяем активацию
+  const userProfile = await db.user.findUnique({ where: { telegramId: userId } });
+  if (!userProfile || !userProfile.isActivated) {
+    return ctx.reply('🔐 Бот не активирован. Используйте /start для активации.');
+  }
+  
   if (!session || !session.profile) {
     return ctx.reply('Сначала выполните /start');
   }
@@ -3238,19 +3342,19 @@ bot.command('achievements', async (ctx) => {
   await checkDailyBonus(session, ctx);
   
   // Получаем актуальные данные из базы данных вместо использования сессии
-  const userProfile = await prisma.userProfile.findFirst({
+  const profileData = await prisma.userProfile.findFirst({
     where: { profileName: session.profile }
   });
   
-  if (!userProfile) {
+  if (!profileData) {
     return ctx.reply('❌ Профиль пользователя не найден в базе данных');
   }
   
   // Обновляем сессию актуальными данными из базы
-  session.xp = userProfile.xp;
-  session.level = userProfile.level;
-  session.studyStreak = userProfile.studyStreak || 0;
-  session.loginStreak = userProfile.loginStreak || 0;
+  session.xp = profileData.xp;
+  session.level = profileData.level;
+  session.studyStreak = profileData.studyStreak || 0;
+  session.loginStreak = profileData.loginStreak || 0;
   
   // Получаем все слова пользователя
   const words = await getWords(session.profile);
@@ -3261,14 +3365,14 @@ bot.command('achievements', async (ctx) => {
   await checkUserInactivity(session, words, ctx);
   
   // --- XP и уровень из базы данных ---
-  const currentXP = userProfile.xp || 0;
+  const currentXP = profileData.xp || 0;
   const currentLevel = getLevelByXP(currentXP);
   const nextLevel = XP_LEVELS.find(l => l.level === currentLevel.level + 1);
   const xpToNext = nextLevel ? nextLevel.required_xp - currentXP : 0;
-  const loginStreak = userProfile.loginStreak || 0;
+  const loginStreak = profileData.loginStreak || 0;
   
   // --- Streak из базы данных ---
-  let studyStreak = userProfile.studyStreak || 0;
+  let studyStreak = profileData.studyStreak || 0;
   
   // --- Мультипликатор XP ---
   const xpMultiplier = getStreakMultiplier(studyStreak);
@@ -3344,87 +3448,6 @@ bot.command('achievements', async (ctx) => {
   await ctx.reply(msg, { parse_mode: 'HTML' });
 });
 
-// Команда для просмотра статистики денежной системы
-bot.command('money', async (ctx) => {
-  const userId = ctx.from.id;
-  const session = sessions[userId];
-  if (!session || !session.profile) {
-    return ctx.reply('Сначала выполните /start');
-  }
-  
-  try {
-    const stats = await getMoneySystemStats();
-    if (!stats) {
-      return ctx.reply('❌ Ошибка получения статистики денежной системы');
-    }
-    
-    let msg = `💰 <b>Денежная система мотивации</b>\n\n`;
-    
-    // Общая информация
-    msg += `🏦 <b>Общий банк:</b> ${stats.totalBank.toLocaleString()} тенге\n`;
-    msg += `💸 <b>Переведено:</b> ${stats.totalTransferred.toLocaleString()} тенге\n`;
-    msg += `💼 <b>Остаток:</b> ${stats.remainingBank.toLocaleString()} тенге\n\n`;
-    
-    // Статистика Нурболата
-    msg += `👨‍💼 <b>Нурболат:</b>\n`;
-    msg += `💰 Заработал: ${stats.nurbolat.totalEarned.toLocaleString()} тенге\n`;
-    msg += `📤 Отправлено: ${(stats.nurbolat.totalSent || 0).toLocaleString()} тенге\n`;
-    msg += `💸 К отправке: ${(stats.nurbolat.totalEarned - (stats.nurbolat.totalSent || 0)).toLocaleString()} тенге\n`;
-    msg += `📅 Завершено: ${stats.nurbolat.dailyCompletions} дней\n`;
-    msg += `⏭️ Пропущено: ${stats.nurbolat.dailyMissed} дней\n`;
-    msg += `👥 Оба пропустили: ${stats.nurbolat.bothMissedDays || 0} дней\n`;
-    
-    if (stats.nurbolat.lastCompletionDate) {
-      const lastDate = new Date(stats.nurbolat.lastCompletionDate);
-      const today = getLocalDateGMT5();
-      const isToday = stats.nurbolat.lastCompletionDate === today;
-      msg += `🕐 Последнее: ${isToday ? 'Сегодня' : lastDate.toLocaleDateString('ru-RU')}\n`;
-    }
-    msg += `\n`;
-    
-    // Статистика Амины
-    msg += `👩‍💼 <b>Амина:</b>\n`;
-    msg += `💰 Заработала: ${stats.amina.totalEarned.toLocaleString()} тенге\n`;
-    msg += `📤 Отправлено: ${(stats.amina.totalSent || 0).toLocaleString()} тенге\n`;
-    msg += `💸 К отправке: ${(stats.amina.totalEarned - (stats.amina.totalSent || 0)).toLocaleString()} тенге\n`;
-    msg += `📅 Завершено: ${stats.amina.dailyCompletions} дней\n`;
-    msg += `⏭️ Пропущено: ${stats.amina.dailyMissed} дней\n`;
-    msg += `👥 Оба пропустили: ${stats.amina.bothMissedDays || 0} дней\n`;
-    
-    if (stats.amina.lastCompletionDate) {
-      const lastDate = new Date(stats.amina.lastCompletionDate);
-      const today = getLocalDateGMT5();
-      const isToday = stats.amina.lastCompletionDate === today;
-      msg += `🕐 Последнее: ${isToday ? 'Сегодня' : lastDate.toLocaleDateString('ru-RU')}\n`;
-    }
-    msg += `\n`;
-    
-    // Информация о банке накоплений
-    try {
-      const sharedBank = await getOrCreateSharedBank();
-      msg += `🏦 <b>Банк накоплений:</b> ${sharedBank.totalAmount.toLocaleString()} тенге\n`;
-      msg += `💰 <i>Деньги за дни когда оба пропустили (делится в конце месяца)</i>\n\n`;
-    } catch (error) {
-      console.error('Error getting shared bank info:', error);
-      msg += `🏦 <b>Банк накоплений:</b> 0 тенге\n\n`;
-    }
-    
-    // Правила
-    msg += `📋 <b>Правила:</b>\n`;
-    msg += `• Прошёл умное повторение → +${MONEY_SYSTEM.DAILY_REWARD} тенге\n`;
-    msg += `• Один пропустил → ${MONEY_SYSTEM.DAILY_REWARD} тенге другому\n`;
-    msg += `• Оба пропустили → ${MONEY_SYSTEM.DAILY_REWARD * 2} тенге в банк накоплений\n`;
-    msg += `• Банк делится пополам в конце месяца\n`;
-    msg += `• Проверка в 23:59 каждый день\n`;
-    msg += `• Всего дней: ${MONEY_SYSTEM.TOTAL_DAYS}`;
-    
-    await ctx.reply(msg, { parse_mode: 'HTML' });
-  } catch (error) {
-    console.error('Error in money command:', error);
-    await ctx.reply('❌ Произошла ошибка при получении статистики');
-  }
-});
-
 // Обработка любых текстовых сообщений
 bot.on('message:text', async (ctx) => {
   try {
@@ -3432,19 +3455,22 @@ bot.on('message:text', async (ctx) => {
     const text = ctx.message.text.trim();
     const normalized = text.toLowerCase();
     
+    // Загружаем или создаем сессию из persistent storage
+    const session = await getOrCreateSession(userId);
+    
     // Проверяем нужно ли показать отчет за предыдущий месяц
     const reportShown = await checkAndShowMonthlyReport(ctx);
     
     // Обновляем время последней активности
-    updateSessionActivity(userId);
+    await updateSessionActivity(userId);
     
     // Инициализируем базовые поля сессии если их нет
-    if (sessions[userId] && sessions[userId].profile) {
-      if (sessions[userId].lastSmartRepeatDate === undefined) sessions[userId].lastSmartRepeatDate = null;
-      if (sessions[userId].lastBonusDate === undefined) sessions[userId].lastBonusDate = null;
-      if (sessions[userId].lastStudyDate === undefined) sessions[userId].lastStudyDate = null;
-      if (sessions[userId].reminderTime === undefined) sessions[userId].reminderTime = null;
-      if (sessions[userId].studyStreak === undefined) sessions[userId].studyStreak = 0;
+    if (session && session.profile) {
+      if (session.lastSmartRepeatDate === undefined) session.lastSmartRepeatDate = null;
+      if (session.lastBonusDate === undefined) session.lastBonusDate = null;
+      if (session.lastStudyDate === undefined) session.lastStudyDate = null;
+      if (session.reminderTime === undefined) session.reminderTime = null;
+      if (session.studyStreak === undefined) session.studyStreak = 0;
     }
 
     // Игнорируем пустые сообщения
@@ -3461,134 +3487,36 @@ bot.on('message:text', async (ctx) => {
 
     // Проверка на команду /menu в любом состоянии
     if (normalized === '/menu') {
-      const session = sessions[userId];
-      if (!session || session.step === 'awaiting_password' || !session.profile) {
+      if (!session || !session.profile) {
         return ctx.reply('Сначала выполните /start');
       }
       const profile = session.profile;
-      sessions[userId] = { step: 'main_menu', profile };
+      session.step = 'main_menu';
+      session.profile = profile;
+      await saveSession(userId, session);
       return ctx.reply('Выберите действие:', { reply_markup: mainMenu });
     }
 
   // Специальная обработка кнопки "🧠 Умное повторение" из напоминаний
   if (text === '🧠 Умное повторение') {
-    const session = sessions[userId];
     if (!session || !session.profile) {
-      // Пользователь нажал кнопку из напоминания, но не залогинен
-      // Попытаемся автоматически загрузить профиль
-      try {
-        const existingProfiles = await prisma.userProfile.findMany({
-          where: { telegramId: userId.toString() }
-        });
-        
-        if (existingProfiles.length === 1) {
-          // Автоматически логиним пользователя
-          const profile = existingProfiles[0];
-          sessions[userId] = {
-            profile: profile.profileName,
-            step: 'word_tasks_menu',
-            xp: profile.xp,
-            level: profile.level,
-            loginStreak: profile.loginStreak,
-            lastBonusDate: profile.lastBonusDate,
-            lastSmartRepeatDate: profile.lastSmartRepeatDate,
-            reminderTime: profile.reminderTime
-          };
-        } else if (existingProfiles.length > 1) {
-          // Несколько профилей - нужно выбрать
-          sessions[userId] = { step: 'awaiting_profile' };
-          return ctx.reply('Выберите профиль:', {
-            reply_markup: {
-              keyboard: [['Амина', 'Нурболат']],
-              resize_keyboard: true,
-              one_time_keyboard: true,
-            },
-          });
-        } else {
-          // Новый пользователь
-          return ctx.reply('Сначала выполните /start');
-        }
-      } catch (error) {
-        console.error('Error loading profile for smart repeat:', error);
-        return ctx.reply('Сначала выполните /start');
-      }
+      // Пользователь нажал кнопку из напоминания, но не активирован
+      return ctx.reply('🔐 Для использования бота необходима активация. Используйте /start');
     }
   }
 
-  // Убедимся, что сессия инициализирована
-  if (!sessions[userId]) {
-    sessions[userId] = { step: 'awaiting_password' };
-  }
-  const session = sessions[userId];
+  // Используем сессию из persistent storage (уже загружена выше)
   const step = session.step;
 
   console.log(`DEBUG: ${userId} | STEP: ${step} | TEXT: "${text}" | smartRepeatStage: ${session.smartRepeatStage || 'none'}`);
 
   // --- ПРИОРИТЕТНАЯ ОБРАБОТКА СОСТОЯНИЙ АВТОРИЗАЦИИ ---
   
-  // Шаг 1: ввод пароля
-  if (step === 'awaiting_password') {
-    const allowed = ['123', 'Aminur777'];
-    
-    // СПЕЦИАЛЬНАЯ ОБРАБОТКА: если пользователь отправляет длинный текст,
-    // возможно его сессия была сброшена во время письменного задания
-    if (text.length > 100 && !allowed.includes(text)) {
-      console.log(`🔄 User ${userId} sent long text without session - attempting restore`);
-      
-      const restored = await restoreSessionFromDB(userId, text);
-      if (restored) {
-        await ctx.reply('✅ Ваша сессия была восстановлена! Анализирую ваш текст...');
-        // Обрабатываем текст как письменное задание
-        return await handleWritingAnalysis(ctx, sessions[userId], text);
-      } else {
-        await ctx.reply('⚠️ Похоже, ваша сессия истекла во время письменного задания.\n\nВведите пароль для входа, а затем я помогу восстановить прогресс:');
-        return;
-      }
-    }
-    
-    if (allowed.includes(text)) {
-      session.step = 'awaiting_profile';
-      return ctx.reply('Выберите профиль:', {
-        reply_markup: {
-          keyboard: [['Амина', 'Нурболат']],
-          resize_keyboard: true,
-          one_time_keyboard: true,
-        },
-      });
-    } else {
-      return ctx.reply('Неверный пароль. Попробуйте снова:');
-    }
-  }
-
-  // Шаг 2: выбор профиля
-  if (step === 'awaiting_profile') {
-    // Проверяем что это не текст кнопки
-    if (text.includes('⏭️') || text.includes('🔊') || text.includes('📊') || text.includes('🏠') || text.length > 50) {
-      return ctx.reply('Пожалуйста, введите корректное имя профиля (без эмодзи и кнопок):');
-    }
-    
-    // Загружаем или создаем профиль пользователя
-    const userProfile = await getOrCreateUserProfile(userId, text);
-    
-    session.profile = text;
-    session.step = 'main_menu';
-    session.xp = userProfile.xp;
-    session.level = userProfile.level;
-    session.loginStreak = userProfile.loginStreak;
-    session.studyStreak = userProfile.studyStreak || 0;
-    session.lastStudyDate = userProfile.lastStudyDate;
-    session.lastBonusDate = userProfile.lastBonusDate;
-    session.lastSmartRepeatDate = userProfile.lastSmartRepeatDate;
-    session.reminderTime = userProfile.reminderTime;
-    
-    // Проверяем ежедневный бонус и показываем главное меню
-    await checkDailyBonus(session, ctx);
-    const menuMessage = getMainMenuMessage(session);
-    
-    return ctx.reply(`Вы вошли как ${session.profile}\n\n${menuMessage}`, {
-      reply_markup: mainMenu,
-      parse_mode: 'HTML'
-    });
+  // --- ОБРАБОТКА СОСТОЯНИЙ ---
+  
+  // Если пользователь не активирован, показываем сообщение об активации
+  if (!session || !session.profile) {
+    return ctx.reply('🔐 Для использования бота необходима активация. Используйте /start для активации.');
   }
 
   // --- Обработка состояний игры "Угадай перевод" ---
@@ -5722,31 +5650,6 @@ async function sendRemindersToUsers(reminderType) {
 if (!global.cronTasksInitialized) {
   global.cronTasksInitialized = true;
   
-  // Настройка cron-задач для напоминаний
-  // За 6 часов до полуночи (18:00)
-  cron.schedule('0 18 * * *', () => {
-    console.log('Sending 6-hour reminders...');
-    sendRemindersToUsers('6h');
-  }, {
-    timezone: "Asia/Yekaterinburg" // GMT+5
-  });
-
-  // За 3 часа до полуночи (21:00)
-  cron.schedule('0 21 * * *', () => {
-    console.log('Sending 3-hour reminders...');
-    sendRemindersToUsers('3h');
-  }, {
-    timezone: "Asia/Yekaterinburg" // GMT+5
-  });
-
-  // За 1 час до полуночи (23:00)
-  cron.schedule('0 23 * * *', () => {
-    console.log('Sending 1-hour reminders...');
-    sendRemindersToUsers('1h');
-  }, {
-    timezone: "Asia/Yekaterinburg" // GMT+5
-  });
-
   // Ежедневный автоматический бэкап в 2:00 ночи
   cron.schedule('0 2 * * *', () => {
     console.log('📦 Creating daily backup...');
@@ -5754,27 +5657,8 @@ if (!global.cronTasksInitialized) {
   }, {
     timezone: "Asia/Yekaterinburg" // GMT+5
   });
-
-  // Проверка пропущенных умных повторений в 23:59
-  cron.schedule('59 23 * * *', () => {
-    console.log('💰 Checking missed smart repeats...');
-    checkMissedSmartRepeats();
-  }, {
-    timezone: "Asia/Yekaterinburg" // GMT+5
-  });
-
-  // Обнуление денежной системы 2 числа каждого месяца в 00:01
-  cron.schedule('1 0 2 * *', () => {
-    console.log('🗓️ Monthly system reset starting...');
-    resetMonthlySystem();
-  }, {
-    timezone: "Asia/Yekaterinburg" // GMT+5
-  });
   
-  console.log('🔔 Reminder system initialized!');
   console.log('📦 Daily backup system initialized!');
-  console.log('💰 Money system cron initialized!');
-  console.log('🏦 Bank division system initialized!');
 } else {
   console.log('⚠️ Cron tasks already initialized, skipping...');
 }
@@ -9164,8 +9048,8 @@ async function completeSmartRepeat(ctx, session) {
 initializeDatabase().then(async () => {
   console.log('🚀 Starting bot...');
   
-  // Инициализируем денежную систему
-  await initializeMoneySystem();
+  // Загружаем активные сессии в память при запуске
+  await loadActiveSessions();
   
   bot.start();
 }).catch((error) => {
