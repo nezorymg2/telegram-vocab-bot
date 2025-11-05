@@ -2065,10 +2065,25 @@ bot.command('activate', async (ctx) => {
 
     // Активируем код и создаем/обновляем профиль пользователя
     await prisma.$transaction(async (tx) => {
+      const now = new Date();
+      
+      // Определяем дату истечения для месячных кодов
+      let expiresAt = null;
+      let activatedAt = now;
+      
+      if (code.subscription_type === 'monthly') {
+        // Добавляем 30 дней к текущей дате
+        expiresAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+      }
+      
       // Помечаем код как использованный
       await tx.$executeRaw`
         UPDATE "activation_codes" 
-        SET "isUsed" = true, "usedByTelegramId" = ${BigInt(userId)}, "usedAt" = NOW()
+        SET "isUsed" = true, 
+            "usedByTelegramId" = ${BigInt(userId)}, 
+            "usedAt" = NOW(),
+            "activated_at" = NOW(),
+            "expires_at" = ${expiresAt}
         WHERE "code" = ${activationCode}
       `;
 
@@ -2092,7 +2107,18 @@ bot.command('activate', async (ctx) => {
       });
     });
 
-    ctx.reply('🎉 Поздравляем! Бот активирован!\n\nТеперь вы можете использовать все функции бота. Введите /start для начала работы.');
+    // Формируем сообщение в зависимости от типа подписки
+    let activationMessage = '🎉 Поздравляем! Бот активирован!\n\n';
+    
+    if (code.subscription_type === 'monthly') {
+      const expirationDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+      activationMessage += `📅 Ваша месячная подписка действует до ${expirationDate.toLocaleDateString('ru-RU')}\n\n`;
+      activationMessage += '💬 Для продления подписки обращайтесь к @oleja_1337\n\n';
+    }
+    
+    activationMessage += 'Теперь вы можете использовать все функции бота. Введите /start для начала работы.';
+    
+    ctx.reply(activationMessage);
 
   } catch (error) {
     console.error('Error in activate command:', error);
@@ -2105,13 +2131,18 @@ bot.command('start', async (ctx) => {
   const userId = ctx.from.id;
   
   try {
-    // Проверяем есть ли использованный код активации для этого пользователя
-    const activationRecord = await prisma.$queryRaw`
-      SELECT * FROM "activation_codes" 
-      WHERE "usedByTelegramId" = ${BigInt(userId)} AND "isUsed" = true
-    `;
+    // Проверяем активацию пользователя (с учетом типа подписки и истечения)
+    const activationResult = await checkUserActivation(userId);
     
-    if (activationRecord.length > 0) {
+    if (activationResult.isActivated) {
+      // Показываем предупреждение о скором истечении подписки
+      if (activationResult.needsWarning) {
+        await ctx.reply(
+          `⚠️ Ваша месячная подписка истекает через ${activationResult.daysUntilExpiration} дн.\n\n` +
+          '💬 Для продления обратитесь к @oleja_1337'
+        );
+      }
+      
       // Пользователь активирован, ищем его профиль
       let userProfile = await prisma.userProfile.findFirst({
         where: { 
@@ -2185,14 +2216,20 @@ bot.command('start', async (ctx) => {
       }
       
     } else {
-      // Пользователь не активирован или новый
-      await ctx.reply(
-        '🔐 Для использования бота необходима активация.\n\n' +
-        '💳 Чтобы получить доступ:\n' +
-        '1. Приобретите код активации\n' +
-        '2. Введите команду: /activate ВАШ_КОД\n\n' +
-        '📧 Для покупки кода свяжитесь с администратором.'
-      );
+      // Пользователь не активирован или подписка истекла
+      let message = '🔐 Для использования бота необходима активация.\n\n';
+      
+      if (activationResult.reason === 'expired') {
+        message = '⏰ Ваша месячная подписка истекла.\n\n';
+        message += '💬 Для продления подписки обратитесь к @oleja_1337\n\n';
+      }
+      
+      message += '💳 Чтобы получить доступ:\n';
+      message += '1. Приобретите код активации\n';
+      message += '2. Введите команду: /activate ВАШ_КОД\n\n';
+      message += '📧 Для покупки кода свяжитесь с администратором.';
+      
+      await ctx.reply(message);
     }
   } catch (error) {
     console.error('Error in /start command:', error);
@@ -2206,9 +2243,24 @@ bot.command('menu', async (ctx) => {
   const session = await getOrCreateSession(userId);
   
   // Проверяем активацию
-  const isActivated = await checkUserActivation(userId);
-  if (!isActivated) {
+  const activationResult = await checkUserActivation(userId);
+  if (!activationResult.isActivated) {
+    if (activationResult.reason === 'expired') {
+      return ctx.reply(
+        '⏰ Ваша месячная подписка истекла.\n\n' +
+        '💬 Для продления подписки обратитесь к @oleja_1337\n\n' +
+        '🔐 Используйте /start для активации нового кода.'
+      );
+    }
     return ctx.reply('🔐 Бот не активирован. Используйте /start для активации.');
+  }
+  
+  // Показываем предупреждение о скором истечении подписки
+  if (activationResult.needsWarning) {
+    await ctx.reply(
+      `⚠️ Ваша месячная подписка истекает через ${activationResult.daysUntilExpiration} дн.\n\n` +
+      '💬 Для продления обратитесь к @oleja_1337'
+    );
   }
   
   if (!session || !session.profile) {
@@ -2227,9 +2279,24 @@ bot.command('words', async (ctx) => {
   const session = await getOrCreateSession(userId);
   
   // Проверяем активацию
-  const isActivated = await checkUserActivation(userId);
-  if (!isActivated) {
+  const activationResult = await checkUserActivation(userId);
+  if (!activationResult.isActivated) {
+    if (activationResult.reason === 'expired') {
+      return ctx.reply(
+        '⏰ Ваша месячная подписка истекла.\n\n' +
+        '💬 Для продления подписки обратитесь к @oleja_1337\n\n' +
+        '🔐 Используйте /start для активации нового кода.'
+      );
+    }
     return ctx.reply('🔐 Бот не активирован. Используйте /start для активации.');
+  }
+  
+  // Показываем предупреждение о скором истечении подписки
+  if (activationResult.needsWarning) {
+    await ctx.reply(
+      `⚠️ Ваша месячная подписка истекает через ${activationResult.daysUntilExpiration} дн.\n\n` +
+      '💬 Для продления обратитесь к @oleja_1337'
+    );
   }
   
   console.log(`DEBUG /words: userId=${userId}, profile=${session?.profile}`);
@@ -3145,11 +3212,65 @@ function isAdmin(telegramId) {
 
 // Функция проверки активации пользователя
 async function checkUserActivation(userId) {
-  const activationRecord = await prisma.$queryRaw`
-    SELECT * FROM "activation_codes" 
-    WHERE "usedByTelegramId" = ${BigInt(userId)} AND "isUsed" = true
-  `;
-  return activationRecord.length > 0;
+  try {
+    const activationRecord = await prisma.$queryRaw`
+      SELECT * FROM "activation_codes" 
+      WHERE "usedByTelegramId" = ${BigInt(userId)} AND "isUsed" = true
+    `;
+    
+    if (activationRecord.length === 0) {
+      return { isActivated: false, reason: 'no_activation' };
+    }
+    
+    const record = activationRecord[0];
+    
+    // Проверяем тип подписки
+    if (record.subscription_type === 'permanent') {
+      return { isActivated: true, type: 'permanent' };
+    }
+    
+    // Для месячной подписки проверяем срок истечения
+    if (record.subscription_type === 'monthly') {
+      if (!record.expires_at) {
+        console.log(`❌ Monthly subscription found but no expiration date for user ${userId}`);
+        return { isActivated: false, reason: 'no_expiration_date' };
+      }
+      
+      const now = new Date();
+      const expirationDate = new Date(record.expires_at);
+      const daysUntilExpiration = Math.ceil((expirationDate - now) / (1000 * 60 * 60 * 24));
+      
+      // Проверяем истек ли срок
+      if (now > expirationDate) {
+        console.log(`⏰ Monthly subscription expired for user ${userId} on ${expirationDate}`);
+        return { 
+          isActivated: false, 
+          type: 'monthly', 
+          reason: 'expired', 
+          expirationDate: expirationDate 
+        };
+      }
+      
+      // Проверяем нужно ли предупреждение (за 3 дня)
+      const needsWarning = daysUntilExpiration <= 3 && daysUntilExpiration > 0;
+      
+      return { 
+        isActivated: true, 
+        type: 'monthly', 
+        expirationDate: expirationDate,
+        daysUntilExpiration: daysUntilExpiration,
+        needsWarning: needsWarning
+      };
+    }
+    
+    // Неизвестный тип подписки
+    console.log(`❌ Unknown subscription type: ${record.subscription_type} for user ${userId}`);
+    return { isActivated: false, reason: 'unknown_subscription_type' };
+    
+  } catch (error) {
+    console.error(`Error checking user activation for ${userId}:`, error);
+    return { isActivated: false, reason: 'database_error' };
+  }
 }
 
 // Функция загрузки сессии из базы данных
