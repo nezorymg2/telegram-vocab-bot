@@ -3237,6 +3237,21 @@ bot.command('achievements', async (ctx) => {
   // Проверяем ежедневный бонус при входе в достижения
   await checkDailyBonus(session, ctx);
   
+  // Получаем актуальные данные из базы данных вместо использования сессии
+  const userProfile = await prisma.userProfile.findFirst({
+    where: { profileName: session.profile }
+  });
+  
+  if (!userProfile) {
+    return ctx.reply('❌ Профиль пользователя не найден в базе данных');
+  }
+  
+  // Обновляем сессию актуальными данными из базы
+  session.xp = userProfile.xp;
+  session.level = userProfile.level;
+  session.studyStreak = userProfile.studyStreak || 0;
+  session.loginStreak = userProfile.loginStreak || 0;
+  
   // Получаем все слова пользователя
   const words = await getWords(session.profile);
   const total = words.length;
@@ -3245,16 +3260,15 @@ bot.command('achievements', async (ctx) => {
   // --- Проверка ленивца дня ---
   await checkUserInactivity(session, words, ctx);
   
-  // --- XP и уровень ---
-  const currentXP = session.xp || 0;
+  // --- XP и уровень из базы данных ---
+  const currentXP = userProfile.xp || 0;
   const currentLevel = getLevelByXP(currentXP);
   const nextLevel = XP_LEVELS.find(l => l.level === currentLevel.level + 1);
   const xpToNext = nextLevel ? nextLevel.required_xp - currentXP : 0;
-  const loginStreak = session.loginStreak || 0;
+  const loginStreak = userProfile.loginStreak || 0;
   
-  // --- Streak ---
-  // Используем сохраненный streak из базы данных (НЕ пересчитываем каждый раз!)
-  let studyStreak = session.studyStreak || 0;
+  // --- Streak из базы данных ---
+  let studyStreak = userProfile.studyStreak || 0;
   
   // --- Мультипликатор XP ---
   const xpMultiplier = getStreakMultiplier(studyStreak);
