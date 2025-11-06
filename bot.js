@@ -2051,15 +2051,13 @@ bot.command('activate', async (ctx) => {
       return ctx.reply('❌ Этот код уже был использован.');
     }
 
-    // Проверяем есть ли уже активированный профиль у пользователя
-    const existingProfile = await prisma.userProfile.findFirst({
-      where: { 
-        telegramId: userId.toString(),
-        isActivated: true
-      }
-    });
+    // Проверяем есть ли уже активированный код у пользователя
+    const existingActivation = await prisma.$queryRaw`
+      SELECT * FROM "activation_codes" 
+      WHERE "usedByTelegramId" = ${BigInt(userId)} AND "isUsed" = true
+    `;
 
-    if (existingProfile) {
+    if (existingActivation.length > 0) {
       return ctx.reply('✅ У вас уже есть активированный доступ к боту!');
     }
 
@@ -2088,23 +2086,27 @@ bot.command('activate', async (ctx) => {
       `;
 
       // Создаем или обновляем профиль пользователя
-      await tx.userProfile.upsert({
-        where: { telegramId: userId.toString() },
-        update: { isActivated: true },
-        create: {
-          telegramId: userId.toString(),
-          xp: 0,
-          level: 1,
-          loginStreak: 0,
-          studyStreak: 0,
-          lastStudyDate: null,
-          lastBonusDate: null,
-          lastSmartRepeatDate: null,
-          reminderTime: null,
-          writingTopicIndex: 0,
-          isActivated: true
-        }
+      const existingUserProfile = await tx.userProfile.findFirst({
+        where: { telegramId: userId.toString() }
       });
+      
+      if (!existingUserProfile) {
+        await tx.userProfile.create({
+          data: {
+            telegramId: userId.toString(),
+            profileName: ctx.from.first_name || 'User',
+            xp: 0,
+            level: 1,
+            loginStreak: 0,
+            studyStreak: 0,
+            lastStudyDate: null,
+            lastBonusDate: null,
+            lastSmartRepeatDate: null,
+            reminderTime: null,
+            writingTopicIndex: 0
+          }
+        });
+      }
     });
 
     // Формируем сообщение в зависимости от типа подписки
